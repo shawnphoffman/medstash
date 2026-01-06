@@ -1,0 +1,628 @@
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { useToast } from '../components/ui/use-toast'
+import {
+	receiptsApi,
+	flagsApi,
+	settingsApi,
+	Receipt,
+	Flag,
+	UpdateReceiptInput,
+	CreateReceiptInput,
+} from '../lib/api'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Label } from '../components/ui/label'
+import { Textarea } from '../components/ui/textarea'
+import { Select } from '../components/ui/select'
+import { Badge } from '../components/ui/badge'
+import { ArrowLeft, Download, Trash2, Upload, X, File } from 'lucide-react'
+import { cn } from '../lib/utils'
+
+interface ReceiptFormData {
+	user?: string
+	type?: string
+	amount?: string
+	vendor?: string
+	provider_address?: string
+	description?: string
+	date?: string
+	notes?: string
+	flag_ids: number[]
+}
+
+export default function ReceiptDetailPage() {
+	const { id } = useParams<{ id: string }>()
+	const navigate = useNavigate()
+	const { toast } = useToast()
+	const [receipt, setReceipt] = useState<Receipt | null>(null)
+	const [flags, setFlags] = useState<Flag[]>([])
+	const [users, setUsers] = useState<string[]>([])
+	const [receiptTypes, setReceiptTypes] = useState<string[]>([])
+	const [loading, setLoading] = useState(true)
+	const [saving, setSaving] = useState(false)
+	const [error, setError] = useState<string | null>(null)
+	const [newFiles, setNewFiles] = useState<File[]>([])
+	const [filePreviews, setFilePreviews] = useState<Map<number, string>>(new Map())
+	const [existingFilePreviews, setExistingFilePreviews] = useState<Map<number, string>>(new Map())
+
+	const {
+		register,
+		handleSubmit,
+		formState: { errors },
+		reset,
+		setValue,
+		watch,
+	} = useForm<ReceiptFormData>({
+		defaultValues: {
+			flag_ids: [],
+		},
+	})
+
+	const selectedFlagIds = watch('flag_ids') || []
+
+	useEffect(() => {
+		if (id) {
+			loadData()
+		}
+	}, [id])
+
+	const loadData = async () => {
+		if (!id) return
+
+		try {
+			setLoading(true)
+			const [receiptRes, flagsRes, settingsRes] = await Promise.all([
+				receiptsApi.getById(parseInt(id)),
+				flagsApi.getAll(),
+				settingsApi.getAll(),
+			])
+
+			const receiptData = receiptRes.data
+			setReceipt(receiptData)
+			setFlags(flagsRes.data)
+
+			const usersData = settingsRes.data?.users
+			const receiptTypesData = settingsRes.data?.receiptTypes
+			const usersArray = Array.isArray(usersData) ? usersData : []
+			const receiptTypesArray = Array.isArray(receiptTypesData) ? receiptTypesData : []
+			setUsers(usersArray)
+			setReceiptTypes(receiptTypesArray)
+
+			// Populate form
+			reset({
+				user: receiptData.user,
+				type: receiptData.type,
+				amount: receiptData.amount.toString(),
+				vendor: receiptData.vendor,
+				provider_address: receiptData.provider_address,
+				description: receiptData.description,
+				date: receiptData.date,
+				notes: receiptData.notes || '',
+				flag_ids: receiptData.flags.map(f => f.id),
+			})
+
+			// Generate preview URLs for existing files
+			if (receiptData.files.length > 0 && id) {
+				const previews = new Map<number, string>()
+				receiptData.files.forEach(file => {
+					const previewUrl = `/api/receipts/${id}/files/${file.id}`
+					previews.set(file.id, previewUrl)
+				})
+				setExistingFilePreviews(previews)
+			}
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to load receipt')
+		} finally {
+			setLoading(false)
+		}
+	}
+
+	// Generate preview for new files
+	const generatePreview = useCallback((file: File, index: number) => {
+		if (file.type.startsWith('image/')) {
+			const reader = new FileReader()
+			reader.onload = e => {
+				const result = e.target?.result as string
+				setFilePreviews(prev => {
+					const newMap = new Map(prev)
+					newMap.set(index, result)
+					return newMap
+				})
+			}
+			reader.readAsDataURL(file)
+		} else if (file.type === 'application/pdf') {
+			const objectUrl = URL.createObjectURL(file)
+			setFilePreviews(prev => {
+				const newMap = new Map(prev)
+				newMap.set(index, objectUrl)
+				return newMap
+			})
+		}
+	}, [])
+
+	const onFileInput = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			if (e.target.files) {
+				const selectedFiles = Array.from(e.target.files)
+				setNewFiles(prev => {
+					const newFiles = [...prev, ...selectedFiles]
+					selectedFiles.forEach((file, offset) => {
+						generatePreview(file, prev.length + offset)
+					})
+					return newFiles
+				})
+			}
+		},
+		[generatePreview]
+	)
+
+	const removeNewFile = (index: number) => {
+		const preview = filePreviews.get(index)
+		if (preview && preview.startsWith('blob:')) {
+			URL.revokeObjectURL(preview)
+		}
+		setFilePreviews(prev => {
+			const newMap = new Map<number, string>()
+			let newIndex = 0
+			newFiles.forEach((_, i) => {
+				if (i !== index && prev.has(i)) {
+					newMap.set(newIndex, prev.get(i)!)
+					newIndex++
+				}
+			})
+			return newMap
+		})
+		setNewFiles(prev => prev.filter((_, i) => i !== index))
+	}
+
+	const toggleFlag = (flagId: number) => {
+		const current = selectedFlagIds
+		const newIds = current.includes(flagId) ? current.filter(id => id !== flagId) : [...current, flagId]
+		setValue('flag_ids', newIds)
+	}
+
+	const validateAmount = (value: string | undefined): boolean | string => {
+		if (!value || value.trim() === '') {
+			return true
+		}
+		const cleaned = value.replace(/[$,\s]/g, '')
+		const numValue = parseFloat(cleaned)
+		if (isNaN(numValue)) {
+			return 'Please enter a valid number'
+		}
+		if (numValue < 0) {
+			return 'Amount cannot be negative'
+		}
+		const decimalParts = cleaned.split('.')
+		if (decimalParts.length > 1 && decimalParts[1].length > 2) {
+			return 'Amount cannot have more than 2 decimal places'
+		}
+		return true
+	}
+
+	const onSubmit = async (data: ReceiptFormData) => {
+		if (!id) return
+
+		setSaving(true)
+		setError(null)
+
+		try {
+			// Clean and parse amount
+			let amount = 0
+			if (data.amount) {
+				const cleaned = data.amount.replace(/[$,\s]/g, '')
+				amount = parseFloat(cleaned) || 0
+			}
+
+			const updateData: UpdateReceiptInput = {
+				user: data.user,
+				type: data.type,
+				amount: amount,
+				vendor: data.vendor,
+				provider_address: data.provider_address,
+				description: data.description,
+				date: data.date,
+				notes: data.notes || undefined,
+				flag_ids: selectedFlagIds,
+			}
+
+			// Update receipt
+			await receiptsApi.update(parseInt(id), updateData)
+
+			// Add new files if any
+			if (newFiles.length > 0) {
+				await receiptsApi.addFiles(parseInt(id), newFiles)
+			}
+
+			// Clean up preview URLs
+			filePreviews.forEach(url => {
+				if (url.startsWith('blob:')) {
+					URL.revokeObjectURL(url)
+				}
+			})
+
+			setNewFiles([])
+			setFilePreviews(new Map())
+
+			// Show success toast and navigate
+			toast({
+				title: 'Success',
+				description: 'Receipt updated successfully',
+			})
+			navigate('/')
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to update receipt')
+		} finally {
+			setSaving(false)
+		}
+	}
+
+	const handleDeleteFile = async (fileId: number) => {
+		if (!id || !confirm('Are you sure you want to delete this file?')) return
+
+		try {
+			await receiptsApi.deleteFile(parseInt(id), fileId)
+			// Remove preview from map
+			setExistingFilePreviews(prev => {
+				const newMap = new Map(prev)
+				newMap.delete(fileId)
+				return newMap
+			})
+			await loadData()
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to delete file')
+		}
+	}
+
+	const handleDownloadFile = async (fileId: number, filename: string) => {
+		if (!id) return
+
+		try {
+			const response = await receiptsApi.downloadFile(parseInt(id), fileId)
+			const url = window.URL.createObjectURL(new Blob([response.data]))
+			const link = document.createElement('a')
+			link.href = url
+			link.setAttribute('download', filename)
+			document.body.appendChild(link)
+			link.click()
+			link.remove()
+			window.URL.revokeObjectURL(url)
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to download file')
+		}
+	}
+
+	const handleDeleteReceipt = async () => {
+		if (!id || !confirm('Are you sure you want to delete this receipt? This action cannot be undone.'))
+			return
+
+		try {
+			await receiptsApi.delete(parseInt(id))
+			navigate('/')
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to delete receipt')
+		}
+	}
+
+	if (loading) {
+		return <div className="text-center py-8">Loading receipt...</div>
+	}
+
+	if (!receipt) {
+		return (
+			<div className="text-center py-8">
+				<p className="text-muted-foreground">Receipt not found</p>
+				<Button onClick={() => navigate('/')} className="mt-4">
+					<ArrowLeft className="h-4 w-4 mr-2" />
+					Back to Receipts
+				</Button>
+			</div>
+		)
+	}
+
+	return (
+		<div className="max-w-4xl mx-auto space-y-6">
+			<div className="flex items-center justify-between">
+				<Button variant="ghost" onClick={() => navigate('/')}>
+					<ArrowLeft className="h-4 w-4 mr-2" />
+					Back to Receipts
+				</Button>
+				<Button variant="destructive" onClick={handleDeleteReceipt}>
+					<Trash2 className="h-4 w-4 mr-2" />
+					Delete Receipt
+				</Button>
+			</div>
+
+			<Card>
+				<CardHeader>
+					<CardTitle>Edit Receipt</CardTitle>
+					<CardDescription>Update receipt information and manage files</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+						{/* Basic Info */}
+						<div className="grid grid-cols-2 gap-4">
+							<div>
+								<Label htmlFor="user">User</Label>
+								{Array.isArray(users) && users.length > 1 ? (
+									<Select id="user" {...register('user')} defaultValue={receipt.user}>
+										{users.map(user => (
+											<option key={user} value={user}>
+												{user}
+											</option>
+										))}
+									</Select>
+								) : Array.isArray(users) && users.length === 1 ? (
+									<Input
+										id="user"
+										{...register('user')}
+										defaultValue={receipt.user}
+										value={receipt.user}
+										readOnly
+										className="cursor-not-allowed bg-muted"
+									/>
+								) : (
+									<Input id="user" {...register('user')} placeholder="Enter user name" />
+								)}
+							</div>
+							<div>
+								<Label htmlFor="type">Receipt Type</Label>
+								{Array.isArray(receiptTypes) && receiptTypes.length > 1 ? (
+									<Select id="type" {...register('type')} defaultValue={receipt.type}>
+										{receiptTypes.map(type => (
+											<option key={type} value={type}>
+												{type}
+											</option>
+										))}
+									</Select>
+								) : Array.isArray(receiptTypes) && receiptTypes.length === 1 ? (
+									<Input
+										id="type"
+										{...register('type')}
+										defaultValue={receiptTypes[0]}
+										placeholder={receiptTypes[0]}
+									/>
+								) : (
+									<Input id="type" {...register('type')} placeholder="Enter receipt type" />
+								)}
+							</div>
+						</div>
+
+						<div>
+							<Label htmlFor="vendor">Service Provider Name</Label>
+							<Input id="vendor" {...register('vendor')} placeholder="CVS Pharmacy" />
+						</div>
+
+						<div>
+							<Label htmlFor="provider_address">Service Provider Address</Label>
+							<Textarea
+								id="provider_address"
+								{...register('provider_address')}
+								placeholder="123 Main St, City, State ZIP"
+								rows={2}
+							/>
+						</div>
+
+						<div>
+							<Label htmlFor="description">Detailed Description</Label>
+							<Textarea
+								id="description"
+								{...register('description')}
+								placeholder="Description of service or item purchased"
+								rows={3}
+							/>
+						</div>
+
+						<div className="grid grid-cols-2 gap-4">
+							<div>
+								<Label htmlFor="date">Date of Service</Label>
+								<Input id="date" type="date" {...register('date')} />
+							</div>
+							<div>
+								<Label htmlFor="amount">Amount Paid</Label>
+								<div className="relative">
+									<span className="absolute -translate-y-1/2 left-3 top-1/2 text-muted-foreground">$</span>
+									<Input
+										id="amount"
+										type="text"
+										inputMode="decimal"
+										{...(() => {
+											const { onChange, ...rest } = register('amount', {
+												validate: validateAmount,
+											})
+											return {
+												...rest,
+												onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+													const value = e.target.value.replace(/[^0-9.,\s]/g, '')
+													e.target.value = value
+													onChange(e)
+													setValue('amount', value, { shouldValidate: true })
+												},
+											}
+										})()}
+										placeholder="0.00"
+										className="pl-7"
+									/>
+								</div>
+								{errors.amount && <p className="mt-1 text-sm text-destructive">{errors.amount.message as string}</p>}
+							</div>
+						</div>
+
+						<div>
+							<Label htmlFor="notes">Notes (Optional)</Label>
+							<Textarea id="notes" {...register('notes')} placeholder="Additional notes" rows={2} />
+						</div>
+
+						{/* Flags */}
+						{flags.length > 0 && (
+							<div>
+								<Label>Flags</Label>
+								<div className="flex flex-wrap gap-2 mt-2">
+									{flags.map(flag => (
+										<Button
+											key={flag.id}
+											type="button"
+											variant={selectedFlagIds.includes(flag.id) ? 'default' : 'outline'}
+											size="sm"
+											onClick={() => toggleFlag(flag.id)}
+											style={
+												selectedFlagIds.includes(flag.id) && flag.color
+													? { backgroundColor: flag.color, borderColor: flag.color }
+													: undefined
+											}
+										>
+											{flag.name}
+										</Button>
+									))}
+								</div>
+							</div>
+						)}
+
+						{/* Existing Files */}
+						<div>
+							<Label>Existing Files</Label>
+							<div className="mt-2 space-y-4">
+								{receipt.files.length === 0 ? (
+									<p className="text-sm text-muted-foreground">No files attached</p>
+								) : (
+									receipt.files.map(file => {
+										const previewUrl = existingFilePreviews.get(file.id)
+										const isImage = file.original_filename.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+										const isPdf = file.original_filename.match(/\.pdf$/i)
+
+										return (
+											<div key={file.id} className="border rounded-lg overflow-hidden">
+												<div className="flex items-center justify-between p-2 bg-muted border-b">
+													<div className="flex items-center gap-2 flex-1 min-w-0">
+														<File className="flex-shrink-0 w-4 h-4" />
+														<span className="text-sm truncate font-medium">{file.original_filename}</span>
+													</div>
+													<div className="flex gap-2">
+														<Button
+															type="button"
+															variant="ghost"
+															size="icon"
+															onClick={() => handleDownloadFile(file.id, file.original_filename)}
+														>
+															<Download className="w-4 h-4" />
+														</Button>
+														<Button
+															type="button"
+															variant="ghost"
+															size="icon"
+															onClick={() => handleDeleteFile(file.id)}
+															className="text-destructive hover:text-destructive"
+														>
+															<Trash2 className="w-4 h-4" />
+														</Button>
+													</div>
+												</div>
+												<div className="bg-background">
+													{previewUrl && isImage ? (
+														<img
+															src={previewUrl}
+															alt={file.original_filename}
+															className="w-full h-auto max-h-96 object-contain"
+														/>
+													) : previewUrl && isPdf ? (
+														<iframe
+															src={previewUrl}
+															className="w-full h-96 border-0"
+															title={file.original_filename}
+														/>
+													) : (
+														<div className="w-full h-48 flex items-center justify-center bg-muted">
+															<File className="w-8 h-8 text-muted-foreground" />
+														</div>
+													)}
+												</div>
+											</div>
+										)
+									})
+								)}
+							</div>
+						</div>
+
+						{/* Add New Files */}
+						<div>
+							<Label>Add Files</Label>
+							<div className="mt-2">
+								<input
+									type="file"
+									multiple
+									onChange={onFileInput}
+									className="hidden"
+									id="add-files-input"
+									accept="image/*,.pdf"
+								/>
+								<label htmlFor="add-files-input">
+									<Button type="button" variant="outline" className="cursor-pointer">
+										<Upload className="w-4 h-4 mr-2" />
+										Select Files
+									</Button>
+								</label>
+							</div>
+							{newFiles.length > 0 && (
+								<div className="mt-4 space-y-2">
+									{newFiles.map((file, index) => {
+										const preview = filePreviews.get(index)
+										const isImage = file.type.startsWith('image/')
+										const isPdf = file.type === 'application/pdf'
+
+										return (
+											<div key={index} className="flex items-center gap-3 p-2 rounded bg-muted">
+												<div className="flex items-center justify-center flex-shrink-0 w-16 h-16 overflow-hidden border rounded bg-background">
+													{preview && isImage ? (
+														<img src={preview} alt={file.name} className="object-cover w-full h-full" />
+													) : isPdf ? (
+														<div className="flex flex-col items-center justify-center p-2">
+															<File className="w-6 h-6 text-muted-foreground" />
+															<span className="text-xs text-muted-foreground">PDF</span>
+														</div>
+													) : (
+														<File className="w-6 h-6 text-muted-foreground" />
+													)}
+												</div>
+												<div className="flex-1 min-w-0">
+													<div className="flex items-center gap-2">
+														<File className="flex-shrink-0 w-4 h-4" />
+														<span className="text-sm truncate">{file.name}</span>
+													</div>
+													<span className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</span>
+												</div>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													onClick={() => removeNewFile(index)}
+													className="flex-shrink-0"
+												>
+													<X className="w-4 h-4" />
+												</Button>
+											</div>
+										)
+									})}
+								</div>
+							)}
+						</div>
+
+						{error && <div className="p-4 rounded-md bg-destructive/10 text-destructive">{error}</div>}
+
+						<div className="flex gap-4">
+							<Button type="submit" disabled={saving} className="flex-1">
+								{saving ? 'Saving...' : 'Save Changes'}
+							</Button>
+							<Button type="button" variant="outline" onClick={() => navigate('/')}>
+								Cancel
+							</Button>
+						</div>
+					</form>
+				</CardContent>
+			</Card>
+		</div>
+	)
+}
+

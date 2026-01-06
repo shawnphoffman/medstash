@@ -1,0 +1,64 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DB_DIR=/data
+      - RECEIPTS_DIR=/data/receipts
+    volumes:
+      - ./backend/src:/app/src
+      - ${MEDSTASH_DATA_DIR:-./data}:/data
+    command: npm run dev
+    restart: unless-stopped
+    develop:
+      watch:
+        - action: sync
+          path: ./backend/src
+          target: /app/src
+        - action: rebuild
+          path: ./backend/package.json
+        - action: rebuild
+          path: ./backend/tsconfig.json
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    ports:
+      - "3010:3010"
+    volumes:
+      - ./frontend:/app
+    environment:
+      - VITE_API_URL=http://localhost:3001/api
+    command: sh -c "npm install && npm run dev -- --host"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend/src
+          target: /app/src
+        - action: sync
+          path: ./frontend/index.html
+          target: /app/index.html
+        - action: sync
+          path: ./frontend/vite.config.ts
+          target: /app/vite.config.ts
+        - action: sync
+          path: ./frontend/tailwind.config.js
+          target: /app/tailwind.config.js
+        - action: sync
+          path: ./frontend/postcss.config.js
+          target: /app/postcss.config.js
+        - action: sync
+          path: ./frontend/components.json
+          target: /app/components.json
+        - action: rebuild
+          path: ./frontend/package.json
+
+

@@ -1,0 +1,95 @@
+import express from 'express';
+import {
+  getAllFlags,
+  getFlagById,
+  createFlag,
+  updateFlag,
+  deleteFlag,
+} from '../services/dbService';
+import { CreateFlagInput, UpdateFlagInput } from '../models/receipt';
+
+const router = express.Router();
+
+// GET /api/flags - List all flags
+router.get('/', (req, res) => {
+  try {
+    const flags = getAllFlags();
+    res.json(flags);
+  } catch (error) {
+    console.error('Error fetching flags:', error);
+    res.status(500).json({ error: 'Failed to fetch flags' });
+  }
+});
+
+// GET /api/flags/:id - Get flag by ID
+router.get('/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const flag = getFlagById(id);
+    if (!flag) {
+      return res.status(404).json({ error: 'Flag not found' });
+    }
+    res.json(flag);
+  } catch (error) {
+    console.error('Error fetching flag:', error);
+    res.status(500).json({ error: 'Failed to fetch flag' });
+  }
+});
+
+// POST /api/flags - Create flag
+router.post('/', (req, res) => {
+  try {
+    const { name, color } = req.body as CreateFlagInput;
+
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Flag name is required' });
+    }
+
+    const flag = createFlag(name.trim(), color);
+    res.status(201).json(flag);
+  } catch (error) {
+    console.error('Error creating flag:', error);
+    res.status(500).json({ error: 'Failed to create flag' });
+  }
+});
+
+// PUT /api/flags/:id - Update flag
+router.put('/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { name, color } = req.body as UpdateFlagInput;
+
+    if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
+      return res.status(400).json({ error: 'Flag name must be a non-empty string' });
+    }
+
+    const flag = updateFlag(id, name?.trim(), color);
+    if (!flag) {
+      return res.status(404).json({ error: 'Flag not found' });
+    }
+
+    res.json(flag);
+  } catch (error) {
+    console.error('Error updating flag:', error);
+    res.status(500).json({ error: 'Failed to update flag' });
+  }
+});
+
+// DELETE /api/flags/:id - Delete flag
+router.delete('/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const deleted = deleteFlag(id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Flag not found' });
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting flag:', error);
+    res.status(500).json({ error: 'Failed to delete flag' });
+  }
+});
+
+export default router;
+
