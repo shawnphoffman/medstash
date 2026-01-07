@@ -8,44 +8,44 @@ export const TAILWIND_COLORS = [
 	{
 		name: 'Orange',
 		value: '#f97316',
-		class: 'bg-orange-500 text-black hover:bg-orange-500',
+		class: 'bg-orange-600 text-white hover:bg-orange-600',
 	},
 	{
 		name: 'Amber',
 		value: '#f59e0b',
-		class: 'bg-amber-500 text-black hover:bg-amber-500',
+		class: 'bg-amber-600 text-white hover:bg-amber-600',
 	},
 	{
 		name: 'Yellow',
 		value: '#eab308',
-		class: 'bg-yellow-500 text-black hover:bg-yellow-500',
+		class: 'bg-yellow-600 text-white hover:bg-yellow-600',
 	},
 	{
 		name: 'Lime',
 		value: '#84cc16',
-		class: 'bg-lime-500 text-black hover:bg-lime-500',
+		class: 'bg-lime-600 text-white hover:bg-lime-600',
 	},
 	{
 		name: 'Green',
 		value: '#22c55e',
-		class: 'bg-green-500 text-black hover:bg-green-500',
+		class: 'bg-green-600 text-white hover:bg-green-600',
 	},
 	{
 		name: 'Emerald',
 		value: '#10b981',
-		class: 'bg-emerald-500 text-black hover:bg-emerald-500',
+		class: 'bg-emerald-600 text-white hover:bg-emerald-600',
 	},
 	{
 		name: 'Teal',
 		value: '#14b8a6',
-		class: 'bg-teal-500 text-black hover:bg-teal-500',
+		class: 'bg-teal-600 text-white hover:bg-teal-600',
 	},
 	{
 		name: 'Cyan',
 		value: '#06b6d4',
-		class: 'bg-cyan-500 text-black hover:bg-cyan-500',
+		class: 'bg-cyan-600 text-white hover:bg-cyan-600',
 	},
-	{ name: 'Sky', value: '#0ea5e9', class: 'bg-sky-500 text-black hover:bg-sky-500' },
+	{ name: 'Sky', value: '#0ea5e9', class: 'bg-sky-600 text-white hover:bg-sky-600' },
 	{
 		name: 'Blue',
 		value: '#3b82f6',
@@ -54,33 +54,33 @@ export const TAILWIND_COLORS = [
 	{
 		name: 'Indigo',
 		value: '#6366f1',
-		class: 'bg-indigo-500 text-black hover:bg-indigo-500',
+		class: 'bg-indigo-600 text-white hover:bg-indigo-600',
 	},
 	{
 		name: 'Violet',
 		value: '#8b5cf6',
-		class: 'bg-violet-500 text-black hover:bg-violet-500',
+		class: 'bg-violet-600 text-white hover:bg-violet-600',
 	},
-	{ name: 'Purple', value: '#a855f7', class: 'bg-purple-500 text-black' },
+	{ name: 'Purple', value: '#a855f7', class: 'bg-purple-600 text-white' },
 	{
 		name: 'Fuchsia',
 		value: '#d946ef',
-		class: 'bg-fuchsia-500 text-black hover:bg-fuchsia-500',
+		class: 'bg-fuchsia-600 text-white hover:bg-fuchsia-600',
 	},
 	{
 		name: 'Pink',
 		value: '#ec4899',
-		class: 'bg-pink-500 text-black hover:bg-pink-500',
+		class: 'bg-pink-600 text-white hover:bg-pink-600',
 	},
 	{
 		name: 'Rose',
 		value: '#f43f5e',
-		class: 'bg-rose-500 text-black hover:bg-rose-500',
+		class: 'bg-rose-600 text-white shadow hover:bg-rose-600',
 	},
 	{
 		name: 'Slate',
 		value: '#64748b',
-		class: 'bg-slate-500 text-black hover:bg-slate-500',
+		class: 'bg-slate-600 text-white hover:bg-slate-600',
 	},
 ]
 
@@ -92,7 +92,7 @@ export function getBadgeClassName(backgroundColor: string): string {
 	const color = TAILWIND_COLORS.find(c => c.value === backgroundColor)
 	if (!color) {
 		// Default classes if color not found
-		return 'bg-blue-500 text-black'
+		return 'bg-blue-600 text-white'
 	}
 	return color.class
 }
@@ -124,17 +124,17 @@ export function ColorPicker({ value, onChange, className }: ColorPickerProps) {
 		}
 	}, [isOpen])
 
-	const selectedColor = TAILWIND_COLORS.find(c => c.value === value) || TAILWIND_COLORS[10] // Default to blue
+	// const selectedColor = TAILWIND_COLORS.find(c => c.value === value) || TAILWIND_COLORS[10] // Default to blue
 
 	return (
 		<div ref={containerRef} className={cn('relative', className)}>
 			<button
 				type="button"
 				onClick={() => setIsOpen(!isOpen)}
-				className="flex items-center gap-2 px-3 py-2 border rounded-md hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+				className="flex items-center gap-2 p-2 border rounded-md hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
 			>
 				<div className="w-6 h-6 border-2 rounded border-border" style={{ backgroundColor: value }} />
-				<span className="text-sm text-muted-foreground">{selectedColor.name}</span>
+				{/* <span className="text-sm text-muted-foreground">{selectedColor.name}</span> */}
 			</button>
 
 			{isOpen && (

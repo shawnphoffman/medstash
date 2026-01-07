@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { ColorPicker, TAILWIND_COLORS } from '../components/ui/color-picker'
 import { FlagBadge } from '../components/FlagBadge'
-import { Plus, Trash2, Edit2, Save, X, RefreshCw, Info } from 'lucide-react'
+import { Plus, Trash2, Edit2, Save, X, RefreshCw, Info, Flag as FlagIcon } from 'lucide-react'
 
 export default function SettingsPage() {
 	const [flags, setFlags] = useState<Flag[]>([])
@@ -283,9 +283,7 @@ export default function SettingsPage() {
 
 			// Check if pattern changed and prompt for rename
 			if (filenamePattern !== originalPattern) {
-				const shouldRename = confirm(
-					'Pattern saved successfully. Would you like to rename all existing files to match the new pattern?'
-				)
+				const shouldRename = confirm('Pattern saved successfully. Would you like to rename all existing files to match the new pattern?')
 				if (shouldRename) {
 					await handleRenameAll()
 				}
@@ -368,31 +366,32 @@ export default function SettingsPage() {
 					</div>
 
 					{/* Existing Flags */}
-					<div className="space-y-2">
+					<div className="grid grid-cols-1 gap-1 md:grid-cols-2">
 						{flags.length === 0 ? (
 							<p className="py-4 text-sm text-center text-muted-foreground">No flags created yet</p>
 						) : (
 							flags.map(flag => (
-								<div key={flag.id} className="flex items-center justify-between p-3 border rounded-lg">
+								<div key={flag.id} className="flex items-center justify-between px-3 py-1 border rounded-lg">
 									{editingFlag === flag.id ? (
 										<div className="flex items-center flex-1 gap-2">
 											<Input value={editFlagName} onChange={e => setEditFlagName(e.target.value)} className="flex-1" />
 											<ColorPicker value={editFlagColor} onChange={color => setEditFlagColor(color)} />
 											<Button size="icon" variant="ghost" onClick={() => handleUpdateFlag(flag.id)}>
-												<Save className="w-4 h-4" />
+												<Save className="size-4" />
 											</Button>
 											<Button size="icon" variant="ghost" onClick={cancelEdit}>
-												<X className="w-4 h-4" />
+												<X className="size-4" />
 											</Button>
 										</div>
 									) : (
 										<>
 											<div className="flex items-center flex-1 gap-3">
+												<FlagIcon className="size-4" style={flag.color ? { color: flag.color } : undefined} />
 												<FlagBadge flag={flag} />
 											</div>
 											<div className="flex gap-2">
 												<Button size="icon" variant="ghost" onClick={() => startEdit(flag)}>
-													<Edit2 className="w-4 h-4" />
+													<Edit2 className="size-4" />
 												</Button>
 												<Button
 													size="icon"
@@ -400,7 +399,7 @@ export default function SettingsPage() {
 													onClick={() => handleDeleteFlag(flag.id)}
 													className="text-destructive hover:text-destructive"
 												>
-													<Trash2 className="w-4 h-4" />
+													<Trash2 className="size-4" />
 												</Button>
 											</div>
 										</>
@@ -437,7 +436,7 @@ export default function SettingsPage() {
 							<p className="py-4 text-sm text-center text-muted-foreground">No users configured yet</p>
 						) : (
 							users.map(user => (
-								<div key={user} className="flex items-center justify-between p-3 border rounded-lg">
+								<div key={user} className="flex items-center justify-between px-3 py-1 border rounded-lg">
 									<span className="font-medium">{user}</span>
 									<Button
 										size="icon"
@@ -479,7 +478,7 @@ export default function SettingsPage() {
 							<p className="py-4 text-sm text-center text-muted-foreground">No receipt types configured yet</p>
 						) : (
 							receiptTypes.map(type => (
-								<div key={type} className="flex items-center justify-between p-3 border rounded-lg">
+								<div key={type} className="flex items-center justify-between px-3 py-1 border rounded-lg">
 									<span className="font-medium">{type}</span>
 									<Button
 										size="icon"
@@ -513,53 +512,59 @@ export default function SettingsPage() {
 							onKeyDown={e => e.key === 'Enter' && !patternError && handleSavePattern()}
 							className={patternError ? 'border-destructive' : ''}
 						/>
-						{patternError && (
-							<p className="text-sm text-destructive">{patternError}</p>
-						)}
+						{patternError && <p className="text-sm text-destructive">{patternError}</p>}
 					</div>
 
 					{/* Helper text */}
-					<div className="p-3 bg-muted rounded-lg space-y-2">
+					<div className="p-3 space-y-2 rounded-lg bg-muted">
 						<div className="flex items-start gap-2">
 							<Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-							<div className="text-sm space-y-1">
+							<div className="space-y-1 text-sm">
 								<p className="font-medium">Available tokens:</p>
-								<ul className="list-disc list-inside space-y-1 text-muted-foreground">
-									<li><code className="bg-background px-1 py-0.5 rounded">&#123;date&#125;</code> - Date in YYYY-MM-DD format</li>
-									<li><code className="bg-background px-1 py-0.5 rounded">&#123;user&#125;</code> - User name (sanitized)</li>
-									<li><code className="bg-background px-1 py-0.5 rounded">&#123;vendor&#125;</code> - Vendor name (sanitized)</li>
-									<li><code className="bg-background px-1 py-0.5 rounded">&#123;amount&#125;</code> - Amount (e.g., 100-50 for $100.50)</li>
-									<li><code className="bg-background px-1 py-0.5 rounded">&#123;type&#125;</code> - Receipt type (sanitized)</li>
-									<li><code className="bg-background px-1 py-0.5 rounded">&#123;index&#125;</code> - File order (0-based)</li>
-									<li><code className="bg-background px-1 py-0.5 rounded">&#123;flags&#125;</code> - Flags separated by dashes (e.g., reimbursed-tax-deductible)</li>
+								<ul className="space-y-1 list-disc list-inside text-muted-foreground">
+									<li>
+										<code className="bg-background px-1 py-0.5 rounded">&#123;date&#125;</code> - Date in YYYY-MM-DD format
+									</li>
+									<li>
+										<code className="bg-background px-1 py-0.5 rounded">&#123;user&#125;</code> - User name (sanitized)
+									</li>
+									<li>
+										<code className="bg-background px-1 py-0.5 rounded">&#123;vendor&#125;</code> - Vendor name (sanitized)
+									</li>
+									<li>
+										<code className="bg-background px-1 py-0.5 rounded">&#123;amount&#125;</code> - Amount (e.g., 100-50 for $100.50)
+									</li>
+									<li>
+										<code className="bg-background px-1 py-0.5 rounded">&#123;type&#125;</code> - Receipt type (sanitized)
+									</li>
+									<li>
+										<code className="bg-background px-1 py-0.5 rounded">&#123;index&#125;</code> - File order (0-based)
+									</li>
+									<li>
+										<code className="bg-background px-1 py-0.5 rounded">&#123;flags&#125;</code> - Flags separated by dashes (e.g.,
+										reimbursed-tax-deductible)
+									</li>
 								</ul>
-								<p className="text-muted-foreground mt-2">Note: File extension is automatically appended and cannot be customized.</p>
+								<p className="mt-2 text-muted-foreground">Note: File extension is automatically appended and cannot be customized.</p>
 							</div>
 						</div>
 					</div>
 
 					{/* Live preview */}
 					{previewFilename && (
-						<div className="p-3 bg-muted rounded-lg">
-							<p className="text-sm font-medium mb-1">Preview:</p>
+						<div className="p-3 rounded-lg bg-muted">
+							<p className="mb-1 text-sm font-medium">Preview:</p>
 							<code className="text-sm">{previewFilename}</code>
 						</div>
 					)}
 
 					{/* Actions */}
 					<div className="flex gap-2">
-						<Button
-							onClick={handleSavePattern}
-							disabled={!!patternError || filenamePattern === originalPattern}
-						>
+						<Button onClick={handleSavePattern} disabled={!!patternError || filenamePattern === originalPattern}>
 							<Save className="w-4 h-4 mr-2" />
 							Save Pattern
 						</Button>
-						<Button
-							variant="outline"
-							onClick={handleRenameAll}
-							disabled={!!patternError || isRenaming}
-						>
+						<Button variant="outline" onClick={handleRenameAll} disabled={!!patternError || isRenaming}>
 							<RefreshCw className={`w-4 h-4 mr-2 ${isRenaming ? 'animate-spin' : ''}`} />
 							{isRenaming ? 'Renaming...' : 'Rename All Files'}
 						</Button>
