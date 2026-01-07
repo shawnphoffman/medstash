@@ -518,7 +518,7 @@ export default function ReceiptDetailPage() {
 													<div
 														key={file.id}
 														className={cn(
-															'flex items-center justify-between p-2 rounded border bg-muted',
+															'flex items-center justify-between p-2 rounded border bg-muted/50',
 															isMarkedForDeletion && 'border-destructive border-2 bg-destructive/5'
 														)}
 													>
