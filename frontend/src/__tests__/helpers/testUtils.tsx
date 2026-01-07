@@ -10,7 +10,16 @@ function customRender(
   options?: Omit<RenderOptions, 'wrapper'>
 ) {
   function Wrapper({ children }: { children: React.ReactNode }) {
-    return <BrowserRouter>{children}</BrowserRouter>;
+    return (
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
+        {children}
+      </BrowserRouter>
+    );
   }
 
   return render(ui, { wrapper: Wrapper, ...options });
