@@ -8,9 +8,9 @@
     "backend"
   ],
   "scripts": {
-    "dev": "docker-compose -f docker-compose.dev.yml up",
-    "build": "docker-compose build",
-    "start": "docker-compose up",
+    "dev": "docker compose -f docker-compose.dev.yml up",
+    "build": "docker compose build",
+    "start": "docker compose up",
     "test": "npm run test -w backend && npm run test -w frontend",
     "test:backend": "npm run test -w backend",
     "test:frontend": "npm run test -w frontend",

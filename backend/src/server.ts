@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { existsSync } from 'fs';
 import './db'; // Initialize database
 import receiptsRouter from './routes/receipts';
 import flagsRouter from './routes/flags';
@@ -11,7 +13,7 @@ import filenamesRouter from './routes/filenames';
 import { ensureReceiptsDir } from './services/fileService';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
@@ -32,6 +34,28 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Serve static files from frontend build (only in production)
+// In development, frontend is served separately
+// In Docker, the structure is: /app/dist (backend) and /app/public (frontend)
+// __dirname will be /app/dist at runtime after TypeScript compilation
+const publicPath = path.resolve(process.cwd(), 'public');
+
+// Check if public directory exists (production build)
+if (existsSync(publicPath)) {
+  // Serve static files
+  app.use(express.static(publicPath));
+
+  // Catch-all handler: send back React's index.html file for client-side routing
+  // This must be after all API routes
+  app.get('*', (req, res) => {
+    // Don't serve index.html for API routes
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    res.sendFile(path.join(publicPath, 'index.html'));
+  });
+}
+
 // Initialize file storage
 ensureReceiptsDir().catch((error) => {
   console.error('Failed to initialize receipts directory:', error);
@@ -39,7 +63,7 @@ ensureReceiptsDir().catch((error) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`MedStash backend server running on port ${PORT}`);
+  console.log(`MedStash server running on port ${PORT}`);
 });
 
 export default app;

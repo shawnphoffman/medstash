@@ -201,10 +201,10 @@ export async function updateReceipt(
   };
 
   // Check if any filename-relevant fields changed
-  const filenameRelevantFields = ['date', 'vendor', 'amount'];
+  const filenameRelevantFields: Array<'date' | 'vendor' | 'amount'> = ['date', 'vendor', 'amount'];
   const relevantFieldsChanged = filenameRelevantFields.some(
-    field => receiptData[field as keyof Receipt] !== undefined &&
-    receiptData[field as keyof Receipt] !== existing[field as keyof Receipt]
+    field => receiptData[field] !== undefined &&
+    receiptData[field] !== existing[field]
   );
   const userChanged = userId !== existing.user_id;
   const typeChanged = receiptTypeId !== existing.receipt_type_id;

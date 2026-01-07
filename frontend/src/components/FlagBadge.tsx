@@ -7,7 +7,7 @@ interface FlagBadgeProps {
 	className?: string
 }
 
-export function FlagBadge({ flag, className }: FlagBadgeProps) {
+export function FlagBadge({ flag }: FlagBadgeProps) {
 	return (
 		<Badge variant="secondary" className={flag.color ? getBadgeClassName(flag.color) : undefined}>
 			{flag.name}

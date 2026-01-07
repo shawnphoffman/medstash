@@ -1,27 +1,20 @@
 services:
-  backend:
+  app:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      # To change the exposed port, modify the first number (host port)
+      # Example: "8080:3000" exposes the app on host port 8080
+      - "3000:3000"
     environment:
       - NODE_ENV=production
-      - PORT=3001
+      # PORT controls the container's listening port (must match second number in ports above)
+      - PORT=3000
       - DB_DIR=/data
       - RECEIPTS_DIR=/data/receipts
     volumes:
       - medstash-data:/data
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
     restart: unless-stopped
 
 volumes:
