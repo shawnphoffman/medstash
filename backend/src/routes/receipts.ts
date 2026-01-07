@@ -117,7 +117,8 @@ router.post('/', upload.array('files', 10), async (req, res) => {
           receipt.vendor,
           receipt.amount,
           receipt.type,
-          i
+          i,
+          receipt.flags
         );
 
         addReceiptFile(receipt.id, filename, originalFilename, i);
@@ -237,7 +238,8 @@ router.post('/:id/files', upload.array('files', 10), async (req, res) => {
         vendor,
         amount,
         type,
-        fileOrder
+        fileOrder,
+        receipt.flags
       );
 
       addReceiptFile(receipt.id, filename, originalFilename, fileOrder);

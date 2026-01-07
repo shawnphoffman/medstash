@@ -158,5 +158,16 @@ export const exportApi = {
   },
 };
 
+// Filenames API
+export const filenamesApi = {
+  renameAll: () => api.post<{
+    success: boolean;
+    totalReceipts: number;
+    totalFiles: number;
+    renamed: number;
+    errors: Array<{ receiptId: number; error: string }>;
+  }>('/filenames/rename-all'),
+};
+
 export default api;
 

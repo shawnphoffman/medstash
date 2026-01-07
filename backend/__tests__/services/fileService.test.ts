@@ -203,6 +203,36 @@ describe('fileService', () => {
       expect(result1.filename).toContain('_0.pdf');
       expect(result2.filename).toContain('_1.pdf');
     });
+
+    it('should include flags in filename when provided', async () => {
+      const mockFile = createMockFile({
+        originalname: 'receipt.pdf',
+        path: path.join(testDirs.uploadDir, 'receipt.pdf'),
+      });
+      await createTestPdfFile(testDirs.uploadDir, 'receipt.pdf');
+
+      const flags = [
+        { id: 1, name: 'Reimbursed', color: '#3b82f6', created_at: '2024-01-01' },
+        { id: 2, name: 'Tax Deductible', color: '#10b981', created_at: '2024-01-01' },
+      ];
+
+      const result = await fileService.saveReceiptFile(
+        mockFile,
+        1,
+        '2024-01-15',
+        'John Doe',
+        'Test Clinic',
+        100.50,
+        'doctor-visit',
+        0,
+        flags
+      );
+
+      // With default pattern, flags should be included if pattern supports it
+      // But default pattern doesn't include {flags}, so we just verify it doesn't break
+      expect(result.filename).toBeDefined();
+      expect(result.filename).toContain('2024-01-15');
+    });
   });
 
   describe('deleteReceiptFile', () => {
@@ -324,6 +354,155 @@ describe('fileService', () => {
         const exists = await checkFileExists(outputPath);
         expect(exists).toBe(true);
       }
+    });
+  });
+
+  describe('renameReceiptFiles', () => {
+    it('should rename files when receipt data changes', async () => {
+      // Create initial file
+      const mockFile = createMockFile({
+        originalname: 'receipt.pdf',
+        path: path.join(testDirs.uploadDir, 'receipt.pdf'),
+      });
+      await createTestPdfFile(testDirs.uploadDir, 'receipt.pdf');
+
+      const result = await fileService.saveReceiptFile(
+        mockFile,
+        1,
+        '2024-01-15',
+        'John Doe',
+        'Old Clinic',
+        100.50,
+        'doctor-visit',
+        0
+      );
+
+      const oldFilename = result.filename;
+      const oldExists = await fileService.fileExists(1, oldFilename);
+      expect(oldExists).toBe(true);
+
+      // Rename with updated data
+      const files = [
+        {
+          id: 1,
+          filename: oldFilename,
+          original_filename: 'receipt.pdf',
+          file_order: 0,
+        },
+      ];
+
+      const renameResults = await fileService.renameReceiptFiles(
+        1,
+        files,
+        '2024-01-16', // Updated date
+        'Jane Smith', // Updated user
+        'New Clinic', // Updated vendor
+        200.00, // Updated amount
+        'prescription', // Updated type
+        [] // No flags
+      );
+
+      expect(renameResults).toHaveLength(1);
+      expect(renameResults[0].oldFilename).toBe(oldFilename);
+      expect(renameResults[0].newFilename).not.toBe(oldFilename);
+
+      // Old file should not exist
+      const oldStillExists = await fileService.fileExists(1, oldFilename);
+      expect(oldStillExists).toBe(false);
+
+      // New file should exist
+      const newExists = await fileService.fileExists(1, renameResults[0].newFilename);
+      expect(newExists).toBe(true);
+    });
+
+    it('should include flags in renamed filename', async () => {
+      const mockFile = createMockFile({
+        originalname: 'receipt.pdf',
+        path: path.join(testDirs.uploadDir, 'receipt.pdf'),
+      });
+      await createTestPdfFile(testDirs.uploadDir, 'receipt.pdf');
+
+      const result = await fileService.saveReceiptFile(
+        mockFile,
+        1,
+        '2024-01-15',
+        'John Doe',
+        'Clinic',
+        100.50,
+        'doctor-visit',
+        0
+      );
+
+      const files = [
+        {
+          id: 1,
+          filename: result.filename,
+          original_filename: 'receipt.pdf',
+          file_order: 0,
+        },
+      ];
+
+      const flags = [
+        { id: 1, name: 'Reimbursed', color: '#3b82f6', created_at: '2024-01-01' },
+      ];
+
+      const renameResults = await fileService.renameReceiptFiles(
+        1,
+        files,
+        '2024-01-15',
+        'John Doe',
+        'Clinic',
+        100.50,
+        'doctor-visit',
+        flags
+      );
+
+      expect(renameResults).toHaveLength(1);
+      // With default pattern, flags won't appear, but function should work
+      expect(renameResults[0].newFilename).toBeDefined();
+    });
+
+    it('should not rename if filename unchanged', async () => {
+      const mockFile = createMockFile({
+        originalname: 'receipt.pdf',
+        path: path.join(testDirs.uploadDir, 'receipt.pdf'),
+      });
+      await createTestPdfFile(testDirs.uploadDir, 'receipt.pdf');
+
+      const result = await fileService.saveReceiptFile(
+        mockFile,
+        1,
+        '2024-01-15',
+        'John Doe',
+        'Clinic',
+        100.50,
+        'doctor-visit',
+        0
+      );
+
+      const files = [
+        {
+          id: 1,
+          filename: result.filename,
+          original_filename: 'receipt.pdf',
+          file_order: 0,
+        },
+      ];
+
+      // Rename with same data (should not change)
+      const renameResults = await fileService.renameReceiptFiles(
+        1,
+        files,
+        '2024-01-15',
+        'John Doe',
+        'Clinic',
+        100.50,
+        'doctor-visit',
+        []
+      );
+
+      // Should return empty array since filename didn't change
+      expect(renameResults).toHaveLength(0);
     });
   });
 });

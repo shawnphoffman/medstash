@@ -2,7 +2,7 @@ import sharp from 'sharp';
 import fs from 'fs/promises';
 import path from 'path';
 import { generateReceiptFilename } from '../utils/filename';
-import { ReceiptFile } from '../models/receipt';
+import { ReceiptFile, Flag } from '../models/receipt';
 
 const RECEIPTS_DIR = process.env.RECEIPTS_DIR || '/data/receipts';
 
@@ -83,7 +83,8 @@ export async function saveReceiptFile(
   vendor: string,
   amount: number,
   type: string,
-  fileOrder: number
+  fileOrder: number,
+  flags?: Flag[]
 ): Promise<{ filename: string; originalFilename: string; optimized: boolean }> {
   await ensureReceiptDir(receiptId);
   const receiptDir = getReceiptDir(receiptId);
@@ -99,7 +100,8 @@ export async function saveReceiptFile(
     amount,
     type,
     fileOrder,
-    originalExt
+    originalExt,
+    flags
   );
 
   const filePath = path.join(receiptDir, filename);
@@ -191,7 +193,8 @@ export async function renameReceiptFiles(
   user: string,
   vendor: string,
   amount: number,
-  type: string
+  type: string,
+  flags?: Flag[]
 ): Promise<Array<{ fileId: number; oldFilename: string; newFilename: string }>> {
   const receiptDir = getReceiptDir(receiptId);
   const renameResults: Array<{ fileId: number; oldFilename: string; newFilename: string }> = [];
@@ -210,7 +213,8 @@ export async function renameReceiptFiles(
       amount,
       type,
       file.file_order,
-      originalExt
+      originalExt,
+      flags
     );
 
     const newFilePath = path.join(receiptDir, newFilename);
@@ -246,5 +250,65 @@ export async function renameReceiptFiles(
   }
 
   return renameResults;
+}
+
+/**
+ * Rename all files across all receipts to match current pattern
+ * Returns summary of rename operations
+ */
+export async function renameAllReceiptFiles(): Promise<{
+  totalReceipts: number;
+  totalFiles: number;
+  renamed: number;
+  errors: Array<{ receiptId: number; error: string }>;
+}> {
+  const { getAllReceipts } = await import('./dbService');
+  const receipts = getAllReceipts();
+  const results = {
+    totalReceipts: receipts.length,
+    totalFiles: 0,
+    renamed: 0,
+    errors: [] as Array<{ receiptId: number; error: string }>,
+  };
+
+  for (const receipt of receipts) {
+    try {
+      const files = receipt.files.map(f => ({
+        id: f.id,
+        filename: f.filename,
+        original_filename: f.original_filename,
+        file_order: f.file_order,
+      }));
+
+      if (files.length === 0) continue;
+
+      results.totalFiles += files.length;
+
+      const renameResults = await renameReceiptFiles(
+        receipt.id,
+        files,
+        receipt.date,
+        receipt.user,
+        receipt.vendor,
+        receipt.amount,
+        receipt.type,
+        receipt.flags
+      );
+
+      // Update database with new filenames
+      const { dbQueries } = await import('../db');
+      for (const result of renameResults) {
+        dbQueries.updateReceiptFilename.run(result.newFilename, result.fileId);
+        results.renamed++;
+      }
+    } catch (error: any) {
+      results.errors.push({
+        receiptId: receipt.id,
+        error: error.message || 'Unknown error',
+      });
+    }
+  }
+
+  return results;
 }
 

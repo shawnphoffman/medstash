@@ -5,6 +5,7 @@ import receiptsRouter from './routes/receipts';
 import flagsRouter from './routes/flags';
 import settingsRouter from './routes/settings';
 import exportRouter from './routes/export';
+import filenamesRouter from './routes/filenames';
 import { ensureReceiptsDir } from './services/fileService';
 
 const app = express();
@@ -20,6 +21,7 @@ app.use('/api/receipts', receiptsRouter);
 app.use('/api/flags', flagsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/export', exportRouter);
+app.use('/api/filenames', filenamesRouter);
 
 // Health check
 app.get('/health', (req, res) => {

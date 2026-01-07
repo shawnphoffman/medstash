@@ -5,6 +5,7 @@ import {
   flagsApi,
   settingsApi,
   exportApi,
+  filenamesApi,
   type CreateReceiptInput,
   type UpdateReceiptInput,
   type CreateFlagInput,
@@ -285,6 +286,50 @@ describe('API Client', () => {
         const api = axios.create();
         await api.get('/export', { responseType: 'blob' });
         expect(mockGet).toHaveBeenCalledWith('/export', { responseType: 'blob' });
+      });
+    });
+  });
+
+  describe('filenamesApi', () => {
+    describe('renameAll', () => {
+      it('should call rename all endpoint', async () => {
+        const mockResponse = {
+          success: true,
+          totalReceipts: 2,
+          totalFiles: 5,
+          renamed: 5,
+          errors: [],
+        };
+        const mockPost = vi.fn().mockResolvedValue({ data: mockResponse });
+        mockedAxios.create.mockReturnValue({
+          post: mockPost,
+        });
+
+        const api = axios.create();
+        const response = await api.post('/filenames/rename-all');
+        expect(mockPost).toHaveBeenCalledWith('/filenames/rename-all');
+        expect(response.data).toEqual(mockResponse);
+      });
+
+      it('should handle errors in response', async () => {
+        const mockResponse = {
+          success: true,
+          totalReceipts: 2,
+          totalFiles: 5,
+          renamed: 3,
+          errors: [
+            { receiptId: 1, error: 'File not found' },
+            { receiptId: 2, error: 'Permission denied' },
+          ],
+        };
+        const mockPost = vi.fn().mockResolvedValue({ data: mockResponse });
+        mockedAxios.create.mockReturnValue({
+          post: mockPost,
+        });
+
+        const api = axios.create();
+        const response = await api.post('/filenames/rename-all');
+        expect(response.data.errors).toHaveLength(2);
       });
     });
   });

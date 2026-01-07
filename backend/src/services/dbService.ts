@@ -100,6 +100,12 @@ export async function updateReceipt(
     receiptData[field as keyof Receipt] !== existing[field as keyof Receipt]
   );
 
+  // Get current flags before updating
+  const currentFlags = dbQueries.getFlagsByReceiptId.all(id) as Flag[];
+  const currentFlagIds = currentFlags.map(f => f.id).sort().join(',');
+  const newFlagIds = flagIds ? flagIds.sort().join(',') : currentFlagIds;
+  const flagsChanged = flagIds !== undefined && currentFlagIds !== newFlagIds;
+
   // Get files before updating (for renaming)
   const files = dbQueries.getFilesByReceiptId.all(id) as Array<{
     id: number;
@@ -120,10 +126,21 @@ export async function updateReceipt(
     id
   );
 
-  // Rename files if relevant fields changed
-  if (relevantFieldsChanged && files.length > 0) {
+  // Update flags if provided (before renaming so we have the correct flags)
+  if (flagIds !== undefined) {
+    dbQueries.deleteReceiptFlags.run(id);
+    for (const flagId of flagIds) {
+      dbQueries.insertReceiptFlag.run(id, flagId);
+    }
+  }
+
+  // Rename files if relevant fields or flags changed
+  if ((relevantFieldsChanged || flagsChanged) && files.length > 0) {
     const { renameReceiptFiles } = await import('./fileService');
     try {
+      // Get updated flags after the update
+      const updatedFlags = dbQueries.getFlagsByReceiptId.all(id) as Flag[];
+
       const renameResults = await renameReceiptFiles(
         id,
         files,
@@ -131,7 +148,8 @@ export async function updateReceipt(
         updated.user,
         updated.vendor,
         updated.amount,
-        updated.type
+        updated.type,
+        updatedFlags
       );
 
       // Update database records with new filenames
@@ -141,14 +159,6 @@ export async function updateReceipt(
     } catch (error) {
       console.error('Error renaming receipt files:', error);
       // Continue even if renaming fails - receipt is still updated
-    }
-  }
-
-  // Update flags if provided
-  if (flagIds !== undefined) {
-    dbQueries.deleteReceiptFlags.run(id);
-    for (const flagId of flagIds) {
-      dbQueries.insertReceiptFlag.run(id, flagId);
     }
   }
 
