@@ -1,18 +1,45 @@
 import { dbQueries } from '../db';
-import { Receipt, ReceiptFile, Flag, ReceiptWithFiles, CreateReceiptInput } from '../models/receipt';
+import {
+  Receipt,
+  ReceiptFile,
+  Flag,
+  ReceiptWithFiles,
+  ReceiptWithFilesAndNames,
+  CreateReceiptInput,
+  User,
+  ReceiptType,
+} from '../models/receipt';
+
+/**
+ * Helper to resolve user and type names for API responses
+ */
+function resolveReceiptNames(receipt: Receipt): ReceiptWithFilesAndNames {
+  const user = dbQueries.getUserById.get(receipt.user_id) as User | undefined;
+  const receiptType = dbQueries.getReceiptTypeById.get(receipt.receipt_type_id) as ReceiptType | undefined;
+
+  return {
+    ...receipt,
+    user: user?.name || 'Unknown',
+    type: receiptType?.name || 'Other',
+  } as ReceiptWithFilesAndNames;
+}
 
 /**
  * Get receipt by ID with files and flags
  */
-export function getReceiptById(id: number): ReceiptWithFiles | null {
+export function getReceiptById(id: number): ReceiptWithFilesAndNames | null {
   const receipt = dbQueries.getReceiptById.get(id) as Receipt | null;
   if (!receipt) return null;
 
   const files = dbQueries.getFilesByReceiptId.all(id) as ReceiptFile[];
   const flags = dbQueries.getFlagsByReceiptId.all(id) as Flag[];
+  const user = dbQueries.getUserById.get(receipt.user_id) as User | undefined;
+  const receiptType = dbQueries.getReceiptTypeById.get(receipt.receipt_type_id) as ReceiptType | undefined;
 
   return {
     ...receipt,
+    user: user?.name || 'Unknown',
+    type: receiptType?.name || 'Other',
     files,
     flags,
   };
@@ -21,7 +48,7 @@ export function getReceiptById(id: number): ReceiptWithFiles | null {
 /**
  * Get all receipts with files and flags
  */
-export function getAllReceipts(flagId?: number): ReceiptWithFiles[] {
+export function getAllReceipts(flagId?: number): ReceiptWithFilesAndNames[] {
   const receipts = (flagId
     ? dbQueries.getReceiptsByFlag.all(flagId)
     : dbQueries.getAllReceipts.all()) as Receipt[];
@@ -29,12 +56,61 @@ export function getAllReceipts(flagId?: number): ReceiptWithFiles[] {
   return receipts.map((receipt) => {
     const files = dbQueries.getFilesByReceiptId.all(receipt.id) as ReceiptFile[];
     const flags = dbQueries.getFlagsByReceiptId.all(receipt.id) as Flag[];
+    const user = dbQueries.getUserById.get(receipt.user_id) as User | undefined;
+    const receiptType = dbQueries.getReceiptTypeById.get(receipt.receipt_type_id) as ReceiptType | undefined;
+
     return {
       ...receipt,
+      user: user?.name || 'Unknown',
+      type: receiptType?.name || 'Other',
       files,
       flags,
     };
   });
+}
+
+/**
+ * Resolve user ID from name or ID
+ */
+function resolveUserId(userId?: number, userName?: string): number {
+  if (userId) {
+    const user = dbQueries.getUserById.get(userId) as User | undefined;
+    if (user) return userId;
+  }
+  if (userName) {
+    const user = dbQueries.getUserByName.get(userName) as User | undefined;
+    if (user) return user.id;
+    // Create user with provided name if it doesn't exist
+    const result = dbQueries.insertUser.run(userName);
+    return result.lastInsertRowid as number;
+  }
+  // Default to first user or create "Unknown"
+  const defaultUser = dbQueries.getUserByName.get('Unknown') as User | undefined;
+  if (defaultUser) return defaultUser.id;
+  const result = dbQueries.insertUser.run('Unknown');
+  return result.lastInsertRowid as number;
+}
+
+/**
+ * Resolve receipt type ID from name or ID
+ */
+function resolveReceiptTypeId(typeId?: number, typeName?: string): number {
+  if (typeId) {
+    const type = dbQueries.getReceiptTypeById.get(typeId) as ReceiptType | undefined;
+    if (type) return typeId;
+  }
+  if (typeName) {
+    const type = dbQueries.getReceiptTypeByName.get(typeName) as ReceiptType | undefined;
+    if (type) return type.id;
+    // Create receipt type with provided name if it doesn't exist
+    const result = dbQueries.insertReceiptType.run(typeName);
+    return result.lastInsertRowid as number;
+  }
+  // Default to "Other"
+  const defaultType = dbQueries.getReceiptTypeByName.get('Other') as ReceiptType | undefined;
+  if (defaultType) return defaultType.id;
+  const result = dbQueries.insertReceiptType.run('Other');
+  return result.lastInsertRowid as number;
 }
 
 /**
@@ -43,10 +119,12 @@ export function getAllReceipts(flagId?: number): ReceiptWithFiles[] {
 export function createReceipt(
   receiptData: CreateReceiptInput,
   flagIds: number[] = []
-): ReceiptWithFiles {
+): ReceiptWithFilesAndNames {
+  // Resolve user and type IDs
+  const userId = resolveUserId(receiptData.user_id, receiptData.user);
+  const receiptTypeId = resolveReceiptTypeId(receiptData.receipt_type_id, receiptData.type);
+
   // Provide defaults for optional fields
-  const user = receiptData.user || 'Unknown';
-  const type = receiptData.type || 'Other';
   const amount = receiptData.amount ?? 0;
   const vendor = receiptData.vendor || '';
   const provider_address = receiptData.provider_address || '';
@@ -55,8 +133,8 @@ export function createReceipt(
   const notes = receiptData.notes || null;
 
   const result = dbQueries.insertReceipt.run(
-    user,
-    type,
+    userId,
+    receiptTypeId,
     amount,
     vendor,
     provider_address,
@@ -82,23 +160,54 @@ export function createReceipt(
  */
 export async function updateReceipt(
   id: number,
-  receiptData: Partial<Omit<Receipt, 'id' | 'created_at' | 'updated_at'>>,
+  receiptData: Partial<Omit<Receipt, 'id' | 'created_at' | 'updated_at'>> & { user?: string; type?: string; user_id?: number; receipt_type_id?: number },
   flagIds?: number[]
-): Promise<ReceiptWithFiles | null> {
+): Promise<ReceiptWithFilesAndNames | null> {
   const existing = dbQueries.getReceiptById.get(id) as Receipt | null;
   if (!existing) return null;
 
+  // Resolve user and type IDs if provided as strings
+  let userId = existing.user_id;
+  let receiptTypeId = existing.receipt_type_id;
+
+  if (receiptData.user_id !== undefined) {
+    userId = receiptData.user_id;
+  } else if (receiptData.user !== undefined) {
+    userId = resolveUserId(undefined, receiptData.user);
+  }
+
+  if (receiptData.receipt_type_id !== undefined) {
+    receiptTypeId = receiptData.receipt_type_id;
+  } else if (receiptData.type !== undefined) {
+    receiptTypeId = resolveReceiptTypeId(undefined, receiptData.type);
+  }
+
+  // Get current user and type names for filename comparison
+  const currentUser = dbQueries.getUserById.get(existing.user_id) as User | undefined;
+  const currentType = dbQueries.getReceiptTypeById.get(existing.receipt_type_id) as ReceiptType | undefined;
+  const newUser = dbQueries.getUserById.get(userId) as User | undefined;
+  const newType = dbQueries.getReceiptTypeById.get(receiptTypeId) as ReceiptType | undefined;
+
   const updated: Receipt = {
     ...existing,
-    ...receiptData,
+    user_id: userId,
+    receipt_type_id: receiptTypeId,
+    amount: receiptData.amount ?? existing.amount,
+    vendor: receiptData.vendor ?? existing.vendor,
+    provider_address: receiptData.provider_address ?? existing.provider_address,
+    description: receiptData.description ?? existing.description,
+    date: receiptData.date ?? existing.date,
+    notes: receiptData.notes !== undefined ? receiptData.notes : existing.notes,
   };
 
   // Check if any filename-relevant fields changed
-  const filenameRelevantFields = ['date', 'user', 'vendor', 'amount', 'type'];
+  const filenameRelevantFields = ['date', 'vendor', 'amount'];
   const relevantFieldsChanged = filenameRelevantFields.some(
     field => receiptData[field as keyof Receipt] !== undefined &&
     receiptData[field as keyof Receipt] !== existing[field as keyof Receipt]
   );
+  const userChanged = userId !== existing.user_id;
+  const typeChanged = receiptTypeId !== existing.receipt_type_id;
 
   // Get current flags before updating
   const currentFlags = dbQueries.getFlagsByReceiptId.all(id) as Flag[];
@@ -115,8 +224,8 @@ export async function updateReceipt(
   }>;
 
   dbQueries.updateReceipt.run(
-    updated.user,
-    updated.type,
+    updated.user_id,
+    updated.receipt_type_id,
     updated.amount,
     updated.vendor,
     updated.provider_address,
@@ -135,7 +244,7 @@ export async function updateReceipt(
   }
 
   // Rename files if relevant fields or flags changed
-  if ((relevantFieldsChanged || flagsChanged) && files.length > 0) {
+  if ((relevantFieldsChanged || userChanged || typeChanged || flagsChanged) && files.length > 0) {
     const { renameReceiptFiles } = await import('./fileService');
     try {
       // Get updated flags after the update
@@ -145,10 +254,10 @@ export async function updateReceipt(
         id,
         files,
         updated.date,
-        updated.user,
+        newUser?.name || 'Unknown',
         updated.vendor,
         updated.amount,
-        updated.type,
+        newType?.name || 'Other',
         updatedFlags
       );
 
@@ -270,5 +379,97 @@ export function getAllSettings(): Record<string, string> {
     acc[row.key] = row.value;
     return acc;
   }, {} as Record<string, string>);
+}
+
+/**
+ * Get all users
+ */
+export function getAllUsers(): User[] {
+  return dbQueries.getAllUsers.all() as User[];
+}
+
+/**
+ * Get user by ID
+ */
+export function getUserById(id: number): User | null {
+  const user = dbQueries.getUserById.get(id) as User | undefined;
+  return user || null;
+}
+
+/**
+ * Create a user
+ */
+export function createUser(name: string): User {
+  const result = dbQueries.insertUser.run(name);
+  return dbQueries.getUserById.get(result.lastInsertRowid as number) as User;
+}
+
+/**
+ * Update a user
+ */
+export function updateUser(id: number, name?: string): User | null {
+  const existing = dbQueries.getUserById.get(id) as User | null;
+  if (!existing) return null;
+
+  const updatedName = name !== undefined ? name : existing.name;
+  dbQueries.updateUser.run(updatedName, id);
+  return dbQueries.getUserById.get(id) as User;
+}
+
+/**
+ * Delete a user
+ */
+export function deleteUser(id: number): boolean {
+  const user = dbQueries.getUserById.get(id) as User | null;
+  if (!user) return false;
+
+  dbQueries.deleteUser.run(id);
+  return true;
+}
+
+/**
+ * Get all receipt types
+ */
+export function getAllReceiptTypes(): ReceiptType[] {
+  return dbQueries.getAllReceiptTypes.all() as ReceiptType[];
+}
+
+/**
+ * Get receipt type by ID
+ */
+export function getReceiptTypeById(id: number): ReceiptType | null {
+  const type = dbQueries.getReceiptTypeById.get(id) as ReceiptType | undefined;
+  return type || null;
+}
+
+/**
+ * Create a receipt type
+ */
+export function createReceiptType(name: string): ReceiptType {
+  const result = dbQueries.insertReceiptType.run(name);
+  return dbQueries.getReceiptTypeById.get(result.lastInsertRowid as number) as ReceiptType;
+}
+
+/**
+ * Update a receipt type
+ */
+export function updateReceiptType(id: number, name?: string): ReceiptType | null {
+  const existing = dbQueries.getReceiptTypeById.get(id) as ReceiptType | null;
+  if (!existing) return null;
+
+  const updatedName = name !== undefined ? name : existing.name;
+  dbQueries.updateReceiptType.run(updatedName, id);
+  return dbQueries.getReceiptTypeById.get(id) as ReceiptType;
+}
+
+/**
+ * Delete a receipt type
+ */
+export function deleteReceiptType(id: number): boolean {
+  const type = dbQueries.getReceiptTypeById.get(id) as ReceiptType | null;
+  if (!type) return false;
+
+  dbQueries.deleteReceiptType.run(id);
+  return true;
 }
 

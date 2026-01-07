@@ -25,6 +25,22 @@ export function mockApi() {
     delete: vi.fn(),
   };
 
+  const mockUsersApi = {
+    getAll: vi.fn(),
+    getById: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  };
+
+  const mockReceiptTypesApi = {
+    getAll: vi.fn(),
+    getById: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  };
+
   const mockSettingsApi = {
     getAll: vi.fn(),
     get: vi.fn(),
@@ -37,12 +53,16 @@ export function mockApi() {
 
   vi.spyOn(apiModule, 'receiptsApi').mockReturnValue(mockReceiptsApi as any);
   vi.spyOn(apiModule, 'flagsApi').mockReturnValue(mockFlagsApi as any);
+  vi.spyOn(apiModule, 'usersApi').mockReturnValue(mockUsersApi as any);
+  vi.spyOn(apiModule, 'receiptTypesApi').mockReturnValue(mockReceiptTypesApi as any);
   vi.spyOn(apiModule, 'settingsApi').mockReturnValue(mockSettingsApi as any);
   vi.spyOn(apiModule, 'exportApi').mockReturnValue(mockExportApi as any);
 
   return {
     receiptsApi: mockReceiptsApi,
     flagsApi: mockFlagsApi,
+    usersApi: mockUsersApi,
+    receiptTypesApi: mockReceiptTypesApi,
     settingsApi: mockSettingsApi,
     exportApi: mockExportApi,
   };

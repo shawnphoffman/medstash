@@ -1,7 +1,8 @@
-import { CreateReceiptInput, CreateFlagInput } from '../../src/models/receipt';
+import { CreateReceiptInput, CreateFlagInput, CreateUserInput, CreateReceiptTypeInput } from '../../src/models/receipt';
 
 /**
  * Create a test receipt input with defaults
+ * Note: user_id and receipt_type_id should be provided, or user/type strings will be resolved
  */
 export function createReceiptFixture(overrides?: Partial<CreateReceiptInput>): CreateReceiptInput {
   return {
@@ -13,6 +14,26 @@ export function createReceiptFixture(overrides?: Partial<CreateReceiptInput>): C
     description: 'Test description',
     date: '2024-01-15',
     notes: 'Test notes',
+    ...overrides,
+  };
+}
+
+/**
+ * Create a test user input
+ */
+export function createUserFixture(overrides?: Partial<CreateUserInput>): CreateUserInput {
+  return {
+    name: 'Test User',
+    ...overrides,
+  };
+}
+
+/**
+ * Create a test receipt type input
+ */
+export function createReceiptTypeFixture(overrides?: Partial<CreateReceiptTypeInput>): CreateReceiptTypeInput {
+  return {
+    name: 'doctor-visit',
     ...overrides,
   };
 }

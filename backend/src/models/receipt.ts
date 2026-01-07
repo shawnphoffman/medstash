@@ -1,7 +1,19 @@
+export interface User {
+  id: number;
+  name: string;
+  created_at: string;
+}
+
+export interface ReceiptType {
+  id: number;
+  name: string;
+  created_at: string;
+}
+
 export interface Receipt {
   id: number;
-  user: string;
-  type: string;
+  user_id: number;
+  receipt_type_id: number;
   amount: number;
   vendor: string;
   provider_address: string;
@@ -31,11 +43,26 @@ export interface Flag {
 export interface ReceiptWithFiles extends Receipt {
   files: ReceiptFile[];
   flags: Flag[];
+  user?: User;
+  receipt_type?: ReceiptType;
+}
+
+// API response type that includes user and type names for backward compatibility
+export interface ReceiptWithNames extends Omit<Receipt, 'user_id' | 'receipt_type_id'> {
+  user: string; // user name for API compatibility
+  type: string; // receipt type name for API compatibility
+  user_id: number;
+  receipt_type_id: number;
+}
+
+export interface ReceiptWithFilesAndNames extends ReceiptWithNames {
+  files: ReceiptFile[];
+  flags: Flag[];
 }
 
 export interface CreateReceiptInput {
-  user?: string;
-  type?: string;
+  user_id?: number;
+  receipt_type_id?: number;
   amount?: number;
   vendor?: string;
   provider_address?: string;
@@ -43,11 +70,14 @@ export interface CreateReceiptInput {
   date?: string;
   notes?: string;
   flag_ids?: number[];
+  // Legacy support: accept user/type as strings and resolve to IDs
+  user?: string;
+  type?: string;
 }
 
 export interface UpdateReceiptInput {
-  user?: string;
-  type?: string;
+  user_id?: number;
+  receipt_type_id?: number;
   amount?: number;
   vendor?: string;
   provider_address?: string;
@@ -55,6 +85,25 @@ export interface UpdateReceiptInput {
   date?: string;
   notes?: string;
   flag_ids?: number[];
+  // Legacy support: accept user/type as strings and resolve to IDs
+  user?: string;
+  type?: string;
+}
+
+export interface CreateUserInput {
+  name: string;
+}
+
+export interface UpdateUserInput {
+  name?: string;
+}
+
+export interface CreateReceiptTypeInput {
+  name: string;
+}
+
+export interface UpdateReceiptTypeInput {
+  name?: string;
 }
 
 export interface CreateFlagInput {

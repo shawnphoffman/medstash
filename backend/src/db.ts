@@ -16,12 +16,187 @@ const dbInstance: DatabaseType = new Database(DB_PATH);
 // Enable foreign keys
 dbInstance.pragma('foreign_keys = ON');
 
+// Check if migration is needed (check if users table exists)
+const checkMigrationNeeded = () => {
+  try {
+    const result = dbInstance.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+    ).get();
+    return !result;
+  } catch {
+    return true;
+  }
+};
+
+// Migration function to convert string-based users/types to lookup tables
+const migrateToLookupTables = () => {
+  const transaction = dbInstance.transaction(() => {
+    // Create new lookup tables
+    dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS receipt_types (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+
+    // Check if receipts table has old schema (user TEXT column)
+    const receiptsInfo = dbInstance.prepare("PRAGMA table_info(receipts)").all() as Array<{
+      cid: number;
+      name: string;
+      type: string;
+      notnull: number;
+      dflt_value: any;
+      pk: number;
+    }>;
+    const hasOldSchema = receiptsInfo.some(col => col.name === 'user' && col.type === 'TEXT');
+
+    if (hasOldSchema) {
+      // Collect all unique users from receipts
+      const receiptUsers = dbInstance.prepare('SELECT DISTINCT user FROM receipts WHERE user IS NOT NULL').all() as Array<{ user: string }>;
+      const userNames = new Set<string>();
+      receiptUsers.forEach(row => {
+        if (row.user) userNames.add(row.user);
+      });
+
+      // Collect users from settings if exists
+      try {
+        const usersSetting = dbInstance.prepare("SELECT value FROM settings WHERE key = 'users'").get() as { value: string } | undefined;
+        if (usersSetting) {
+          const usersArray = JSON.parse(usersSetting.value) as string[];
+          usersArray.forEach(name => userNames.add(name));
+        }
+      } catch {
+        // Settings might not exist or be invalid JSON
+      }
+
+      // Collect all unique receipt types from receipts
+      const receiptTypes = dbInstance.prepare('SELECT DISTINCT type FROM receipts WHERE type IS NOT NULL').all() as Array<{ type: string }>;
+      const typeNames = new Set<string>();
+      receiptTypes.forEach(row => {
+        if (row.type) typeNames.add(row.type);
+      });
+
+      // Collect receipt types from settings if exists
+      try {
+        const typesSetting = dbInstance.prepare("SELECT value FROM settings WHERE key = 'receiptTypes'").get() as { value: string } | undefined;
+        if (typesSetting) {
+          const typesArray = JSON.parse(typesSetting.value) as string[];
+          typesArray.forEach(name => typeNames.add(name));
+        }
+      } catch {
+        // Settings might not exist or be invalid JSON
+      }
+
+      // Ensure at least one user and one type exist
+      if (userNames.size === 0) {
+        userNames.add('Unknown');
+      }
+      if (typeNames.size === 0) {
+        typeNames.add('Other');
+      }
+
+      // Insert users into lookup table
+      const insertUser = dbInstance.prepare('INSERT OR IGNORE INTO users (name) VALUES (?)');
+      const userMap = new Map<string, number>();
+      for (const userName of userNames) {
+        insertUser.run(userName);
+        const user = dbInstance.prepare('SELECT id FROM users WHERE name = ?').get(userName) as { id: number } | undefined;
+        if (user) {
+          userMap.set(userName, user.id);
+        }
+      }
+
+      // Insert receipt types into lookup table
+      const insertType = dbInstance.prepare('INSERT OR IGNORE INTO receipt_types (name) VALUES (?)');
+      const typeMap = new Map<string, number>();
+      for (const typeName of typeNames) {
+        insertType.run(typeName);
+        const type = dbInstance.prepare('SELECT id FROM receipt_types WHERE name = ?').get(typeName) as { id: number } | undefined;
+        if (type) {
+          typeMap.set(typeName, type.id);
+        }
+      }
+
+      // Add new columns to receipts table
+      dbInstance.exec(`
+        ALTER TABLE receipts ADD COLUMN user_id INTEGER;
+        ALTER TABLE receipts ADD COLUMN receipt_type_id INTEGER;
+      `);
+
+      // Update receipts with foreign keys
+      const updateReceipt = dbInstance.prepare(`
+        UPDATE receipts
+        SET user_id = ?, receipt_type_id = ?
+        WHERE id = ?
+      `);
+      const allReceipts = dbInstance.prepare('SELECT id, user, type FROM receipts').all() as Array<{
+        id: number;
+        user: string;
+        type: string;
+      }>;
+      for (const receipt of allReceipts) {
+        const userId = userMap.get(receipt.user) || userMap.get('Unknown')!;
+        const typeId = typeMap.get(receipt.type) || typeMap.get('Other')!;
+        updateReceipt.run(userId, typeId, receipt.id);
+      }
+
+      // Drop old columns and recreate table with new schema
+      // SQLite doesn't support DROP COLUMN, so we need to recreate the table
+      dbInstance.exec(`
+        CREATE TABLE receipts_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          receipt_type_id INTEGER NOT NULL,
+          amount REAL NOT NULL,
+          vendor TEXT NOT NULL,
+          provider_address TEXT NOT NULL,
+          description TEXT NOT NULL,
+          date TEXT NOT NULL,
+          notes TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+          FOREIGN KEY (user_id) REFERENCES users(id),
+          FOREIGN KEY (receipt_type_id) REFERENCES receipt_types(id)
+        );
+
+        INSERT INTO receipts_new (id, user_id, receipt_type_id, amount, vendor, provider_address, description, date, notes, created_at, updated_at)
+        SELECT id, user_id, receipt_type_id, amount, vendor, provider_address, description, date, notes, created_at, updated_at
+        FROM receipts;
+
+        DROP TABLE receipts;
+        ALTER TABLE receipts_new RENAME TO receipts;
+      `);
+    }
+
+    // Create indexes
+    dbInstance.exec(`
+      CREATE INDEX IF NOT EXISTS idx_receipts_user_id ON receipts(user_id);
+    CREATE INDEX IF NOT EXISTS idx_receipts_receipt_type_id ON receipts(receipt_type_id);
+    CREATE INDEX IF NOT EXISTS idx_receipts_date ON receipts(date);
+    CREATE INDEX IF NOT EXISTS idx_receipt_files_receipt_id ON receipt_files(receipt_id);
+    CREATE INDEX IF NOT EXISTS idx_receipt_flags_receipt_id ON receipt_flags(receipt_id);
+    CREATE INDEX IF NOT EXISTS idx_receipt_flags_flag_id ON receipt_flags(flag_id);
+    CREATE INDEX IF NOT EXISTS idx_users_name ON users(name);
+    CREATE INDEX IF NOT EXISTS idx_receipt_types_name ON receipt_types(name);
+    `);
+  });
+
+  transaction();
+};
+
 // Initialize schema
 dbInstance.exec(`
   CREATE TABLE IF NOT EXISTS receipts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user TEXT NOT NULL,
-    type TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    receipt_type_id INTEGER NOT NULL,
     amount REAL NOT NULL,
     vendor TEXT NOT NULL,
     provider_address TEXT NOT NULL,
@@ -29,7 +204,9 @@ dbInstance.exec(`
     date TEXT NOT NULL,
     notes TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (receipt_type_id) REFERENCES receipt_types(id)
   );
 
   CREATE TABLE IF NOT EXISTS receipt_files (
@@ -61,20 +238,19 @@ dbInstance.exec(`
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
-
-  CREATE INDEX IF NOT EXISTS idx_receipts_user ON receipts(user);
-  CREATE INDEX IF NOT EXISTS idx_receipts_date ON receipts(date);
-  CREATE INDEX IF NOT EXISTS idx_receipt_files_receipt_id ON receipt_files(receipt_id);
-  CREATE INDEX IF NOT EXISTS idx_receipt_flags_receipt_id ON receipt_flags(receipt_id);
-  CREATE INDEX IF NOT EXISTS idx_receipt_flags_flag_id ON receipt_flags(flag_id);
 `);
+
+// Run migration if needed
+if (checkMigrationNeeded()) {
+  migrateToLookupTables();
+}
 
 // Prepared statements
 const dbQueriesObj = {
   // Receipts
   getReceiptById: dbInstance.prepare('SELECT * FROM receipts WHERE id = ?'),
   getAllReceipts: dbInstance.prepare('SELECT * FROM receipts ORDER BY date DESC, created_at DESC'),
-  getReceiptsByUser: dbInstance.prepare('SELECT * FROM receipts WHERE user = ? ORDER BY date DESC, created_at DESC'),
+  getReceiptsByUser: dbInstance.prepare('SELECT * FROM receipts WHERE user_id = ? ORDER BY date DESC, created_at DESC'),
   getReceiptsByFlag: dbInstance.prepare(`
     SELECT DISTINCT r.* FROM receipts r
     INNER JOIN receipt_flags rf ON r.id = rf.receipt_id
@@ -82,15 +258,31 @@ const dbQueriesObj = {
     ORDER BY r.date DESC, r.created_at DESC
   `),
   insertReceipt: dbInstance.prepare(`
-    INSERT INTO receipts (user, type, amount, vendor, provider_address, description, date, notes)
+    INSERT INTO receipts (user_id, receipt_type_id, amount, vendor, provider_address, description, date, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `),
   updateReceipt: dbInstance.prepare(`
     UPDATE receipts
-    SET user = ?, type = ?, amount = ?, vendor = ?, provider_address = ?, description = ?, date = ?, notes = ?, updated_at = datetime('now')
+    SET user_id = ?, receipt_type_id = ?, amount = ?, vendor = ?, provider_address = ?, description = ?, date = ?, notes = ?, updated_at = datetime('now')
     WHERE id = ?
   `),
   deleteReceipt: dbInstance.prepare('DELETE FROM receipts WHERE id = ?'),
+
+  // Users
+  getAllUsers: dbInstance.prepare('SELECT * FROM users ORDER BY name'),
+  getUserById: dbInstance.prepare('SELECT * FROM users WHERE id = ?'),
+  getUserByName: dbInstance.prepare('SELECT * FROM users WHERE name = ?'),
+  insertUser: dbInstance.prepare('INSERT INTO users (name) VALUES (?)'),
+  updateUser: dbInstance.prepare('UPDATE users SET name = ? WHERE id = ?'),
+  deleteUser: dbInstance.prepare('DELETE FROM users WHERE id = ?'),
+
+  // Receipt Types
+  getAllReceiptTypes: dbInstance.prepare('SELECT * FROM receipt_types ORDER BY name'),
+  getReceiptTypeById: dbInstance.prepare('SELECT * FROM receipt_types WHERE id = ?'),
+  getReceiptTypeByName: dbInstance.prepare('SELECT * FROM receipt_types WHERE name = ?'),
+  insertReceiptType: dbInstance.prepare('INSERT INTO receipt_types (name) VALUES (?)'),
+  updateReceiptType: dbInstance.prepare('UPDATE receipt_types SET name = ? WHERE id = ?'),
+  deleteReceiptType: dbInstance.prepare('DELETE FROM receipt_types WHERE id = ?'),
 
   // Receipt Files
   getFilesByReceiptId: dbInstance.prepare('SELECT * FROM receipt_files WHERE receipt_id = ? ORDER BY file_order'),

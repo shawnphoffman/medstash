@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { flagsApi, settingsApi, filenamesApi, Flag } from '../lib/api'
+import { flagsApi, settingsApi, filenamesApi, usersApi, receiptTypesApi, Flag, User, ReceiptType } from '../lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -10,14 +10,18 @@ import { Plus, Trash2, Edit2, Save, X, RefreshCw, Info, Flag as FlagIcon } from 
 
 export default function SettingsPage() {
 	const [flags, setFlags] = useState<Flag[]>([])
-	const [users, setUsers] = useState<string[]>([])
-	const [receiptTypes, setReceiptTypes] = useState<string[]>([])
+	const [users, setUsers] = useState<User[]>([])
+	const [receiptTypes, setReceiptTypes] = useState<ReceiptType[]>([])
 	const [loading, setLoading] = useState(true)
 	const [editingFlag, setEditingFlag] = useState<number | null>(null)
+	const [editingUser, setEditingUser] = useState<number | null>(null)
+	const [editingReceiptType, setEditingReceiptType] = useState<number | null>(null)
 	const [newFlagName, setNewFlagName] = useState('')
 	const [newFlagColor, setNewFlagColor] = useState<string>(TAILWIND_COLORS[0].value)
 	const [editFlagName, setEditFlagName] = useState('')
 	const [editFlagColor, setEditFlagColor] = useState('')
+	const [editUserName, setEditUserName] = useState('')
+	const [editReceiptTypeName, setEditReceiptTypeName] = useState('')
 	const [newUser, setNewUser] = useState('')
 	const [newReceiptType, setNewReceiptType] = useState('')
 	const [filenamePattern, setFilenamePattern] = useState('{date}_{user}_{vendor}_{amount}_{type}_{index}')
@@ -33,13 +37,15 @@ export default function SettingsPage() {
 	const loadData = async () => {
 		try {
 			setLoading(true)
-			const [flagsRes, settingsRes] = await Promise.all([flagsApi.getAll(), settingsApi.getAll()])
+			const [flagsRes, usersRes, receiptTypesRes, settingsRes] = await Promise.all([
+				flagsApi.getAll(),
+				usersApi.getAll(),
+				receiptTypesApi.getAll(),
+				settingsApi.getAll(),
+			])
 			setFlags(flagsRes.data)
-			// Ensure users and receiptTypes are arrays
-			const usersData = settingsRes.data?.users
-			const receiptTypesData = settingsRes.data?.receiptTypes
-			setUsers(Array.isArray(usersData) ? usersData : [])
-			setReceiptTypes(Array.isArray(receiptTypesData) ? receiptTypesData : [])
+			setUsers(usersRes.data)
+			setReceiptTypes(receiptTypesRes.data)
 			// Load filename pattern
 			const pattern = settingsRes.data?.filenamePattern || '{date}_{user}_{vendor}_{amount}_{type}_{index}'
 			setFilenamePattern(pattern)
@@ -124,31 +130,56 @@ export default function SettingsPage() {
 			setError('User name is required')
 			return
 		}
-		if (users.includes(newUser.trim())) {
+		if (users.some(u => u.name === newUser.trim())) {
 			setError('User already exists')
 			return
 		}
 
 		try {
-			const updatedUsers = [...users, newUser.trim()]
-			await settingsApi.set('users', updatedUsers)
-			setUsers(updatedUsers)
+			const newUserData = await usersApi.create({ name: newUser.trim() })
+			setUsers([...users, newUserData.data])
 			setNewUser('')
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to add user')
 		}
 	}
 
-	const handleDeleteUser = async (user: string) => {
-		if (!confirm(`Are you sure you want to delete user "${user}"?`)) return
+	const handleUpdateUser = async (id: number) => {
+		if (!editUserName.trim()) {
+			setError('User name is required')
+			return
+		}
 
 		try {
-			const updatedUsers = users.filter(u => u !== user)
-			await settingsApi.set('users', updatedUsers)
-			setUsers(updatedUsers)
+			await usersApi.update(id, { name: editUserName.trim() })
+			setEditingUser(null)
+			setEditUserName('')
+			await loadData()
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to update user')
+		}
+	}
+
+	const handleDeleteUser = async (id: number) => {
+		const user = users.find(u => u.id === id)
+		if (!confirm(`Are you sure you want to delete user "${user?.name}"?`)) return
+
+		try {
+			await usersApi.delete(id)
+			setUsers(users.filter(u => u.id !== id))
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to delete user')
 		}
+	}
+
+	const startEditUser = (user: User) => {
+		setEditingUser(user.id)
+		setEditUserName(user.name)
+	}
+
+	const cancelEditUser = () => {
+		setEditingUser(null)
+		setEditUserName('')
 	}
 
 	const handleAddReceiptType = async () => {
@@ -156,31 +187,56 @@ export default function SettingsPage() {
 			setError('Receipt type is required')
 			return
 		}
-		if (receiptTypes.includes(newReceiptType.trim())) {
+		if (receiptTypes.some(t => t.name === newReceiptType.trim())) {
 			setError('Receipt type already exists')
 			return
 		}
 
 		try {
-			const updatedTypes = [...receiptTypes, newReceiptType.trim()]
-			await settingsApi.set('receiptTypes', updatedTypes)
-			setReceiptTypes(updatedTypes)
+			const newTypeData = await receiptTypesApi.create({ name: newReceiptType.trim() })
+			setReceiptTypes([...receiptTypes, newTypeData.data])
 			setNewReceiptType('')
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to add receipt type')
 		}
 	}
 
-	const handleDeleteReceiptType = async (type: string) => {
-		if (!confirm(`Are you sure you want to delete receipt type "${type}"?`)) return
+	const handleUpdateReceiptType = async (id: number) => {
+		if (!editReceiptTypeName.trim()) {
+			setError('Receipt type name is required')
+			return
+		}
 
 		try {
-			const updatedTypes = receiptTypes.filter(t => t !== type)
-			await settingsApi.set('receiptTypes', updatedTypes)
-			setReceiptTypes(updatedTypes)
+			await receiptTypesApi.update(id, { name: editReceiptTypeName.trim() })
+			setEditingReceiptType(null)
+			setEditReceiptTypeName('')
+			await loadData()
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to update receipt type')
+		}
+	}
+
+	const handleDeleteReceiptType = async (id: number) => {
+		const type = receiptTypes.find(t => t.id === id)
+		if (!confirm(`Are you sure you want to delete receipt type "${type?.name}"?`)) return
+
+		try {
+			await receiptTypesApi.delete(id)
+			setReceiptTypes(receiptTypes.filter(t => t.id !== id))
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to delete receipt type')
 		}
+	}
+
+	const startEditReceiptType = (type: ReceiptType) => {
+		setEditingReceiptType(type.id)
+		setEditReceiptTypeName(type.name)
+	}
+
+	const cancelEditReceiptType = () => {
+		setEditingReceiptType(null)
+		setEditReceiptTypeName('')
 	}
 
 	// Validate filename pattern
@@ -436,16 +492,35 @@ export default function SettingsPage() {
 							<p className="py-4 text-sm text-center text-muted-foreground">No users configured yet</p>
 						) : (
 							users.map(user => (
-								<div key={user} className="flex items-center justify-between px-3 py-1 border rounded-lg">
-									<span className="font-medium">{user}</span>
-									<Button
-										size="icon"
-										variant="ghost"
-										onClick={() => handleDeleteUser(user)}
-										className="text-destructive hover:text-destructive"
-									>
-										<Trash2 className="w-4 h-4" />
-									</Button>
+								<div key={user.id} className="flex items-center justify-between px-3 py-1 border rounded-lg">
+									{editingUser === user.id ? (
+										<div className="flex items-center flex-1 gap-2">
+											<Input value={editUserName} onChange={e => setEditUserName(e.target.value)} className="flex-1" />
+											<Button size="icon" variant="ghost" onClick={() => handleUpdateUser(user.id)}>
+												<Save className="size-4" />
+											</Button>
+											<Button size="icon" variant="ghost" onClick={cancelEditUser}>
+												<X className="size-4" />
+											</Button>
+										</div>
+									) : (
+										<>
+											<span className="font-medium">{user.name}</span>
+											<div className="flex gap-2">
+												<Button size="icon" variant="ghost" onClick={() => startEditUser(user)}>
+													<Edit2 className="size-4" />
+												</Button>
+												<Button
+													size="icon"
+													variant="ghost"
+													onClick={() => handleDeleteUser(user.id)}
+													className="text-destructive hover:text-destructive"
+												>
+													<Trash2 className="w-4 h-4" />
+												</Button>
+											</div>
+										</>
+									)}
 								</div>
 							))
 						)}
@@ -478,16 +553,35 @@ export default function SettingsPage() {
 							<p className="py-4 text-sm text-center text-muted-foreground">No receipt types configured yet</p>
 						) : (
 							receiptTypes.map(type => (
-								<div key={type} className="flex items-center justify-between px-3 py-1 border rounded-lg">
-									<span className="font-medium">{type}</span>
-									<Button
-										size="icon"
-										variant="ghost"
-										onClick={() => handleDeleteReceiptType(type)}
-										className="text-destructive hover:text-destructive"
-									>
-										<Trash2 className="w-4 h-4" />
-									</Button>
+								<div key={type.id} className="flex items-center justify-between px-3 py-1 border rounded-lg">
+									{editingReceiptType === type.id ? (
+										<div className="flex items-center flex-1 gap-2">
+											<Input value={editReceiptTypeName} onChange={e => setEditReceiptTypeName(e.target.value)} className="flex-1" />
+											<Button size="icon" variant="ghost" onClick={() => handleUpdateReceiptType(type.id)}>
+												<Save className="size-4" />
+											</Button>
+											<Button size="icon" variant="ghost" onClick={cancelEditReceiptType}>
+												<X className="size-4" />
+											</Button>
+										</div>
+									) : (
+										<>
+											<span className="font-medium">{type.name}</span>
+											<div className="flex gap-2">
+												<Button size="icon" variant="ghost" onClick={() => startEditReceiptType(type)}>
+													<Edit2 className="size-4" />
+												</Button>
+												<Button
+													size="icon"
+													variant="ghost"
+													onClick={() => handleDeleteReceiptType(type.id)}
+													className="text-destructive hover:text-destructive"
+												>
+													<Trash2 className="w-4 h-4" />
+												</Button>
+											</div>
+										</>
+									)}
 								</div>
 							))
 						)}

@@ -9,7 +9,7 @@ import { Button } from './components/ui/button'
 import { ThemeToggle } from './components/ThemeToggle'
 import UserSetupDialog from './components/UserSetupDialog'
 import { Toaster } from './components/ui/toaster'
-import { settingsApi } from './lib/api'
+import { usersApi, receiptTypesApi } from './lib/api'
 import { cn } from './lib/utils'
 
 function Navigation() {
@@ -57,9 +57,13 @@ function App() {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				const settings = await settingsApi.getAll()
-				const users = Array.isArray(settings.data?.users) ? settings.data.users : []
-				const receiptTypes = Array.isArray(settings.data?.receiptTypes) ? settings.data.receiptTypes : []
+				const [usersRes, receiptTypesRes] = await Promise.all([
+					usersApi.getAll().catch(() => ({ data: [] })),
+					receiptTypesApi.getAll().catch(() => ({ data: [] })),
+				])
+
+				const users = usersRes.data || []
+				const receiptTypes = receiptTypesRes.data || []
 
 				// Show user setup if no users configured
 				if (users.length === 0) {
@@ -80,7 +84,15 @@ function App() {
 						'Chiropractic',
 						'Other',
 					]
-					await settingsApi.set('receiptTypes', standardTypes)
+					// Create all standard types
+					for (const typeName of standardTypes) {
+						try {
+							await receiptTypesApi.create({ name: typeName })
+						} catch (err) {
+							// Ignore errors (type might already exist)
+							console.warn(`Failed to create receipt type ${typeName}:`, err)
+						}
+					}
 				}
 			} catch (err) {
 				console.error('Failed to initialize app:', err)

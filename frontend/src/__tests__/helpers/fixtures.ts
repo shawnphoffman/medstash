@@ -1,4 +1,4 @@
-import { Receipt, Flag } from '../../lib/api';
+import { Receipt, Flag, User, ReceiptType } from '../../lib/api';
 
 /**
  * Create a test receipt with defaults
@@ -6,6 +6,8 @@ import { Receipt, Flag } from '../../lib/api';
 export function createReceiptFixture(overrides?: Partial<Receipt>): Receipt {
   return {
     id: 1,
+    user_id: 1,
+    receipt_type_id: 1,
     user: 'Test User',
     type: 'doctor-visit',
     amount: 100.50,
@@ -18,6 +20,30 @@ export function createReceiptFixture(overrides?: Partial<Receipt>): Receipt {
     updated_at: '2024-01-15T10:00:00Z',
     files: [],
     flags: [],
+    ...overrides,
+  };
+}
+
+/**
+ * Create a test user with defaults
+ */
+export function createUserFixture(overrides?: Partial<User>): User {
+  return {
+    id: 1,
+    name: 'Test User',
+    created_at: '2024-01-15T10:00:00Z',
+    ...overrides,
+  };
+}
+
+/**
+ * Create a test receipt type with defaults
+ */
+export function createReceiptTypeFixture(overrides?: Partial<ReceiptType>): ReceiptType {
+  return {
+    id: 1,
+    name: 'doctor-visit',
+    created_at: '2024-01-15T10:00:00Z',
     ...overrides,
   };
 }

@@ -71,8 +71,10 @@ router.post('/', upload.array('files', 10), async (req, res) => {
   try {
     const files = req.files as Express.Multer.File[];
     const {
-      user,
-      type,
+      user_id,
+      receipt_type_id,
+      user, // Legacy support
+      type, // Legacy support
       amount,
       vendor,
       provider_address,
@@ -91,8 +93,10 @@ router.post('/', upload.array('files', 10), async (req, res) => {
 
     // All fields are optional except files - provide defaults
     const receiptData: CreateReceiptInput = {
-      user: user || 'Unknown',
-      type: type || 'Other',
+      user_id: user_id ? parseInt(user_id) : undefined,
+      receipt_type_id: receipt_type_id ? parseInt(receipt_type_id) : undefined,
+      user: user || undefined, // Legacy support
+      type: type || undefined, // Legacy support
       amount: amount ? parseFloat(amount) : 0,
       vendor: vendor || '',
       provider_address: provider_address || '',
@@ -139,8 +143,10 @@ router.put('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const {
-      user,
-      type,
+      user_id,
+      receipt_type_id,
+      user, // Legacy support
+      type, // Legacy support
       amount,
       vendor,
       provider_address,
@@ -151,8 +157,10 @@ router.put('/:id', async (req, res) => {
     } = req.body;
 
     const updateData: UpdateReceiptInput = {};
-    if (user !== undefined) updateData.user = user;
-    if (type !== undefined) updateData.type = type;
+    if (user_id !== undefined) updateData.user_id = parseInt(user_id);
+    if (receipt_type_id !== undefined) updateData.receipt_type_id = parseInt(receipt_type_id);
+    if (user !== undefined) updateData.user = user; // Legacy support
+    if (type !== undefined) updateData.type = type; // Legacy support
     if (amount !== undefined) updateData.amount = parseFloat(amount);
     if (vendor !== undefined) updateData.vendor = vendor;
     if (provider_address !== undefined) updateData.provider_address = provider_address;
@@ -221,10 +229,10 @@ router.post('/:id/files', upload.array('files', 10), async (req, res) => {
     // Allow receipt data to be overridden from request body (for updated values)
     // This ensures files are named with the latest receipt data
     const date = req.body.date || receipt.date;
-    const user = req.body.user || receipt.user;
+    const user = req.body.user || receipt.user; // Already resolved to name in getReceiptById
     const vendor = req.body.vendor || receipt.vendor;
     const amount = req.body.amount ? parseFloat(req.body.amount) : receipt.amount;
-    const type = req.body.type || receipt.type;
+    const type = req.body.type || receipt.type; // Already resolved to name in getReceiptById
 
     const existingFiles = receipt.files;
     let fileOrder = existingFiles.length;

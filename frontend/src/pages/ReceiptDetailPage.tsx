@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useToast } from '../components/ui/use-toast'
-import { receiptsApi, flagsApi, settingsApi, Receipt, Flag, UpdateReceiptInput } from '../lib/api'
+import { receiptsApi, flagsApi, usersApi, receiptTypesApi, Receipt, Flag, UpdateReceiptInput, User, ReceiptType } from '../lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -15,8 +15,8 @@ import { ArrowLeft, Download, Trash2, Upload, X, File } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 interface ReceiptFormData {
-	user?: string
-	type?: string
+	user_id?: number
+	receipt_type_id?: number
 	amount?: string
 	vendor?: string
 	provider_address?: string
@@ -32,8 +32,8 @@ export default function ReceiptDetailPage() {
 	const { toast } = useToast()
 	const [receipt, setReceipt] = useState<Receipt | null>(null)
 	const [flags, setFlags] = useState<Flag[]>([])
-	const [users, setUsers] = useState<string[]>([])
-	const [receiptTypes, setReceiptTypes] = useState<string[]>([])
+	const [users, setUsers] = useState<User[]>([])
+	const [receiptTypes, setReceiptTypes] = useState<ReceiptType[]>([])
 	const [loading, setLoading] = useState(true)
 	const [saving, setSaving] = useState(false)
 	const [error, setError] = useState<string | null>(null)
@@ -70,27 +70,23 @@ export default function ReceiptDetailPage() {
 
 		try {
 			setLoading(true)
-			const [receiptRes, flagsRes, settingsRes] = await Promise.all([
+			const [receiptRes, flagsRes, usersRes, receiptTypesRes] = await Promise.all([
 				receiptsApi.getById(parseInt(id)),
 				flagsApi.getAll(),
-				settingsApi.getAll(),
+				usersApi.getAll(),
+				receiptTypesApi.getAll(),
 			])
 
 			const receiptData = receiptRes.data
 			setReceipt(receiptData)
 			setFlags(flagsRes.data)
-
-			const usersData = settingsRes.data?.users
-			const receiptTypesData = settingsRes.data?.receiptTypes
-			const usersArray = Array.isArray(usersData) ? usersData : []
-			const receiptTypesArray = Array.isArray(receiptTypesData) ? receiptTypesData : []
-			setUsers(usersArray)
-			setReceiptTypes(receiptTypesArray)
+			setUsers(usersRes.data)
+			setReceiptTypes(receiptTypesRes.data)
 
 			// Populate form
 			reset({
-				user: receiptData.user,
-				type: receiptData.type,
+				user_id: receiptData.user_id,
+				receipt_type_id: receiptData.receipt_type_id,
 				amount: receiptData.amount.toString(),
 				vendor: receiptData.vendor,
 				provider_address: receiptData.provider_address,
@@ -219,8 +215,8 @@ export default function ReceiptDetailPage() {
 			}
 
 			const updateData: UpdateReceiptInput = {
-				user: data.user,
-				type: data.type,
+				user_id: data.user_id,
+				receipt_type_id: data.receipt_type_id,
 				amount: amount,
 				vendor: data.vendor,
 				provider_address: data.provider_address,
@@ -385,42 +381,45 @@ export default function ReceiptDetailPage() {
 								{/* Basic Info */}
 								<div className="grid grid-cols-2 gap-4">
 									<div>
-										<Label htmlFor="user">User</Label>
-										{Array.isArray(users) && users.length > 1 ? (
-											<Select id="user" {...register('user')} defaultValue={receipt.user}>
+										<Label htmlFor="user_id">User</Label>
+										{users.length > 1 ? (
+											<Select id="user_id" {...register('user_id', { valueAsNumber: true })} defaultValue={receipt.user_id}>
 												{users.map(user => (
-													<option key={user} value={user}>
-														{user}
+													<option key={user.id} value={user.id}>
+														{user.name}
 													</option>
 												))}
 											</Select>
-										) : Array.isArray(users) && users.length === 1 ? (
+										) : users.length === 1 ? (
 											<Input
-												id="user"
-												{...register('user')}
-												defaultValue={receipt.user}
-												value={receipt.user}
+												id="user_id"
+												value={users[0].name}
 												readOnly
 												className="cursor-not-allowed bg-muted"
 											/>
 										) : (
-											<Input id="user" {...register('user')} placeholder="Enter user name" />
+											<Input id="user_id" placeholder="No users available" disabled />
 										)}
 									</div>
 									<div>
-										<Label htmlFor="type">Receipt Type</Label>
-										{Array.isArray(receiptTypes) && receiptTypes.length > 1 ? (
-											<Select id="type" {...register('type')} defaultValue={receipt.type}>
+										<Label htmlFor="receipt_type_id">Receipt Type</Label>
+										{receiptTypes.length > 1 ? (
+											<Select id="receipt_type_id" {...register('receipt_type_id', { valueAsNumber: true })} defaultValue={receipt.receipt_type_id}>
 												{receiptTypes.map(type => (
-													<option key={type} value={type}>
-														{type}
+													<option key={type.id} value={type.id}>
+														{type.name}
 													</option>
 												))}
 											</Select>
-										) : Array.isArray(receiptTypes) && receiptTypes.length === 1 ? (
-											<Input id="type" {...register('type')} defaultValue={receiptTypes[0]} placeholder={receiptTypes[0]} />
+										) : receiptTypes.length === 1 ? (
+											<Input
+												id="receipt_type_id"
+												value={receiptTypes[0].name}
+												readOnly
+												className="cursor-not-allowed bg-muted"
+											/>
 										) : (
-											<Input id="type" {...register('type')} placeholder="Enter receipt type" />
+											<Input id="receipt_type_id" placeholder="No types available" disabled />
 										)}
 									</div>
 								</div>

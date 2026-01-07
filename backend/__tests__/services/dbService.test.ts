@@ -30,6 +30,16 @@ import {
   createFlag,
   updateFlag,
   deleteFlag,
+  getAllUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
+  getAllReceiptTypes,
+  getReceiptTypeById,
+  createReceiptType,
+  updateReceiptType,
+  deleteReceiptType,
   getSetting,
   setSetting,
   getAllSettings,
@@ -45,6 +55,8 @@ describe('dbService', () => {
       DELETE FROM receipt_files;
       DELETE FROM receipts;
       DELETE FROM flags;
+      DELETE FROM receipt_types;
+      DELETE FROM users;
       DELETE FROM settings;
     `);
   });
@@ -354,6 +366,142 @@ describe('dbService', () => {
       it('should return empty object when no settings exist', () => {
         const settings = getAllSettings();
         expect(Object.keys(settings)).toHaveLength(0);
+      });
+    });
+  });
+
+  describe('User operations', () => {
+    describe('createUser', () => {
+      it('should create a user', () => {
+        const user = createUser('Test User');
+        expect(user.id).toBeDefined();
+        expect(user.name).toBe('Test User');
+        expect(user.created_at).toBeDefined();
+      });
+    });
+
+    describe('getUserById', () => {
+      it('should get a user by ID', () => {
+        const user = createUser('Test User');
+        const found = getUserById(user.id);
+        expect(found).toBeDefined();
+        expect(found?.id).toBe(user.id);
+        expect(found?.name).toBe('Test User');
+      });
+
+      it('should return null for non-existent user', () => {
+        const found = getUserById(99999);
+        expect(found).toBeNull();
+      });
+    });
+
+    describe('getAllUsers', () => {
+      it('should get all users', () => {
+        createUser('User 1');
+        createUser('User 2');
+        createUser('User 3');
+
+        const users = getAllUsers();
+        expect(users).toHaveLength(3);
+      });
+    });
+
+    describe('updateUser', () => {
+      it('should update user name', () => {
+        const user = createUser('Original Name');
+        const updated = updateUser(user.id, 'Updated Name');
+
+        expect(updated?.name).toBe('Updated Name');
+        expect(updated?.id).toBe(user.id);
+      });
+
+      it('should return null for non-existent user', () => {
+        const updated = updateUser(99999, 'New Name');
+        expect(updated).toBeNull();
+      });
+    });
+
+    describe('deleteUser', () => {
+      it('should delete a user', () => {
+        const user = createUser('Test User');
+        const deleted = deleteUser(user.id);
+        expect(deleted).toBe(true);
+
+        const found = getUserById(user.id);
+        expect(found).toBeNull();
+      });
+
+      it('should return false for non-existent user', () => {
+        const deleted = deleteUser(99999);
+        expect(deleted).toBe(false);
+      });
+    });
+  });
+
+  describe('ReceiptType operations', () => {
+    describe('createReceiptType', () => {
+      it('should create a receipt type', () => {
+        const type = createReceiptType('Test Type');
+        expect(type.id).toBeDefined();
+        expect(type.name).toBe('Test Type');
+        expect(type.created_at).toBeDefined();
+      });
+    });
+
+    describe('getReceiptTypeById', () => {
+      it('should get a receipt type by ID', () => {
+        const type = createReceiptType('Test Type');
+        const found = getReceiptTypeById(type.id);
+        expect(found).toBeDefined();
+        expect(found?.id).toBe(type.id);
+        expect(found?.name).toBe('Test Type');
+      });
+
+      it('should return null for non-existent receipt type', () => {
+        const found = getReceiptTypeById(99999);
+        expect(found).toBeNull();
+      });
+    });
+
+    describe('getAllReceiptTypes', () => {
+      it('should get all receipt types', () => {
+        createReceiptType('Type 1');
+        createReceiptType('Type 2');
+        createReceiptType('Type 3');
+
+        const types = getAllReceiptTypes();
+        expect(types).toHaveLength(3);
+      });
+    });
+
+    describe('updateReceiptType', () => {
+      it('should update receipt type name', () => {
+        const type = createReceiptType('Original Type');
+        const updated = updateReceiptType(type.id, 'Updated Type');
+
+        expect(updated?.name).toBe('Updated Type');
+        expect(updated?.id).toBe(type.id);
+      });
+
+      it('should return null for non-existent receipt type', () => {
+        const updated = updateReceiptType(99999, 'New Type');
+        expect(updated).toBeNull();
+      });
+    });
+
+    describe('deleteReceiptType', () => {
+      it('should delete a receipt type', () => {
+        const type = createReceiptType('Test Type');
+        const deleted = deleteReceiptType(type.id);
+        expect(deleted).toBe(true);
+
+        const found = getReceiptTypeById(type.id);
+        expect(found).toBeNull();
+      });
+
+      it('should return false for non-existent receipt type', () => {
+        const deleted = deleteReceiptType(99999);
+        expect(deleted).toBe(false);
       });
     });
   });

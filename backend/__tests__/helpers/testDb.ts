@@ -13,10 +13,22 @@ export function setupTestDb(): DatabaseType {
 
   // Initialize schema (same as production)
   testDb.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS receipt_types (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS receipts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user TEXT NOT NULL,
-      type TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      receipt_type_id INTEGER NOT NULL,
       amount REAL NOT NULL,
       vendor TEXT NOT NULL,
       provider_address TEXT NOT NULL,
@@ -24,7 +36,9 @@ export function setupTestDb(): DatabaseType {
       date TEXT NOT NULL,
       notes TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (receipt_type_id) REFERENCES receipt_types(id)
     );
 
     CREATE TABLE IF NOT EXISTS receipt_files (
@@ -57,11 +71,14 @@ export function setupTestDb(): DatabaseType {
       value TEXT NOT NULL
     );
 
-    CREATE INDEX IF NOT EXISTS idx_receipts_user ON receipts(user);
+    CREATE INDEX IF NOT EXISTS idx_receipts_user_id ON receipts(user_id);
+    CREATE INDEX IF NOT EXISTS idx_receipts_receipt_type_id ON receipts(receipt_type_id);
     CREATE INDEX IF NOT EXISTS idx_receipts_date ON receipts(date);
     CREATE INDEX IF NOT EXISTS idx_receipt_files_receipt_id ON receipt_files(receipt_id);
     CREATE INDEX IF NOT EXISTS idx_receipt_flags_receipt_id ON receipt_flags(receipt_id);
     CREATE INDEX IF NOT EXISTS idx_receipt_flags_flag_id ON receipt_flags(flag_id);
+    CREATE INDEX IF NOT EXISTS idx_users_name ON users(name);
+    CREATE INDEX IF NOT EXISTS idx_receipt_types_name ON receipt_types(name);
   `);
 
   return testDb;
@@ -88,6 +105,8 @@ export function clearTestDb(): void {
     DELETE FROM receipt_files;
     DELETE FROM receipts;
     DELETE FROM flags;
+    DELETE FROM receipt_types;
+    DELETE FROM users;
     DELETE FROM settings;
   `);
 }
@@ -109,6 +128,7 @@ export function createTestDbQueries(db: DatabaseType) {
   return {
     getReceiptById: db.prepare('SELECT * FROM receipts WHERE id = ?'),
     getAllReceipts: db.prepare('SELECT * FROM receipts ORDER BY date DESC, created_at DESC'),
+    getReceiptsByUser: db.prepare('SELECT * FROM receipts WHERE user_id = ? ORDER BY date DESC, created_at DESC'),
     getReceiptsByFlag: db.prepare(`
       SELECT DISTINCT r.* FROM receipts r
       INNER JOIN receipt_flags rf ON r.id = rf.receipt_id
@@ -116,12 +136,12 @@ export function createTestDbQueries(db: DatabaseType) {
       ORDER BY r.date DESC, r.created_at DESC
     `),
     insertReceipt: db.prepare(`
-      INSERT INTO receipts (user, type, amount, vendor, provider_address, description, date, notes)
+      INSERT INTO receipts (user_id, receipt_type_id, amount, vendor, provider_address, description, date, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `),
     updateReceipt: db.prepare(`
       UPDATE receipts
-      SET user = ?, type = ?, amount = ?, vendor = ?, provider_address = ?, description = ?, date = ?, notes = ?, updated_at = datetime('now')
+      SET user_id = ?, receipt_type_id = ?, amount = ?, vendor = ?, provider_address = ?, description = ?, date = ?, notes = ?, updated_at = datetime('now')
       WHERE id = ?
     `),
     deleteReceipt: db.prepare('DELETE FROM receipts WHERE id = ?'),
@@ -145,6 +165,18 @@ export function createTestDbQueries(db: DatabaseType) {
     `),
     deleteReceiptFlags: db.prepare('DELETE FROM receipt_flags WHERE receipt_id = ?'),
     insertReceiptFlag: db.prepare('INSERT INTO receipt_flags (receipt_id, flag_id) VALUES (?, ?)'),
+    getAllUsers: db.prepare('SELECT * FROM users ORDER BY name'),
+    getUserById: db.prepare('SELECT * FROM users WHERE id = ?'),
+    getUserByName: db.prepare('SELECT * FROM users WHERE name = ?'),
+    insertUser: db.prepare('INSERT INTO users (name) VALUES (?)'),
+    updateUser: db.prepare('UPDATE users SET name = ? WHERE id = ?'),
+    deleteUser: db.prepare('DELETE FROM users WHERE id = ?'),
+    getAllReceiptTypes: db.prepare('SELECT * FROM receipt_types ORDER BY name'),
+    getReceiptTypeById: db.prepare('SELECT * FROM receipt_types WHERE id = ?'),
+    getReceiptTypeByName: db.prepare('SELECT * FROM receipt_types WHERE name = ?'),
+    insertReceiptType: db.prepare('INSERT INTO receipt_types (name) VALUES (?)'),
+    updateReceiptType: db.prepare('UPDATE receipt_types SET name = ? WHERE id = ?'),
+    deleteReceiptType: db.prepare('DELETE FROM receipt_types WHERE id = ?'),
     getSetting: db.prepare('SELECT value FROM settings WHERE key = ?'),
     setSetting: db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)'),
     getAllSettings: db.prepare('SELECT * FROM settings'),

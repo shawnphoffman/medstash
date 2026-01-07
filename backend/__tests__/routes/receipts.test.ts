@@ -156,9 +156,28 @@ describe('Receipts API', () => {
       DELETE FROM receipt_files;
       DELETE FROM receipts;
       DELETE FROM flags;
+      DELETE FROM receipt_types;
+      DELETE FROM users;
       DELETE FROM settings;
     `)
 	})
+
+	// Helper function to create user and receipt type, returning their IDs
+	function createUserAndType(userName: string = 'Test User', typeName: string = 'doctor-visit'): { userId: number; typeId: number } {
+		let user = dbQueries.getUserByName.get(userName) as { id: number } | undefined
+		if (!user) {
+			const userResult = dbQueries.insertUser.run(userName)
+			user = dbQueries.getUserById.get(Number(userResult.lastInsertRowid)) as { id: number }
+		}
+
+		let type = dbQueries.getReceiptTypeByName.get(typeName) as { id: number } | undefined
+		if (!type) {
+			const typeResult = dbQueries.insertReceiptType.run(typeName)
+			type = dbQueries.getReceiptTypeById.get(Number(typeResult.lastInsertRowid)) as { id: number }
+		}
+
+		return { userId: user.id, typeId: type.id }
+	}
 
 	afterEach(async () => {
 		await cleanupTestFiles()
@@ -187,9 +206,10 @@ describe('Receipts API', () => {
 			// Create receipts directly in test DB
 			const receipt1 = createReceiptFixture({ vendor: 'Vendor 1' })
 			const receipt2 = createReceiptFixture({ vendor: 'Vendor 2' })
+			const { userId, typeId } = createUserAndType(receipt1.user!, receipt1.type!)
 			dbQueries.insertReceipt.run(
-				receipt1.user,
-				receipt1.type,
+				userId,
+				typeId,
 				receipt1.amount,
 				receipt1.vendor!,
 				receipt1.provider_address!,
@@ -198,8 +218,8 @@ describe('Receipts API', () => {
 				receipt1.notes || null
 			)
 			dbQueries.insertReceipt.run(
-				receipt2.user,
-				receipt2.type,
+				userId,
+				typeId,
 				receipt2.amount,
 				receipt2.vendor!,
 				receipt2.provider_address!,
@@ -218,10 +238,11 @@ describe('Receipts API', () => {
 			const flagResult = dbQueries.insertFlag.run('Test Flag', null)
 			const flagId = Number(flagResult.lastInsertRowid)
 
-			const receipt1Result = dbQueries.insertReceipt.run('User', 'type', 100, 'Vendor 1', 'Address', 'Description', '2024-01-15', null)
+			const { userId, typeId } = createUserAndType('User', 'type')
+			const receipt1Result = dbQueries.insertReceipt.run(userId, typeId, 100, 'Vendor 1', 'Address', 'Description', '2024-01-15', null)
 			const receipt1Id = Number(receipt1Result.lastInsertRowid)
 
-			const receipt2Result = dbQueries.insertReceipt.run('User', 'type', 100, 'Vendor 2', 'Address', 'Description', '2024-01-15', null)
+			const receipt2Result = dbQueries.insertReceipt.run(userId, typeId, 100, 'Vendor 2', 'Address', 'Description', '2024-01-15', null)
 			const receipt2Id = Number(receipt2Result.lastInsertRowid)
 
 			dbQueries.insertReceiptFlag.run(receipt1Id, flagId)
@@ -236,9 +257,10 @@ describe('Receipts API', () => {
 	describe('GET /api/receipts/:id', () => {
 		it('should return a receipt by ID', async () => {
 			const receiptData = createReceiptFixture()
+			const { userId, typeId } = createUserAndType(receiptData.user!, receiptData.type!)
 			const result = dbQueries.insertReceipt.run(
-				receiptData.user!,
-				receiptData.type!,
+				userId,
+				typeId,
 				receiptData.amount!,
 				receiptData.vendor!,
 				receiptData.provider_address!,
@@ -326,9 +348,10 @@ describe('Receipts API', () => {
 	describe('PUT /api/receipts/:id', () => {
 		it('should update a receipt', async () => {
 			const receiptData = createReceiptFixture()
+			const { userId, typeId } = createUserAndType(receiptData.user!, receiptData.type!)
 			const result = dbQueries.insertReceipt.run(
-				receiptData.user!,
-				receiptData.type!,
+				userId,
+				typeId,
 				receiptData.amount!,
 				receiptData.vendor!,
 				receiptData.provider_address!,
@@ -357,9 +380,10 @@ describe('Receipts API', () => {
 
 		it('should update receipt flags', async () => {
 			const receiptData = createReceiptFixture()
+			const { userId, typeId } = createUserAndType(receiptData.user!, receiptData.type!)
 			const result = dbQueries.insertReceipt.run(
-				receiptData.user!,
-				receiptData.type!,
+				userId,
+				typeId,
 				receiptData.amount!,
 				receiptData.vendor!,
 				receiptData.provider_address!,
@@ -386,9 +410,10 @@ describe('Receipts API', () => {
 	describe('DELETE /api/receipts/:id', () => {
 		it('should delete a receipt', async () => {
 			const receiptData = createReceiptFixture()
+			const { userId, typeId } = createUserAndType(receiptData.user!, receiptData.type!)
 			const result = dbQueries.insertReceipt.run(
-				receiptData.user!,
-				receiptData.type!,
+				userId,
+				typeId,
 				receiptData.amount!,
 				receiptData.vendor!,
 				receiptData.provider_address!,
@@ -417,9 +442,10 @@ describe('Receipts API', () => {
 	describe('PUT /api/receipts/:id/flags', () => {
 		it('should update receipt flags', async () => {
 			const receiptData = createReceiptFixture()
+			const { userId, typeId } = createUserAndType(receiptData.user!, receiptData.type!)
 			const result = dbQueries.insertReceipt.run(
-				receiptData.user!,
-				receiptData.type!,
+				userId,
+				typeId,
 				receiptData.amount!,
 				receiptData.vendor!,
 				receiptData.provider_address!,
@@ -446,9 +472,10 @@ describe('Receipts API', () => {
 
 		it('should return 400 if flag_ids is not an array', async () => {
 			const receiptData = createReceiptFixture()
+			const { userId, typeId } = createUserAndType(receiptData.user!, receiptData.type!)
 			const result = dbQueries.insertReceipt.run(
-				receiptData.user!,
-				receiptData.type!,
+				userId,
+				typeId,
 				receiptData.amount!,
 				receiptData.vendor!,
 				receiptData.provider_address!,

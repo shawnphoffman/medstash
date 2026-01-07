@@ -6,10 +6,24 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
+export interface User {
+  id: number;
+  name: string;
+  created_at: string;
+}
+
+export interface ReceiptType {
+  id: number;
+  name: string;
+  created_at: string;
+}
+
 export interface Receipt {
   id: number;
-  user: string;
-  type: string;
+  user_id: number;
+  receipt_type_id: number;
+  user: string; // user name for backward compatibility
+  type: string; // receipt type name for backward compatibility
   amount: number;
   vendor: string;
   provider_address: string;
@@ -39,8 +53,8 @@ export interface Flag {
 }
 
 export interface CreateReceiptInput {
-  user?: string;
-  type?: string;
+  user_id?: number;
+  receipt_type_id?: number;
   amount?: number;
   vendor?: string;
   provider_address?: string;
@@ -51,8 +65,8 @@ export interface CreateReceiptInput {
 }
 
 export interface UpdateReceiptInput {
-  user?: string;
-  type?: string;
+  user_id?: number;
+  receipt_type_id?: number;
   amount?: number;
   vendor?: string;
   provider_address?: string;
@@ -67,6 +81,22 @@ export interface CreateFlagInput {
   color?: string;
 }
 
+export interface CreateUserInput {
+  name: string;
+}
+
+export interface UpdateUserInput {
+  name?: string;
+}
+
+export interface CreateReceiptTypeInput {
+  name: string;
+}
+
+export interface UpdateReceiptTypeInput {
+  name?: string;
+}
+
 // Receipts API
 export const receiptsApi = {
   getAll: (flagId?: number) => {
@@ -78,8 +108,8 @@ export const receiptsApi = {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
     // Append all fields, even if empty - backend will handle defaults
-    formData.append('user', data.user || '');
-    formData.append('type', data.type || '');
+    if (data.user_id !== undefined) formData.append('user_id', data.user_id.toString());
+    if (data.receipt_type_id !== undefined) formData.append('receipt_type_id', data.receipt_type_id.toString());
     formData.append('amount', (data.amount !== undefined ? data.amount : 0).toString());
     formData.append('vendor', data.vendor || '');
     formData.append('provider_address', data.provider_address || '');
@@ -106,6 +136,7 @@ export const receiptsApi = {
     files.forEach((file) => formData.append('files', file));
 
     // Add receipt data if provided (for proper file naming)
+    // Note: user and type are still strings here for filename generation
     if (receiptData) {
       if (receiptData.date) formData.append('date', receiptData.date);
       if (receiptData.user) formData.append('user', receiptData.user);
@@ -139,6 +170,26 @@ export const flagsApi = {
   update: (id: number, data: Partial<CreateFlagInput>) =>
     api.put<Flag>(`/flags/${id}`, data),
   delete: (id: number) => api.delete(`/flags/${id}`),
+};
+
+// Users API
+export const usersApi = {
+  getAll: () => api.get<User[]>('/users'),
+  getById: (id: number) => api.get<User>(`/users/${id}`),
+  create: (data: CreateUserInput) => api.post<User>('/users', data),
+  update: (id: number, data: UpdateUserInput) =>
+    api.put<User>(`/users/${id}`, data),
+  delete: (id: number) => api.delete(`/users/${id}`),
+};
+
+// Receipt Types API
+export const receiptTypesApi = {
+  getAll: () => api.get<ReceiptType[]>('/receipt-types'),
+  getById: (id: number) => api.get<ReceiptType>(`/receipt-types/${id}`),
+  create: (data: CreateReceiptTypeInput) => api.post<ReceiptType>('/receipt-types', data),
+  update: (id: number, data: UpdateReceiptTypeInput) =>
+    api.put<ReceiptType>(`/receipt-types/${id}`, data),
+  delete: (id: number) => api.delete(`/receipt-types/${id}`),
 };
 
 // Settings API

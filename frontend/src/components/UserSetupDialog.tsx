@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { settingsApi } from '../lib/api'
+import { usersApi } from '../lib/api'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -27,7 +27,7 @@ export default function UserSetupDialog({ open, onComplete }: UserSetupDialogPro
 		setError(null)
 
 		try {
-			await settingsApi.set('users', [userName.trim()])
+			await usersApi.create({ name: userName.trim() })
 			onComplete()
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to save user name')

@@ -33,6 +33,8 @@ describe('Filenames API', () => {
       DELETE FROM receipt_files;
       DELETE FROM receipts;
       DELETE FROM flags;
+      DELETE FROM receipt_types;
+      DELETE FROM users;
       DELETE FROM settings;
     `);
 
@@ -44,6 +46,23 @@ describe('Filenames API', () => {
     await cleanupTestFiles();
   });
 
+  // Helper function to create user and receipt type, returning their IDs
+  function createUserAndType(userName: string = 'John Doe', typeName: string = 'doctor-visit'): { userId: number; typeId: number } {
+    let user = dbQueries.getUserByName.get(userName) as { id: number } | undefined;
+    if (!user) {
+      const userResult = dbQueries.insertUser.run(userName);
+      user = dbQueries.getUserById.get(Number(userResult.lastInsertRowid)) as { id: number };
+    }
+
+    let type = dbQueries.getReceiptTypeByName.get(typeName) as { id: number } | undefined;
+    if (!type) {
+      const typeResult = dbQueries.insertReceiptType.run(typeName);
+      type = dbQueries.getReceiptTypeById.get(Number(typeResult.lastInsertRowid)) as { id: number };
+    }
+
+    return { userId: user.id, typeId: type.id };
+  }
+
   describe('POST /api/filenames/rename-all', () => {
     it('should rename all files when pattern is set', async () => {
       // Create a flag
@@ -51,9 +70,10 @@ describe('Filenames API', () => {
       const flagId = flagResult.lastInsertRowid as number;
 
       // Create a receipt with flag
+      const { userId, typeId } = createUserAndType('John Doe', 'doctor-visit');
       const receiptResult = dbQueries.insertReceipt.run(
-        'John Doe',
-        'doctor-visit',
+        userId,
+        typeId,
         100.50,
         'Test Clinic',
         '123 Main St',
@@ -105,9 +125,10 @@ describe('Filenames API', () => {
 
     it('should handle multiple receipts and files', async () => {
       // Create two receipts
+      const { userId: userId1, typeId: typeId1 } = createUserAndType('John Doe', 'doctor-visit');
       const receipt1Result = dbQueries.insertReceipt.run(
-        'John Doe',
-        'doctor-visit',
+        userId1,
+        typeId1,
         100.50,
         'Clinic A',
         '123 Main St',
@@ -117,9 +138,10 @@ describe('Filenames API', () => {
       );
       const receipt1Id = receipt1Result.lastInsertRowid as number;
 
+      const { userId: userId2, typeId: typeId2 } = createUserAndType('Jane Smith', 'prescription');
       const receipt2Result = dbQueries.insertReceipt.run(
-        'Jane Smith',
-        'prescription',
+        userId2,
+        typeId2,
         50.00,
         'Pharmacy B',
         '456 Oak St',
@@ -166,9 +188,10 @@ describe('Filenames API', () => {
       const flag2Id = flag2Result.lastInsertRowid as number;
 
       // Create receipt with flags
+      const { userId, typeId } = createUserAndType('John Doe', 'doctor-visit');
       const receiptResult = dbQueries.insertReceipt.run(
-        'John Doe',
-        'doctor-visit',
+        userId,
+        typeId,
         100.50,
         'Clinic',
         'Address',
@@ -203,9 +226,10 @@ describe('Filenames API', () => {
     });
 
     it('should handle receipts without flags', async () => {
+      const { userId, typeId } = createUserAndType('John Doe', 'doctor-visit');
       const receiptResult = dbQueries.insertReceipt.run(
-        'John Doe',
-        'doctor-visit',
+        userId,
+        typeId,
         100.50,
         'Clinic',
         'Address',
@@ -236,9 +260,10 @@ describe('Filenames API', () => {
     });
 
     it('should handle receipts with no files', async () => {
+      const { userId, typeId } = createUserAndType('John Doe', 'doctor-visit');
       const receiptResult = dbQueries.insertReceipt.run(
-        'John Doe',
-        'doctor-visit',
+        userId,
+        typeId,
         100.50,
         'Clinic',
         'Address',
@@ -258,9 +283,10 @@ describe('Filenames API', () => {
 
     it('should handle errors gracefully', async () => {
       // Create receipt with file that doesn't exist on disk
+      const { userId, typeId } = createUserAndType('John Doe', 'doctor-visit');
       const receiptResult = dbQueries.insertReceipt.run(
-        'John Doe',
-        'doctor-visit',
+        userId,
+        typeId,
         100.50,
         'Clinic',
         'Address',
@@ -283,9 +309,10 @@ describe('Filenames API', () => {
     });
 
     it('should use default pattern when no pattern is set', async () => {
+      const { userId, typeId } = createUserAndType('John Doe', 'doctor-visit');
       const receiptResult = dbQueries.insertReceipt.run(
-        'John Doe',
-        'doctor-visit',
+        userId,
+        typeId,
         100.50,
         'Test Clinic',
         'Address',
