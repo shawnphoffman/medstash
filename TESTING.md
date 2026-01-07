@@ -262,6 +262,28 @@ describe('MyComponent', () => {
 - Ensure `@vitest/coverage-v8` is installed (included with vitest)
 - Check that coverage provider is set to 'v8' in vitest.config.ts
 
+### esbuild Version Mismatch Error
+If you see an error like `"Host version 'X.X.X' does not match binary version 'Y.Y.Y'"` when running frontend tests, this is an esbuild native binary version mismatch. This can happen when:
+- Dependencies were installed on a different machine/OS
+- Node modules were copied or moved between systems
+- There's a version conflict between nested dependencies
+
+**Quick Fix:**
+```bash
+# Clear corrupted esbuild binaries and reinstall
+rm -rf frontend/node_modules/.vite frontend/node_modules/vite/node_modules/esbuild
+cd frontend && npm install
+```
+
+**Nuclear Option (if quick fix doesn't work):**
+```bash
+# Full reinstall of frontend dependencies
+rm -rf frontend/node_modules frontend/package-lock.json
+cd frontend && npm install
+```
+
+After reinstalling, the esbuild binaries will be rebuilt for your current platform and the version mismatch should be resolved.
+
 ## CI/CD Integration
 
 Tests can be integrated into CI/CD pipelines:
