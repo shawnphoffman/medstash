@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, act } from '../helpers/testUtils'
 import userEvent from '@testing-library/user-event'
 import UserSetupDialog from '../../components/UserSetupDialog'
-import { settingsApi } from '../../lib/api'
+import { usersApi } from '../../lib/api'
 
 // Mock the API
 vi.mock('../../lib/api', () => ({
-	settingsApi: {
-		set: vi.fn(),
+	usersApi: {
+		create: vi.fn(),
 	},
 }))
 
@@ -89,7 +89,7 @@ describe('UserSetupDialog', () => {
 
 	it('should submit form with trimmed name', async () => {
 		const user = userEvent.setup()
-		vi.mocked(settingsApi.set).mockResolvedValue({ data: { key: 'users', value: ['John Doe'] } })
+		vi.mocked(usersApi.create).mockResolvedValue({ data: { id: 1, name: 'John Doe', created_at: '2024-01-01' } })
 
 		render(<UserSetupDialog open={true} onComplete={mockOnComplete} />)
 
@@ -104,7 +104,7 @@ describe('UserSetupDialog', () => {
 		})
 
 		await waitFor(() => {
-			expect(settingsApi.set).toHaveBeenCalledWith('users', ['John Doe'])
+			expect(usersApi.create).toHaveBeenCalledWith({ name: 'John Doe' })
 			expect(mockOnComplete).toHaveBeenCalled()
 		})
 	})
@@ -115,7 +115,7 @@ describe('UserSetupDialog', () => {
 		const promise = new Promise(resolve => {
 			resolvePromise = resolve
 		})
-		vi.mocked(settingsApi.set).mockReturnValue(promise as any)
+		vi.mocked(usersApi.create).mockReturnValue(promise as any)
 
 		render(<UserSetupDialog open={true} onComplete={mockOnComplete} />)
 
@@ -135,7 +135,7 @@ describe('UserSetupDialog', () => {
 		expect(submitButton).toBeDisabled()
 
 		await act(async () => {
-			resolvePromise!({ data: { key: 'users', value: ['John Doe'] } })
+			resolvePromise!({ data: { id: 1, name: 'John Doe', created_at: '2024-01-01' } })
 		})
 		await waitFor(() => {
 			expect(screen.queryByText('Saving...')).not.toBeInTheDocument()
@@ -144,7 +144,7 @@ describe('UserSetupDialog', () => {
 
 	it('should show error message on API failure', async () => {
 		const user = userEvent.setup()
-		vi.mocked(settingsApi.set).mockRejectedValue({
+		vi.mocked(usersApi.create).mockRejectedValue({
 			response: { data: { error: 'API Error' } },
 		})
 
@@ -169,7 +169,7 @@ describe('UserSetupDialog', () => {
 
 	it('should show generic error message on API failure without error details', async () => {
 		const user = userEvent.setup()
-		vi.mocked(settingsApi.set).mockRejectedValue(new Error('Network error'))
+		vi.mocked(usersApi.create).mockRejectedValue(new Error('Network error'))
 
 		render(<UserSetupDialog open={true} onComplete={mockOnComplete} />)
 
@@ -194,7 +194,7 @@ describe('UserSetupDialog', () => {
 		const promise = new Promise(resolve => {
 			resolvePromise = resolve
 		})
-		vi.mocked(settingsApi.set).mockReturnValue(promise as any)
+		vi.mocked(usersApi.create).mockReturnValue(promise as any)
 
 		render(<UserSetupDialog open={true} onComplete={mockOnComplete} />)
 
@@ -213,7 +213,7 @@ describe('UserSetupDialog', () => {
 		})
 
 		await act(async () => {
-			resolvePromise!({ data: { key: 'users', value: ['John Doe'] } })
+			resolvePromise!({ data: { id: 1, name: 'John Doe', created_at: '2024-01-01' } })
 		})
 		await waitFor(() => {
 			expect(input).not.toBeDisabled()

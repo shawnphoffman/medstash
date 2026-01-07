@@ -9,6 +9,9 @@ describe('fileService', () => {
   let fileService: typeof import('../../src/services/fileService');
 
   beforeEach(async () => {
+    // Set DB_DIR to a temp directory to avoid trying to create /data
+    // This must be set before any module that imports db.ts is loaded
+    process.env.DB_DIR = require('os').tmpdir();
     testDirs = await setupTestFiles();
     // Re-import fileService after setting environment variable
     // This ensures RECEIPTS_DIR is set correctly
@@ -140,6 +143,15 @@ describe('fileService', () => {
     });
 
     it('should generate correct filename format', async () => {
+      // Ensure default pattern is used by clearing any custom pattern
+      const { getSetting, setSetting } = await import('../../src/services/dbService');
+      const currentPattern = getSetting('filenamePattern');
+      if (currentPattern) {
+        // Clear the pattern to use default
+        const { dbQueries } = await import('../../src/db');
+        dbQueries.setSetting.run('filenamePattern', '');
+      }
+
       const mockFile = createMockFile({
         originalname: 'receipt.pdf',
         path: path.join(testDirs.uploadDir, 'receipt.pdf'),
@@ -446,6 +458,10 @@ describe('fileService', () => {
         { id: 1, name: 'Reimbursed', color: '#3b82f6', created_at: '2024-01-01' },
       ];
 
+      // Set a pattern that includes flags so the filename will change
+      const { setSetting } = await import('../../src/services/dbService');
+      setSetting('filenamePattern', JSON.stringify('{date}_{user}_{flags}_{index}'));
+
       const renameResults = await fileService.renameReceiptFiles(
         1,
         files,
@@ -458,8 +474,10 @@ describe('fileService', () => {
       );
 
       expect(renameResults).toHaveLength(1);
-      // With default pattern, flags won't appear, but function should work
+      // With pattern that includes flags, the filename should change
       expect(renameResults[0].newFilename).toBeDefined();
+      expect(renameResults[0].newFilename).not.toBe(result.filename);
+      expect(renameResults[0].newFilename).toContain('reimbursed');
     });
 
     it('should not rename if filename unchanged', async () => {

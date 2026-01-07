@@ -24,6 +24,8 @@ describe('Filenames API', () => {
   let testDirs: { receiptsDir: string; uploadDir: string };
 
   beforeEach(async () => {
+    // Set DB_DIR to a temp directory to avoid trying to create /data
+    process.env.DB_DIR = require('os').tmpdir();
     // Clear the mocked database
     const dbModule = await import('../../src/db');
     const db = dbModule.db;
@@ -40,6 +42,7 @@ describe('Filenames API', () => {
 
     // Setup test files
     testDirs = await setupTestFiles();
+    process.env.RECEIPTS_DIR = testDirs.receiptsDir;
   });
 
   afterEach(async () => {

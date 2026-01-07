@@ -48,6 +48,8 @@ describe('Export API', () => {
   let dbQueries: ReturnType<typeof createTestDbQueries>;
 
   beforeEach(async () => {
+    // Set DB_DIR to a temp directory to avoid trying to create /data
+    process.env.DB_DIR = require('os').tmpdir();
     // Clear the mocked database
     const dbModule = await import('../../src/db');
     const db = dbModule.db;
@@ -71,9 +73,20 @@ describe('Export API', () => {
     it('should generate zip archive with receipts', async () => {
       // Create a receipt with files
       const receiptData = createReceiptFixture();
+      // Create user and type first to get their IDs
+      let user = dbQueries.getUserByName.get(receiptData.user!) as { id: number } | undefined;
+      if (!user) {
+        const userResult = dbQueries.insertUser.run(receiptData.user!);
+        user = dbQueries.getUserById.get(Number(userResult.lastInsertRowid)) as { id: number };
+      }
+      let type = dbQueries.getReceiptTypeByName.get(receiptData.type!) as { id: number } | undefined;
+      if (!type) {
+        const typeResult = dbQueries.insertReceiptType.run(receiptData.type!);
+        type = dbQueries.getReceiptTypeById.get(Number(typeResult.lastInsertRowid)) as { id: number };
+      }
       const receiptResult = dbQueries.insertReceipt.run(
-        receiptData.user!,
-        receiptData.type!,
+        user.id,
+        type.id,
         receiptData.amount!,
         receiptData.vendor!,
         receiptData.provider_address!,
@@ -107,9 +120,20 @@ describe('Export API', () => {
 
     it('should include metadata.json for each receipt', async () => {
       const receiptData = createReceiptFixture();
+      // Create user and type first to get their IDs
+      let user = dbQueries.getUserByName.get(receiptData.user!) as { id: number } | undefined;
+      if (!user) {
+        const userResult = dbQueries.insertUser.run(receiptData.user!);
+        user = dbQueries.getUserById.get(Number(userResult.lastInsertRowid)) as { id: number };
+      }
+      let type = dbQueries.getReceiptTypeByName.get(receiptData.type!) as { id: number } | undefined;
+      if (!type) {
+        const typeResult = dbQueries.insertReceiptType.run(receiptData.type!);
+        type = dbQueries.getReceiptTypeById.get(Number(typeResult.lastInsertRowid)) as { id: number };
+      }
       const receiptResult = dbQueries.insertReceipt.run(
-        receiptData.user!,
-        receiptData.type!,
+        user.id,
+        type.id,
         receiptData.amount!,
         receiptData.vendor!,
         receiptData.provider_address!,
@@ -134,9 +158,20 @@ describe('Export API', () => {
 
     it('should handle receipts with flags', async () => {
       const receiptData = createReceiptFixture();
+      // Create user and type first to get their IDs
+      let user = dbQueries.getUserByName.get(receiptData.user!) as { id: number } | undefined;
+      if (!user) {
+        const userResult = dbQueries.insertUser.run(receiptData.user!);
+        user = dbQueries.getUserById.get(Number(userResult.lastInsertRowid)) as { id: number };
+      }
+      let type = dbQueries.getReceiptTypeByName.get(receiptData.type!) as { id: number } | undefined;
+      if (!type) {
+        const typeResult = dbQueries.insertReceiptType.run(receiptData.type!);
+        type = dbQueries.getReceiptTypeById.get(Number(typeResult.lastInsertRowid)) as { id: number };
+      }
       const receiptResult = dbQueries.insertReceipt.run(
-        receiptData.user!,
-        receiptData.type!,
+        user.id,
+        type.id,
         receiptData.amount!,
         receiptData.vendor!,
         receiptData.provider_address!,
@@ -179,9 +214,20 @@ describe('Export API', () => {
 
     it('should handle missing files gracefully', async () => {
       const receiptData = createReceiptFixture();
+      // Create user and type first to get their IDs
+      let user = dbQueries.getUserByName.get(receiptData.user!) as { id: number } | undefined;
+      if (!user) {
+        const userResult = dbQueries.insertUser.run(receiptData.user!);
+        user = dbQueries.getUserById.get(Number(userResult.lastInsertRowid)) as { id: number };
+      }
+      let type = dbQueries.getReceiptTypeByName.get(receiptData.type!) as { id: number } | undefined;
+      if (!type) {
+        const typeResult = dbQueries.insertReceiptType.run(receiptData.type!);
+        type = dbQueries.getReceiptTypeById.get(Number(typeResult.lastInsertRowid)) as { id: number };
+      }
       const receiptResult = dbQueries.insertReceipt.run(
-        receiptData.user!,
-        receiptData.type!,
+        user.id,
+        type.id,
         receiptData.amount!,
         receiptData.vendor!,
         receiptData.provider_address!,
