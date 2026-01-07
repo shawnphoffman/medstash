@@ -47,6 +47,7 @@ export default function ReceiptDetailPage() {
 	const [newFiles, setNewFiles] = useState<File[]>([])
 	const [filePreviews, setFilePreviews] = useState<Map<number, string>>(new Map())
 	const [existingFilePreviews, setExistingFilePreviews] = useState<Map<number, string>>(new Map())
+	const [failedFilePreviews, setFailedFilePreviews] = useState<Set<number>>(new Set())
 
 	const {
 		register,
@@ -112,6 +113,8 @@ export default function ReceiptDetailPage() {
 					previews.set(file.id, previewUrl)
 				})
 				setExistingFilePreviews(previews)
+				// Reset failed previews when loading new data
+				setFailedFilePreviews(new Set())
 			}
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to load receipt')
@@ -282,6 +285,17 @@ export default function ReceiptDetailPage() {
 
 		try {
 			const response = await receiptsApi.downloadFile(parseInt(id), fileId)
+
+			// Check if response is actually a blob (success) or an error JSON
+			if (response.data instanceof Blob && response.data.size === 0) {
+				toast({
+					title: 'Download Failed',
+					description: 'The file appears to be empty or could not be retrieved.',
+					variant: 'destructive',
+				})
+				return
+			}
+
 			const url = window.URL.createObjectURL(new Blob([response.data]))
 			const link = document.createElement('a')
 			link.href = url
@@ -290,8 +304,22 @@ export default function ReceiptDetailPage() {
 			link.click()
 			link.remove()
 			window.URL.revokeObjectURL(url)
+
+			toast({
+				title: 'Download Started',
+				description: `Downloading ${filename}...`,
+			})
 		} catch (err: any) {
-			setError(err.response?.data?.error || 'Failed to download file')
+			const errorMessage = err.response?.data?.error ||
+				err.message ||
+				'Failed to download file. The file may not exist or may have been deleted.'
+
+			toast({
+				title: 'Download Failed',
+				description: errorMessage,
+				variant: 'destructive',
+			})
+			setError(errorMessage)
 		}
 	}
 
@@ -521,18 +549,43 @@ export default function ReceiptDetailPage() {
 													</div>
 												</div>
 												<div className="bg-background">
-													{previewUrl && isImage ? (
+													{previewUrl && isImage && !failedFilePreviews.has(file.id) ? (
 														<img
 															src={previewUrl}
 															alt={file.original_filename}
 															className="w-full h-auto max-h-96 object-contain"
+															onError={() => {
+																setFailedFilePreviews(prev => new Set(prev).add(file.id))
+																toast({
+																	title: 'Preview Failed',
+																	description: `Unable to load preview for ${file.original_filename}. The file may not exist or may have been deleted.`,
+																	variant: 'destructive',
+																})
+															}}
 														/>
-													) : previewUrl && isPdf ? (
+													) : previewUrl && isPdf && !failedFilePreviews.has(file.id) ? (
 														<iframe
 															src={previewUrl}
 															className="w-full h-96 border-0"
 															title={file.original_filename}
+															onLoad={(e) => {
+																// Check if iframe loaded successfully by trying to access its content
+																// If it fails, the file likely doesn't exist
+																try {
+																	const iframe = e.target as HTMLIFrameElement
+																	// If we can't access contentDocument, it might be a CORS issue or file doesn't exist
+																	// We'll rely on the backend returning proper error status codes
+																} catch (err) {
+																	// Silently handle - browser security prevents checking cross-origin content
+																}
+															}}
 														/>
+													) : failedFilePreviews.has(file.id) ? (
+														<div className="w-full h-48 flex flex-col items-center justify-center bg-muted gap-2">
+															<File className="w-8 h-8 text-destructive" />
+															<p className="text-sm text-destructive">File not available</p>
+															<p className="text-xs text-muted-foreground">The file may have been deleted or moved</p>
+														</div>
 													) : (
 														<div className="w-full h-48 flex items-center justify-center bg-muted">
 															<File className="w-8 h-8 text-muted-foreground" />

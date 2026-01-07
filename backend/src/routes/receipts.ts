@@ -264,7 +264,9 @@ router.get('/:id/files/:fileId', async (req, res) => {
     const exists = await fileExists(receiptId, file.filename);
 
     if (!exists) {
-      return res.status(404).json({ error: 'File not found on disk' });
+      return res.status(404).json({
+        error: 'File not found on disk. The file may have been deleted or moved.'
+      });
     }
 
     // Check if this is a preview request (for inline display) or download
@@ -273,15 +275,45 @@ router.get('/:id/files/:fileId', async (req, res) => {
     const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.original_filename);
 
     // For previews (PDFs and images), serve inline; otherwise download
-    if (isPreview || (isPdf || isImage)) {
-      res.setHeader('Content-Disposition', `inline; filename="${file.original_filename}"`);
-      res.sendFile(path.resolve(filePath));
-    } else {
-      res.download(filePath, file.original_filename);
+    try {
+      if (isPreview || (isPdf || isImage)) {
+        res.setHeader('Content-Disposition', `inline; filename="${file.original_filename}"`);
+        res.sendFile(path.resolve(filePath), (err) => {
+          if (err) {
+            if (!res.headersSent) {
+              console.error('Error sending file:', err);
+              res.status(500).json({
+                error: 'Failed to retrieve file. The file may be corrupted or inaccessible.'
+              });
+            }
+          }
+        });
+      } else {
+        res.download(filePath, file.original_filename, (err) => {
+          if (err) {
+            if (!res.headersSent) {
+              console.error('Error downloading file:', err);
+              res.status(500).json({
+                error: 'Failed to download file. The file may be corrupted or inaccessible.'
+              });
+            }
+          }
+        });
+      }
+    } catch (sendError: any) {
+      // Handle errors from sendFile/download that occur synchronously
+      if (!res.headersSent) {
+        console.error('Error sending file:', sendError);
+        res.status(500).json({
+          error: 'Failed to retrieve file. The file may be corrupted or inaccessible.'
+        });
+      }
     }
   } catch (error) {
     console.error('Error downloading file:', error);
-    res.status(500).json({ error: 'Failed to download file' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to download file' });
+    }
   }
 });
 
