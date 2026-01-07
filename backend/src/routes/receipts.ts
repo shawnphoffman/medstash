@@ -134,7 +134,7 @@ router.post('/', upload.array('files', 10), async (req, res) => {
 });
 
 // PUT /api/receipts/:id - Update receipt
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const {
@@ -172,7 +172,7 @@ router.put('/:id', (req, res) => {
       }
     }
 
-    const receipt = updateReceipt(id, updateData, flagIds);
+    const receipt = await updateReceipt(id, updateData, flagIds);
     if (!receipt) {
       return res.status(404).json({ error: 'Receipt not found' });
     }
@@ -217,6 +217,14 @@ router.post('/:id/files', upload.array('files', 10), async (req, res) => {
       return res.status(400).json({ error: 'No files provided' });
     }
 
+    // Allow receipt data to be overridden from request body (for updated values)
+    // This ensures files are named with the latest receipt data
+    const date = req.body.date || receipt.date;
+    const user = req.body.user || receipt.user;
+    const vendor = req.body.vendor || receipt.vendor;
+    const amount = req.body.amount ? parseFloat(req.body.amount) : receipt.amount;
+    const type = req.body.type || receipt.type;
+
     const existingFiles = receipt.files;
     let fileOrder = existingFiles.length;
 
@@ -224,11 +232,11 @@ router.post('/:id/files', upload.array('files', 10), async (req, res) => {
       const { filename, originalFilename } = await saveReceiptFile(
         file,
         receipt.id,
-        receipt.date,
-        receipt.user,
-        receipt.vendor,
-        receipt.amount,
-        receipt.type,
+        date,
+        user,
+        vendor,
+        amount,
+        type,
         fileOrder
       );
 
@@ -348,7 +356,7 @@ router.delete('/:id/files/:fileId', async (req, res) => {
 });
 
 // PUT /api/receipts/:id/flags - Update flags for receipt
-router.put('/:id/flags', (req, res) => {
+router.put('/:id/flags', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { flag_ids } = req.body;
@@ -357,7 +365,7 @@ router.put('/:id/flags', (req, res) => {
       return res.status(400).json({ error: 'flag_ids must be an array' });
     }
 
-    const receipt = updateReceipt(id, {}, flag_ids);
+    const receipt = await updateReceipt(id, {}, flag_ids);
     if (!receipt) {
       return res.status(404).json({ error: 'Receipt not found' });
     }

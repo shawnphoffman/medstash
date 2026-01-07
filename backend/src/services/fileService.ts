@@ -180,3 +180,71 @@ export async function fileExists(
   }
 }
 
+/**
+ * Rename all files for a receipt when receipt data changes
+ * Returns array of { fileId, oldFilename, newFilename } for database updates
+ */
+export async function renameReceiptFiles(
+  receiptId: number,
+  files: Array<{ id: number; filename: string; original_filename: string; file_order: number }>,
+  date: string,
+  user: string,
+  vendor: string,
+  amount: number,
+  type: string
+): Promise<Array<{ fileId: number; oldFilename: string; newFilename: string }>> {
+  const receiptDir = getReceiptDir(receiptId);
+  const renameResults: Array<{ fileId: number; oldFilename: string; newFilename: string }> = [];
+
+  for (const file of files) {
+    const oldFilePath = path.join(receiptDir, file.filename);
+
+    // Get the original extension from the original filename
+    const originalExt = path.extname(file.original_filename);
+
+    // Generate new filename with updated receipt data
+    const newFilename = generateReceiptFilename(
+      date,
+      user,
+      vendor,
+      amount,
+      type,
+      file.file_order,
+      originalExt
+    );
+
+    const newFilePath = path.join(receiptDir, newFilename);
+
+    // Only rename if the filename actually changed
+    if (file.filename !== newFilename) {
+      try {
+        // Check if old file exists
+        const oldFileExists = await fileExists(receiptId, file.filename);
+        if (oldFileExists) {
+          // Check if new filename already exists (shouldn't happen, but be safe)
+          const newFileExists = await fileExists(receiptId, newFilename);
+          if (newFileExists && oldFilePath !== newFilePath) {
+            console.warn(`New filename ${newFilename} already exists, skipping rename for file ${file.id}`);
+            continue;
+          }
+
+          // Rename the file
+          await fs.rename(oldFilePath, newFilePath);
+          renameResults.push({
+            fileId: file.id,
+            oldFilename: file.filename,
+            newFilename: newFilename,
+          });
+        } else {
+          console.warn(`File ${file.filename} does not exist, skipping rename`);
+        }
+      } catch (error) {
+        console.error(`Failed to rename file ${file.filename} to ${newFilename}:`, error);
+        // Continue with other files even if one fails
+      }
+    }
+  }
+
+  return renameResults;
+}
+

@@ -80,11 +80,11 @@ export function createReceipt(
 /**
  * Update a receipt
  */
-export function updateReceipt(
+export async function updateReceipt(
   id: number,
   receiptData: Partial<Omit<Receipt, 'id' | 'created_at' | 'updated_at'>>,
   flagIds?: number[]
-): ReceiptWithFiles | null {
+): Promise<ReceiptWithFiles | null> {
   const existing = dbQueries.getReceiptById.get(id) as Receipt | null;
   if (!existing) return null;
 
@@ -92,6 +92,21 @@ export function updateReceipt(
     ...existing,
     ...receiptData,
   };
+
+  // Check if any filename-relevant fields changed
+  const filenameRelevantFields = ['date', 'user', 'vendor', 'amount', 'type'];
+  const relevantFieldsChanged = filenameRelevantFields.some(
+    field => receiptData[field as keyof Receipt] !== undefined &&
+    receiptData[field as keyof Receipt] !== existing[field as keyof Receipt]
+  );
+
+  // Get files before updating (for renaming)
+  const files = dbQueries.getFilesByReceiptId.all(id) as Array<{
+    id: number;
+    filename: string;
+    original_filename: string;
+    file_order: number;
+  }>;
 
   dbQueries.updateReceipt.run(
     updated.user,
@@ -104,6 +119,30 @@ export function updateReceipt(
     updated.notes || null,
     id
   );
+
+  // Rename files if relevant fields changed
+  if (relevantFieldsChanged && files.length > 0) {
+    const { renameReceiptFiles } = await import('./fileService');
+    try {
+      const renameResults = await renameReceiptFiles(
+        id,
+        files,
+        updated.date,
+        updated.user,
+        updated.vendor,
+        updated.amount,
+        updated.type
+      );
+
+      // Update database records with new filenames
+      for (const result of renameResults) {
+        dbQueries.updateReceiptFilename.run(result.newFilename, result.fileId);
+      }
+    } catch (error) {
+      console.error('Error renaming receipt files:', error);
+      // Continue even if renaming fails - receipt is still updated
+    }
+  }
 
   // Update flags if provided
   if (flagIds !== undefined) {

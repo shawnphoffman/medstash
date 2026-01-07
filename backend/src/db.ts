@@ -98,6 +98,7 @@ const dbQueriesObj = {
     INSERT INTO receipt_files (receipt_id, filename, original_filename, file_order)
     VALUES (?, ?, ?, ?)
   `),
+  updateReceiptFilename: dbInstance.prepare('UPDATE receipt_files SET filename = ? WHERE id = ?'),
   deleteReceiptFile: dbInstance.prepare('DELETE FROM receipt_files WHERE id = ?'),
   deleteFilesByReceiptId: dbInstance.prepare('DELETE FROM receipt_files WHERE receipt_id = ?'),
 

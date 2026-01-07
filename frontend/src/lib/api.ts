@@ -101,9 +101,19 @@ export const receiptsApi = {
     return api.put<Receipt>(`/receipts/${id}`, body);
   },
   delete: (id: number) => api.delete(`/receipts/${id}`),
-  addFiles: (id: number, files: File[]) => {
+  addFiles: (id: number, files: File[], receiptData?: { date?: string; user?: string; vendor?: string; amount?: number; type?: string }) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
+
+    // Add receipt data if provided (for proper file naming)
+    if (receiptData) {
+      if (receiptData.date) formData.append('date', receiptData.date);
+      if (receiptData.user) formData.append('user', receiptData.user);
+      if (receiptData.vendor) formData.append('vendor', receiptData.vendor);
+      if (receiptData.amount !== undefined) formData.append('amount', receiptData.amount.toString());
+      if (receiptData.type) formData.append('type', receiptData.type);
+    }
+
     return api.post<Receipt>(`/receipts/${id}/files`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
