@@ -9,6 +9,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
 import { Select } from '../components/ui/select'
+import { getBadgeClassName } from '../components/ui/color-picker'
 import { Upload, X, File } from 'lucide-react'
 import { cn } from '../lib/utils'
 
@@ -439,9 +440,9 @@ export default function UploadPage() {
 													variant={selectedFlagIds.includes(flag.id) ? 'default' : 'outline'}
 													size="sm"
 													onClick={() => toggleFlag(flag.id)}
-													style={
+													className={
 														selectedFlagIds.includes(flag.id) && flag.color
-															? { backgroundColor: flag.color, borderColor: flag.color }
+															? cn(getBadgeClassName(flag.color), `border-[${flag.color}]`)
 															: undefined
 													}
 												>

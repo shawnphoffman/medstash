@@ -1,7 +1,7 @@
 import { Receipt } from '../lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
+import { FlagBadge } from './FlagBadge'
 import { Trash2, Download, File } from 'lucide-react'
 
 interface ReceiptCardProps {
@@ -77,9 +77,7 @@ export default function ReceiptCard({ receipt, onDelete, onDownloadFile }: Recei
 						<p className="mb-2 text-sm text-muted-foreground">Flags</p>
 						<div className="flex flex-wrap gap-2">
 							{receipt.flags.map(flag => (
-								<Badge key={flag.id} variant="secondary" style={flag.color ? { backgroundColor: flag.color } : undefined}>
-									{flag.name}
-								</Badge>
+								<FlagBadge key={flag.id} flag={flag} />
 							))}
 						</div>
 					</div>
@@ -99,9 +97,7 @@ export default function ReceiptCard({ receipt, onDelete, onDownloadFile }: Recei
 												<span className="text-sm font-medium truncate">{file.filename}</span>
 											</div>
 											{filenameChanged && (
-												<span className="text-xs text-muted-foreground ml-6 truncate">
-													Original: {file.original_filename}
-												</span>
+												<span className="ml-6 text-xs truncate text-muted-foreground">Original: {file.original_filename}</span>
 											)}
 										</div>
 										<Button
