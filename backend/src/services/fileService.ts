@@ -137,9 +137,11 @@ export async function deleteReceiptFile(
   const filePath = path.join(getReceiptDir(receiptId), filename);
   try {
     await fs.unlink(filePath);
-  } catch (error) {
-    // File might not exist, that's okay
-    console.warn(`Failed to delete file ${filePath}:`, error);
+  } catch (error: any) {
+    // File might not exist, that's okay - only log unexpected errors
+    if (error?.code !== 'ENOENT') {
+      console.warn(`Failed to delete file ${filePath}:`, error);
+    }
   }
 }
 

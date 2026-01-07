@@ -160,7 +160,8 @@ export function getAllFlags(): Flag[] {
  * Get flag by ID
  */
 export function getFlagById(id: number): Flag | null {
-  return dbQueries.getFlagById.get(id) as Flag | null;
+  const flag = dbQueries.getFlagById.get(id) as Flag | undefined;
+  return flag || null;
 }
 
 /**

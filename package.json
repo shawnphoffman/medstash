@@ -10,7 +10,16 @@
   "scripts": {
     "dev": "docker-compose -f docker-compose.dev.yml up",
     "build": "docker-compose build",
-    "start": "docker-compose up"
+    "start": "docker-compose up",
+    "test": "npm run test -w backend && npm run test -w frontend",
+    "test:backend": "npm run test -w backend",
+    "test:frontend": "npm run test -w frontend",
+    "test:watch": "npm run test:watch -w backend",
+    "test:watch:backend": "npm run test:watch -w backend",
+    "test:watch:frontend": "npm run test:watch -w frontend",
+    "test:coverage": "npm run test:coverage -w backend && npm run test:coverage -w frontend",
+    "test:coverage:backend": "npm run test:coverage -w backend",
+    "test:coverage:frontend": "npm run test:coverage -w frontend"
   },
   "keywords": [
     "hsa",
