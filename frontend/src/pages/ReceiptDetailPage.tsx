@@ -230,7 +230,8 @@ export default function ReceiptDetailPage() {
 			}
 
 			// Update receipt
-			await receiptsApi.update(parseInt(id), updateData)
+			const updatedReceiptResponse = await receiptsApi.update(parseInt(id), updateData)
+			const updatedReceipt = updatedReceiptResponse.data
 
 			// Delete files marked for deletion
 			if (filesToDelete.size > 0) {
@@ -240,13 +241,13 @@ export default function ReceiptDetailPage() {
 			}
 
 			// Add new files if any (use updated receipt data for file naming)
-			if (newFiles.length > 0 && receipt) {
+			if (newFiles.length > 0 && updatedReceipt) {
 				await receiptsApi.addFiles(parseInt(id), newFiles, {
-					date: updateData.date || receipt.date,
-					user: updateData.user || receipt.user,
-					vendor: updateData.vendor || receipt.vendor,
-					amount: updateData.amount !== undefined ? updateData.amount : receipt.amount,
-					type: updateData.type || receipt.type,
+					date: updatedReceipt.date,
+					user: updatedReceipt.user,
+					vendor: updatedReceipt.vendor,
+					amount: updatedReceipt.amount,
+					type: updatedReceipt.type,
 				})
 			}
 
@@ -342,15 +343,15 @@ export default function ReceiptDetailPage() {
 	}
 
 	if (loading) {
-		return <div className="text-center py-8">Loading receipt...</div>
+		return <div className="py-8 text-center">Loading receipt...</div>
 	}
 
 	if (!receipt) {
 		return (
-			<div className="text-center py-8">
+			<div className="py-8 text-center">
 				<p className="text-muted-foreground">Receipt not found</p>
 				<Button onClick={() => navigate('/')} className="mt-4">
-					<ArrowLeft className="h-4 w-4 mr-2" />
+					<ArrowLeft className="w-4 h-4 mr-2" />
 					Back to Receipts
 				</Button>
 			</div>
@@ -361,11 +362,11 @@ export default function ReceiptDetailPage() {
 		<div className="w-full px-4 -mx-4">
 			<div className="flex items-center justify-between mb-6">
 				<Button variant="ghost" onClick={() => navigate('/')}>
-					<ArrowLeft className="h-4 w-4 mr-2" />
+					<ArrowLeft className="w-4 h-4 mr-2" />
 					Back to Receipts
 				</Button>
 				<Button variant="destructive" onClick={handleDeleteReceipt}>
-					<Trash2 className="h-4 w-4 mr-2" />
+					<Trash2 className="w-4 h-4 mr-2" />
 					Delete Receipt
 				</Button>
 			</div>
@@ -512,6 +513,7 @@ export default function ReceiptDetailPage() {
 										) : (
 											receipt.files.map(file => {
 												const isMarkedForDeletion = filesToDelete.has(file.id)
+												const filenameChanged = file.filename !== file.original_filename
 												return (
 													<div
 														key={file.id}
@@ -520,11 +522,18 @@ export default function ReceiptDetailPage() {
 															isMarkedForDeletion && 'border-destructive border-2 bg-destructive/5'
 														)}
 													>
-														<div className="flex items-center gap-2 flex-1 min-w-0">
-															<File className={cn('w-4 h-4 flex-shrink-0', isMarkedForDeletion && 'text-destructive')} />
-															<span className={cn('text-sm truncate', isMarkedForDeletion && 'text-destructive line-through')}>
-																{file.original_filename}
-															</span>
+														<div className="flex flex-col flex-1 min-w-0 gap-1">
+															<div className="flex items-center gap-2">
+																<File className={cn('w-4 h-4 flex-shrink-0', isMarkedForDeletion && 'text-destructive')} />
+																<span
+																	className={cn('text-sm font-medium truncate', isMarkedForDeletion && 'text-destructive line-through')}
+																>
+																	{file.filename}
+																</span>
+															</div>
+															{filenameChanged && (
+																<span className="ml-6 text-xs truncate text-muted-foreground">Original: {file.original_filename}</span>
+															)}
 														</div>
 														<div className="flex gap-2">
 															{!isMarkedForDeletion && (
@@ -579,10 +588,10 @@ export default function ReceiptDetailPage() {
 											{newFiles.map((file, index) => (
 												<div
 													key={index}
-													className="flex items-center justify-between p-2 rounded border-2 border-dashed border-primary/50 bg-primary/5"
+													className="flex items-center justify-between p-2 border-2 border-dashed rounded border-primary/50 bg-primary/5"
 												>
-													<div className="flex items-center gap-2 flex-1 min-w-0">
-														<File className="w-4 h-4 flex-shrink-0" />
+													<div className="flex items-center flex-1 min-w-0 gap-2">
+														<File className="flex-shrink-0 w-4 h-4" />
 														<span className="text-sm truncate">{file.name}</span>
 														<Badge variant="secondary" className="ml-2 text-xs">
 															New
@@ -646,6 +655,7 @@ export default function ReceiptDetailPage() {
 										const isImage = file.original_filename.match(/\.(jpg|jpeg|png|gif|webp)$/i)
 										const isPdf = file.original_filename.match(/\.pdf$/i)
 										const isMarkedForDeletion = filesToDelete.has(file.id)
+										const filenameChanged = file.filename !== file.original_filename
 
 										return (
 											<div
@@ -653,11 +663,16 @@ export default function ReceiptDetailPage() {
 												className={cn('overflow-hidden border rounded-lg', isMarkedForDeletion && 'border-destructive border-2')}
 											>
 												<div className={cn('p-2 border-b', isMarkedForDeletion ? 'bg-destructive/10' : 'bg-muted')}>
-													<div className="flex items-center gap-2">
-														<File className={cn('w-4 h-4 flex-shrink-0', isMarkedForDeletion && 'text-destructive')} />
-														<span className={cn('text-sm font-medium truncate', isMarkedForDeletion && 'text-destructive line-through')}>
-															{file.original_filename}
-														</span>
+													<div className="flex flex-col gap-1">
+														<div className="flex items-center gap-2">
+															<File className={cn('w-4 h-4 flex-shrink-0', isMarkedForDeletion && 'text-destructive')} />
+															<span className={cn('text-sm font-medium truncate', isMarkedForDeletion && 'text-destructive line-through')}>
+																{file.filename}
+															</span>
+														</div>
+														{filenameChanged && (
+															<span className="ml-6 text-xs truncate text-muted-foreground">Original: {file.original_filename}</span>
+														)}
 													</div>
 												</div>
 												<div className="bg-background">
@@ -704,11 +719,11 @@ export default function ReceiptDetailPage() {
 										return (
 											<div
 												key={`new-${index}`}
-												className="overflow-hidden border-2 border-dashed border-primary/50 rounded-lg bg-primary/5"
+												className="overflow-hidden border-2 border-dashed rounded-lg border-primary/50 bg-primary/5"
 											>
 												<div className="p-2 border-b bg-primary/10">
 													<div className="flex items-center gap-2">
-														<File className="w-4 h-4 flex-shrink-0" />
+														<File className="flex-shrink-0 w-4 h-4" />
 														<span className="text-sm font-medium truncate">{file.name}</span>
 														<Badge variant="secondary" className="ml-2 text-xs">
 															New

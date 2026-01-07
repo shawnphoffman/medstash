@@ -89,23 +89,33 @@ export default function ReceiptCard({ receipt, onDelete, onDownloadFile }: Recei
 					<div>
 						<p className="mb-2 text-sm text-muted-foreground">Files</p>
 						<div className="space-y-2">
-							{receipt.files.map(file => (
-								<div key={file.id} className="flex items-center justify-between p-2 rounded bg-muted">
-									<div className="flex items-center flex-1 min-w-0 gap-2">
-										<File className="flex-shrink-0 w-4 h-4" />
-										<span className="text-sm truncate">{file.original_filename}</span>
+							{receipt.files.map(file => {
+								const filenameChanged = file.filename !== file.original_filename
+								return (
+									<div key={file.id} className="flex items-center justify-between p-2 rounded bg-muted">
+										<div className="flex flex-col flex-1 min-w-0 gap-1">
+											<div className="flex items-center gap-2">
+												<File className="flex-shrink-0 w-4 h-4" />
+												<span className="text-sm font-medium truncate">{file.filename}</span>
+											</div>
+											{filenameChanged && (
+												<span className="text-xs text-muted-foreground ml-6 truncate">
+													Original: {file.original_filename}
+												</span>
+											)}
+										</div>
+										<Button
+											variant="ghost"
+											size="icon"
+											onClick={() => onDownloadFile(receipt.id, file.id, file.original_filename)}
+											className="flex-shrink-0"
+											aria-label={`Download ${file.filename}`}
+										>
+											<Download className="w-4 h-4" />
+										</Button>
 									</div>
-									<Button
-										variant="ghost"
-										size="icon"
-										onClick={() => onDownloadFile(receipt.id, file.id, file.original_filename)}
-										className="flex-shrink-0"
-										aria-label={`Download ${file.original_filename}`}
-									>
-										<Download className="w-4 h-4" />
-									</Button>
-								</div>
-							))}
+								)
+							})}
 						</div>
 					</div>
 				)}
