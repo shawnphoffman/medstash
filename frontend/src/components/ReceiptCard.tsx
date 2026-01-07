@@ -12,7 +12,10 @@ interface ReceiptCardProps {
 
 export default function ReceiptCard({ receipt, onDelete, onDownloadFile }: ReceiptCardProps) {
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+    // Parse date as local date to avoid timezone issues
+    // If dateString is in YYYY-MM-DD format, parse it as local date
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString();
   };
 
   const formatCurrency = (amount: number) => {
@@ -35,6 +38,7 @@ export default function ReceiptCard({ receipt, onDelete, onDownloadFile }: Recei
             size="icon"
             onClick={() => onDelete(receipt.id)}
             className="text-destructive hover:text-destructive"
+            aria-label="Delete receipt"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -103,6 +107,7 @@ export default function ReceiptCard({ receipt, onDelete, onDownloadFile }: Recei
                     size="icon"
                     onClick={() => onDownloadFile(receipt.id, file.id, file.original_filename)}
                     className="flex-shrink-0"
+                    aria-label={`Download ${file.original_filename}`}
                   >
                     <Download className="h-4 w-4" />
                   </Button>

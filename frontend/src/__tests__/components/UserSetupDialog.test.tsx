@@ -32,11 +32,11 @@ describe('UserSetupDialog', () => {
     expect(screen.queryByText('Welcome to MedStash')).not.toBeInTheDocument();
   });
 
-  it('should have submit button disabled when input is empty', () => {
+  it('should have submit button enabled to allow form validation', () => {
     render(<UserSetupDialog open={true} onComplete={mockOnComplete} />);
 
     const submitButton = screen.getByRole('button', { name: /continue/i });
-    expect(submitButton).toBeDisabled();
+    expect(submitButton).not.toBeDisabled();
   });
 
   it('should enable submit button when input has value', async () => {

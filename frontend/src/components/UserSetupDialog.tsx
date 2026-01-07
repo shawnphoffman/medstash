@@ -66,7 +66,7 @@ export default function UserSetupDialog({ open, onComplete }: UserSetupDialogPro
 						</div>
 					</div>
 					<DialogFooter>
-						<Button type="submit" disabled={loading || !userName.trim()}>
+						<Button type="submit" disabled={loading}>
 							{loading ? 'Saving...' : 'Continue'}
 						</Button>
 					</DialogFooter>
