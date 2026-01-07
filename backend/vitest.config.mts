@@ -8,10 +8,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    pool: 'vmThreads',
+    pool: 'forks',
     poolOptions: {
-      vmThreads: {
-        singleThread: true,
+      forks: {
+        singleFork: true,
       },
     },
     coverage: {

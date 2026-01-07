@@ -91,12 +91,12 @@ describe('dbService', () => {
     });
 
     describe('getReceiptById', () => {
-      it('should get a receipt by ID with files and flags', () => {
+      it('should get a receipt by ID with files and flags', async () => {
         const receiptData = createReceiptFixture();
         const receipt = createReceipt(receiptData);
 
         const flag = createFlag('Test Flag');
-        const updatedReceipt = updateReceipt(receipt.id, {}, [flag.id]);
+        await updateReceipt(receipt.id, {}, [flag.id]);
 
         addReceiptFile(receipt.id, 'file1.pdf', 'original1.pdf', 0);
         addReceiptFile(receipt.id, 'file2.pdf', 'original2.pdf', 1);
@@ -145,9 +145,9 @@ describe('dbService', () => {
     });
 
     describe('updateReceipt', () => {
-      it('should update receipt fields', () => {
+      it('should update receipt fields', async () => {
         const receipt = createReceipt(createReceiptFixture());
-        const updated = updateReceipt(receipt.id, {
+        const updated = await updateReceipt(receipt.id, {
           vendor: 'Updated Vendor',
           amount: 200.75,
         });
@@ -157,23 +157,23 @@ describe('dbService', () => {
         expect(updated?.user).toBe(receipt.user); // Unchanged
       });
 
-      it('should update receipt flags', () => {
+      it('should update receipt flags', async () => {
         const receipt = createReceipt(createReceiptFixture());
         const flag1 = createFlag('Flag 1');
         const flag2 = createFlag('Flag 2');
 
-        updateReceipt(receipt.id, {}, [flag1.id]);
+        await updateReceipt(receipt.id, {}, [flag1.id]);
         let updated = getReceiptById(receipt.id);
         expect(updated?.flags).toHaveLength(1);
 
-        updateReceipt(receipt.id, {}, [flag2.id]);
+        await updateReceipt(receipt.id, {}, [flag2.id]);
         updated = getReceiptById(receipt.id);
         expect(updated?.flags).toHaveLength(1);
         expect(updated?.flags[0].id).toBe(flag2.id);
       });
 
-      it('should return null for non-existent receipt', () => {
-        const updated = updateReceipt(99999, { vendor: 'Test' });
+      it('should return null for non-existent receipt', async () => {
+        const updated = await updateReceipt(99999, { vendor: 'Test' });
         expect(updated).toBeNull();
       });
     });
@@ -192,10 +192,10 @@ describe('dbService', () => {
         expect(deleted).toBe(false);
       });
 
-      it('should cascade delete files and flags', () => {
+      it('should cascade delete files and flags', async () => {
         const receipt = createReceipt(createReceiptFixture());
         const flag = createFlag('Test Flag');
-        updateReceipt(receipt.id, {}, [flag.id]);
+        await updateReceipt(receipt.id, {}, [flag.id]);
         addReceiptFile(receipt.id, 'file.pdf', 'original.pdf', 0);
 
         deleteReceipt(receipt.id);

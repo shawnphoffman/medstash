@@ -132,8 +132,10 @@ describe('ReceiptCard', () => {
       />
     );
 
-    expect(screen.getByText('original1.pdf')).toBeInTheDocument();
-    expect(screen.getByText('original2.pdf')).toBeInTheDocument();
+    // The original filename is split across text nodes ("Original: " and "original1.pdf")
+    // Use a more flexible matcher that can find text across multiple nodes
+    expect(screen.getByText(/original1\.pdf/)).toBeInTheDocument();
+    expect(screen.getByText(/original2\.pdf/)).toBeInTheDocument();
   });
 
   it('should not display files section when no files', () => {
