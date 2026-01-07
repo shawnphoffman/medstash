@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useToast } from '../components/ui/use-toast'
@@ -48,6 +48,7 @@ export default function ReceiptDetailPage() {
 	const [filePreviews, setFilePreviews] = useState<Map<number, string>>(new Map())
 	const [existingFilePreviews, setExistingFilePreviews] = useState<Map<number, string>>(new Map())
 	const [failedFilePreviews, setFailedFilePreviews] = useState<Set<number>>(new Set())
+	const fileInputRef = useRef<HTMLInputElement>(null)
 
 	const {
 		register,
@@ -604,6 +605,7 @@ export default function ReceiptDetailPage() {
 							<Label>Add Files</Label>
 							<div className="mt-2">
 								<input
+									ref={fileInputRef}
 									type="file"
 									multiple
 									onChange={onFileInput}
@@ -611,12 +613,15 @@ export default function ReceiptDetailPage() {
 									id="add-files-input"
 									accept="image/*,.pdf"
 								/>
-								<label htmlFor="add-files-input">
-									<Button type="button" variant="outline" className="cursor-pointer">
-										<Upload className="w-4 h-4 mr-2" />
-										Select Files
-									</Button>
-								</label>
+								<Button
+									type="button"
+									variant="outline"
+									className="cursor-pointer"
+									onClick={() => fileInputRef.current?.click()}
+								>
+									<Upload className="w-4 h-4 mr-2" />
+									Select Files
+								</Button>
 							</div>
 							{newFiles.length > 0 && (
 								<div className="mt-4 space-y-2">
