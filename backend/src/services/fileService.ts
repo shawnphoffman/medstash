@@ -286,3 +286,116 @@ export async function renameAllReceiptFiles(): Promise<{
 
 	return results
 }
+
+/**
+ * Restore file associations by scanning filesystem and matching to receipts
+ * This is useful when files exist on disk but database records are missing
+ * Returns summary of restored files
+ */
+export async function restoreFileAssociations(): Promise<{
+	totalReceipts: number
+	totalFilesFound: number
+	filesRestored: number
+	errors: Array<{ receiptId: number; error: string }>
+}> {
+	const { getAllReceipts, getReceiptById, addReceiptFile } = await import('./dbService')
+	const receipts = getAllReceipts()
+	const results = {
+		totalReceipts: receipts.length,
+		totalFilesFound: 0,
+		filesRestored: 0,
+		errors: [] as Array<{ receiptId: number; error: string }>,
+	}
+
+	const receiptsDir = getReceiptsDir()
+
+	// Get all receipt directories
+	let receiptDirs: string[]
+	try {
+		const entries = await fs.readdir(receiptsDir, { withFileTypes: true })
+		receiptDirs = entries.filter(entry => entry.isDirectory()).map(entry => entry.name)
+	} catch (error) {
+		console.error('Error reading receipts directory:', error)
+		return results
+	}
+
+	// Process each receipt directory
+	for (const dirName of receiptDirs) {
+		const receiptId = parseInt(dirName)
+		if (isNaN(receiptId)) {
+			continue // Skip non-numeric directories
+		}
+
+		// Check if receipt exists
+		const receipt = getReceiptById(receiptId)
+		if (!receipt) {
+			results.errors.push({
+				receiptId,
+				error: 'Receipt not found in database',
+			})
+			continue
+		}
+
+		// Get existing files from database
+		const existingFiles = receipt.files.map(f => f.filename)
+
+		// List files in directory
+		const receiptDir = getReceiptDir(receiptId)
+		let files: string[]
+		try {
+			files = await fs.readdir(receiptDir)
+			// Filter out directories and hidden files
+			files = files.filter(file => {
+				// Check if it's actually a file (not a directory)
+				return !file.startsWith('.')
+			})
+		} catch (error) {
+			results.errors.push({
+				receiptId,
+				error: `Error reading directory: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			})
+			continue
+		}
+
+		results.totalFilesFound += files.length
+
+		// Sort files to maintain consistent order
+		files.sort()
+
+		// Process each file
+		let newFileIndex = 0
+		for (const filename of files) {
+			// Skip if already in database
+			if (existingFiles.includes(filename)) {
+				continue
+			}
+
+			// Determine file order
+			// First, try to extract order from filename (look for _N.ext pattern at the end)
+			let fileOrder = existingFiles.length + newFileIndex
+			const orderMatch = filename.match(/_(\d+)\.\w+$/)
+			if (orderMatch) {
+				const extractedOrder = parseInt(orderMatch[1])
+				if (!isNaN(extractedOrder)) {
+					fileOrder = extractedOrder
+				}
+			}
+
+			// Use filename as original_filename (best guess since we can't recover the original)
+			const originalFilename = filename
+
+			try {
+				addReceiptFile(receiptId, filename, originalFilename, fileOrder)
+				results.filesRestored++
+				newFileIndex++
+			} catch (error) {
+				results.errors.push({
+					receiptId,
+					error: `Failed to restore file ${filename}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				})
+			}
+		}
+	}
+
+	return results
+}

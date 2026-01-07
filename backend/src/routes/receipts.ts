@@ -15,6 +15,7 @@ import {
   getReceiptFilePath,
   fileExists,
   deleteReceiptFile as deleteFile,
+  restoreFileAssociations,
 } from '../services/fileService';
 import { CreateReceiptInput, UpdateReceiptInput } from '../models/receipt';
 import { dbQueries } from '../db';
@@ -384,6 +385,20 @@ router.put('/:id/flags', async (req, res) => {
   } catch (error) {
     console.error('Error updating receipt flags:', error);
     res.status(500).json({ error: 'Failed to update receipt flags' });
+  }
+});
+
+// POST /api/receipts/restore-files - Restore file associations from filesystem
+router.post('/restore-files', async (req, res) => {
+  try {
+    const results = await restoreFileAssociations();
+    res.json({
+      message: 'File associations restored',
+      ...results,
+    });
+  } catch (error) {
+    console.error('Error restoring file associations:', error);
+    res.status(500).json({ error: 'Failed to restore file associations' });
   }
 });
 
