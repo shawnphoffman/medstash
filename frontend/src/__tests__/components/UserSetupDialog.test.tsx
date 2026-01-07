@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '../helpers/testUtils'
+import { render, screen, waitFor, act } from '../helpers/testUtils'
 import userEvent from '@testing-library/user-event'
 import UserSetupDialog from '../../components/UserSetupDialog'
 import { settingsApi } from '../../lib/api'
@@ -44,7 +44,9 @@ describe('UserSetupDialog', () => {
 		render(<UserSetupDialog open={true} onComplete={mockOnComplete} />)
 
 		const input = screen.getByLabelText('Your Name')
-		await user.type(input, 'John Doe')
+		await act(async () => {
+			await user.type(input, 'John Doe')
+		})
 
 		const submitButton = screen.getByRole('button', { name: /continue/i })
 		expect(submitButton).not.toBeDisabled()
@@ -55,9 +57,13 @@ describe('UserSetupDialog', () => {
 		render(<UserSetupDialog open={true} onComplete={mockOnComplete} />)
 
 		const submitButton = screen.getByRole('button', { name: /continue/i })
-		await user.click(submitButton)
+		await act(async () => {
+			await user.click(submitButton)
+		})
 
-		expect(screen.getByText('Please enter your name')).toBeInTheDocument()
+		await waitFor(() => {
+			expect(screen.getByText('Please enter your name')).toBeInTheDocument()
+		})
 		expect(mockOnComplete).not.toHaveBeenCalled()
 	})
 
@@ -66,12 +72,18 @@ describe('UserSetupDialog', () => {
 		render(<UserSetupDialog open={true} onComplete={mockOnComplete} />)
 
 		const input = screen.getByLabelText('Your Name')
-		await user.type(input, '   ')
+		await act(async () => {
+			await user.type(input, '   ')
+		})
 
 		const submitButton = screen.getByRole('button', { name: /continue/i })
-		await user.click(submitButton)
+		await act(async () => {
+			await user.click(submitButton)
+		})
 
-		expect(screen.getByText('Please enter your name')).toBeInTheDocument()
+		await waitFor(() => {
+			expect(screen.getByText('Please enter your name')).toBeInTheDocument()
+		})
 		expect(mockOnComplete).not.toHaveBeenCalled()
 	})
 
@@ -82,10 +94,14 @@ describe('UserSetupDialog', () => {
 		render(<UserSetupDialog open={true} onComplete={mockOnComplete} />)
 
 		const input = screen.getByLabelText('Your Name')
-		await user.type(input, '  John Doe  ')
+		await act(async () => {
+			await user.type(input, '  John Doe  ')
+		})
 
 		const submitButton = screen.getByRole('button', { name: /continue/i })
-		await user.click(submitButton)
+		await act(async () => {
+			await user.click(submitButton)
+		})
 
 		await waitFor(() => {
 			expect(settingsApi.set).toHaveBeenCalledWith('users', ['John Doe'])
@@ -104,15 +120,23 @@ describe('UserSetupDialog', () => {
 		render(<UserSetupDialog open={true} onComplete={mockOnComplete} />)
 
 		const input = screen.getByLabelText('Your Name')
-		await user.type(input, 'John Doe')
+		await act(async () => {
+			await user.type(input, 'John Doe')
+		})
 
 		const submitButton = screen.getByRole('button', { name: /continue/i })
-		await user.click(submitButton)
+		await act(async () => {
+			await user.click(submitButton)
+		})
 
-		expect(screen.getByText('Saving...')).toBeInTheDocument()
+		await waitFor(() => {
+			expect(screen.getByText('Saving...')).toBeInTheDocument()
+		})
 		expect(submitButton).toBeDisabled()
 
-		resolvePromise!({ data: { key: 'users', value: ['John Doe'] } })
+		await act(async () => {
+			resolvePromise!({ data: { key: 'users', value: ['John Doe'] } })
+		})
 		await waitFor(() => {
 			expect(screen.queryByText('Saving...')).not.toBeInTheDocument()
 		})
@@ -127,10 +151,14 @@ describe('UserSetupDialog', () => {
 		render(<UserSetupDialog open={true} onComplete={mockOnComplete} />)
 
 		const input = screen.getByLabelText('Your Name')
-		await user.type(input, 'John Doe')
+		await act(async () => {
+			await user.type(input, 'John Doe')
+		})
 
 		const submitButton = screen.getByRole('button', { name: /continue/i })
-		await user.click(submitButton)
+		await act(async () => {
+			await user.click(submitButton)
+		})
 
 		await waitFor(() => {
 			expect(screen.getByText('API Error')).toBeInTheDocument()
@@ -146,10 +174,14 @@ describe('UserSetupDialog', () => {
 		render(<UserSetupDialog open={true} onComplete={mockOnComplete} />)
 
 		const input = screen.getByLabelText('Your Name')
-		await user.type(input, 'John Doe')
+		await act(async () => {
+			await user.type(input, 'John Doe')
+		})
 
 		const submitButton = screen.getByRole('button', { name: /continue/i })
-		await user.click(submitButton)
+		await act(async () => {
+			await user.click(submitButton)
+		})
 
 		await waitFor(() => {
 			expect(screen.getByText('Failed to save user name')).toBeInTheDocument()
@@ -167,14 +199,22 @@ describe('UserSetupDialog', () => {
 		render(<UserSetupDialog open={true} onComplete={mockOnComplete} />)
 
 		const input = screen.getByLabelText('Your Name')
-		await user.type(input, 'John Doe')
+		await act(async () => {
+			await user.type(input, 'John Doe')
+		})
 
 		const submitButton = screen.getByRole('button', { name: /continue/i })
-		await user.click(submitButton)
+		await act(async () => {
+			await user.click(submitButton)
+		})
 
-		expect(input).toBeDisabled()
+		await waitFor(() => {
+			expect(input).toBeDisabled()
+		})
 
-		resolvePromise!({ data: { key: 'users', value: ['John Doe'] } })
+		await act(async () => {
+			resolvePromise!({ data: { key: 'users', value: ['John Doe'] } })
+		})
 		await waitFor(() => {
 			expect(input).not.toBeDisabled()
 		})
