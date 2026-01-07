@@ -47,8 +47,8 @@ services:
           path: ./frontend/index.html
           target: /app/index.html
         - action: sync
-          path: ./frontend/vite.config.ts
-          target: /app/vite.config.ts
+          path: ./frontend/vite.config.mts
+          target: /app/vite.config.mts
         - action: sync
           path: ./frontend/tailwind.config.js
           target: /app/tailwind.config.js
