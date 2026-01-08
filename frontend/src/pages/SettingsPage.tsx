@@ -6,7 +6,9 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { ColorPicker, TAILWIND_COLORS } from '../components/ui/color-picker'
 import { FlagBadge } from '../components/FlagBadge'
-import { Plus, Trash2, Edit2, Save, X, RefreshCw, Info, Flag as FlagIcon } from 'lucide-react'
+import { Plus, Trash2, Edit2, Save, X, RefreshCw, Info, Flag as FlagIcon, RotateCcw } from 'lucide-react'
+
+const DEFAULT_FILENAME_PATTERN = '{date}_{user}_{vendor}_{amount}_{type}_{index}'
 
 export default function SettingsPage() {
 	const [flags, setFlags] = useState<Flag[]>([])
@@ -24,8 +26,8 @@ export default function SettingsPage() {
 	const [editReceiptTypeName, setEditReceiptTypeName] = useState('')
 	const [newUser, setNewUser] = useState('')
 	const [newReceiptType, setNewReceiptType] = useState('')
-	const [filenamePattern, setFilenamePattern] = useState('{date}_{user}_{vendor}_{amount}_{type}_{index}')
-	const [originalPattern, setOriginalPattern] = useState('{date}_{user}_{vendor}_{amount}_{type}_{index}')
+	const [filenamePattern, setFilenamePattern] = useState(DEFAULT_FILENAME_PATTERN)
+	const [originalPattern, setOriginalPattern] = useState(DEFAULT_FILENAME_PATTERN)
 	const [patternError, setPatternError] = useState<string | null>(null)
 	const [isRenaming, setIsRenaming] = useState(false)
 	const [error, setError] = useState<string | null>(null)
@@ -47,7 +49,7 @@ export default function SettingsPage() {
 			setUsers(usersRes.data)
 			setReceiptTypes(receiptTypesRes.data)
 			// Load filename pattern
-			const pattern = settingsRes.data?.filenamePattern || '{date}_{user}_{vendor}_{amount}_{type}_{index}'
+			const pattern = settingsRes.data?.filenamePattern || DEFAULT_FILENAME_PATTERN
 			setFilenamePattern(pattern)
 			setOriginalPattern(pattern)
 		} catch (err: any) {
@@ -321,6 +323,13 @@ export default function SettingsPage() {
 	const handlePatternChange = (value: string) => {
 		setFilenamePattern(value)
 		const error = validatePattern(value)
+		setPatternError(error)
+	}
+
+	// Handle reset to default pattern
+	const handleResetToDefault = () => {
+		setFilenamePattern(DEFAULT_FILENAME_PATTERN)
+		const error = validatePattern(DEFAULT_FILENAME_PATTERN)
 		setPatternError(error)
 	}
 
@@ -598,14 +607,24 @@ export default function SettingsPage() {
 				<CardContent className="space-y-4">
 					<div className="space-y-2">
 						<Label htmlFor="filename-pattern">Pattern</Label>
-						<Input
-							id="filename-pattern"
-							placeholder="{date}_{user}_{vendor}_{amount}_{type}_{index}"
-							value={filenamePattern}
-							onChange={e => handlePatternChange(e.target.value)}
-							onKeyDown={e => e.key === 'Enter' && !patternError && handleSavePattern()}
-							className={patternError ? 'border-destructive' : ''}
-						/>
+						<div className="flex gap-2">
+							<Input
+								id="filename-pattern"
+								placeholder={DEFAULT_FILENAME_PATTERN}
+								value={filenamePattern}
+								onChange={e => handlePatternChange(e.target.value)}
+								onKeyDown={e => e.key === 'Enter' && !patternError && handleSavePattern()}
+								className={patternError ? 'border-destructive' : ''}
+							/>
+							<Button
+								variant="outline"
+								onClick={handleResetToDefault}
+								title="Reset to default pattern"
+								disabled={filenamePattern === DEFAULT_FILENAME_PATTERN}
+							>
+								<RotateCcw className="w-4 h-4" />
+							</Button>
+						</div>
 						{patternError && <p className="text-sm text-destructive">{patternError}</p>}
 					</div>
 
