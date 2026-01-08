@@ -67,12 +67,12 @@ export default function ReceiptsPage() {
 
 	const getSortIcon = (field: SortField) => {
 		if (sortField !== field) {
-			return <ArrowUpDown className="w-4 h-4 opacity-50 text-muted-foreground" />
+			return <ArrowUpDown className="opacity-50 size-4 text-muted-foreground" />
 		}
 		if (sortDirection === 'asc') {
-			return <ArrowUp className="w-4 h-4" />
+			return <ArrowUp className="size-4" />
 		}
-		return <ArrowDown className="w-4 h-4" />
+		return <ArrowDown className="size-4" />
 	}
 
 	const handleExport = async () => {
@@ -155,7 +155,7 @@ export default function ReceiptsPage() {
 					<p className="text-muted-foreground">Manage your medical receipts ({receipts.length} total)</p>
 				</div>
 				<Button onClick={handleExport}>
-					<Download className="w-4 h-4 mr-2" />
+					<Download className="mr-2 size-4" />
 					Export All
 				</Button>
 			</div>
@@ -166,7 +166,7 @@ export default function ReceiptsPage() {
 					<div className="flex gap-4">
 						<div className="flex-1">
 							<div className="relative">
-								<Search className="absolute w-4 h-4 transform -translate-y-1/2 left-3 top-1/2 text-muted-foreground" />
+								<Search className="absolute transform -translate-y-1/2 size-4 left-3 top-1/2 text-muted-foreground" />
 								<Input
 									placeholder="Search receipts..."
 									value={searchTerm}
@@ -309,7 +309,7 @@ export default function ReceiptsPage() {
 											<td className="px-4 py-3 text-sm font-medium">{formatCurrency(receipt.amount)}</td>
 											<td className="px-4 py-3 text-sm">
 												<div className="flex items-center gap-1">
-													<File className="w-4 h-4 text-muted-foreground" />
+													<File className="size-4 text-muted-foreground" />
 													<span>{receipt.files.length}</span>
 												</div>
 											</td>
@@ -319,10 +319,10 @@ export default function ReceiptsPage() {
 														{receipt.flags.map(flag => (
 															<Tooltip key={flag.id}>
 																<TooltipTrigger asChild>
-																	<FlagIcon className="w-4 h-4" style={flag.color ? { color: flag.color } : undefined} />
+																	<FlagIcon className="size-4" style={flag.color ? { color: flag.color } : undefined} />
 																</TooltipTrigger>
 																<TooltipContent>
-																	<p>{flag.name} xx</p>
+																	<p>{flag.name}</p>
 																</TooltipContent>
 															</Tooltip>
 														))}

@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
 import { Select } from '../components/ui/select'
 import { Badge } from '../components/ui/badge'
-import { getBadgeClassName } from '../components/ui/color-picker'
+import { getBadgeClassName, getBorderClassName } from '../components/ui/color-picker'
 import { ArrowLeft, Download, Trash2, Upload, X, File } from 'lucide-react'
 import { cn } from '../lib/utils'
 
@@ -447,12 +447,7 @@ export default function ReceiptDetailPage() {
 												))}
 											</Select>
 										) : users.length === 1 ? (
-											<Input
-												id="user_id"
-												value={users[0].name}
-												readOnly
-												className="cursor-not-allowed bg-muted"
-											/>
+											<Input id="user_id" value={users[0].name} readOnly className="cursor-not-allowed bg-muted" />
 										) : (
 											<Input id="user_id" placeholder="No users available" disabled />
 										)}
@@ -460,7 +455,11 @@ export default function ReceiptDetailPage() {
 									<div>
 										<Label htmlFor="receipt_type_id">Receipt Type</Label>
 										{receiptTypes.length > 1 ? (
-											<Select id="receipt_type_id" {...register('receipt_type_id', { valueAsNumber: true })} defaultValue={receipt.receipt_type_id}>
+											<Select
+												id="receipt_type_id"
+												{...register('receipt_type_id', { valueAsNumber: true })}
+												defaultValue={receipt.receipt_type_id}
+											>
 												{receiptTypes.map(type => (
 													<option key={type.id} value={type.id}>
 														{type.name}
@@ -468,12 +467,7 @@ export default function ReceiptDetailPage() {
 												))}
 											</Select>
 										) : receiptTypes.length === 1 ? (
-											<Input
-												id="receipt_type_id"
-												value={receiptTypes[0].name}
-												readOnly
-												className="cursor-not-allowed bg-muted"
-											/>
+											<Input id="receipt_type_id" value={receiptTypes[0].name} readOnly className="cursor-not-allowed bg-muted" />
 										) : (
 											<Input id="receipt_type_id" placeholder="No types available" disabled />
 										)}
@@ -544,12 +538,12 @@ export default function ReceiptDetailPage() {
 												<Button
 													key={flag.id}
 													type="button"
-													variant={selectedFlagIds.includes(flag.id) ? 'default' : 'outline'}
+													variant={'outline'}
 													size="sm"
 													onClick={() => toggleFlag(flag.id)}
 													className={
-														selectedFlagIds.includes(flag.id) && flag.color
-															? cn(getBadgeClassName(flag.color), `border-[${flag.color}]`)
+														flag.color
+															? cn(selectedFlagIds.includes(flag.id) && getBadgeClassName(flag.color), getBorderClassName(flag.color))
 															: undefined
 													}
 												>
@@ -591,67 +585,67 @@ export default function ReceiptDetailPage() {
 																<span className="ml-6 text-xs truncate text-muted-foreground">Original: {file.original_filename}</span>
 															)}
 														</div>
-													<div className="flex gap-2">
-														{!isMarkedForDeletion && (
-															<>
-																{!failedFilePreviews.has(file.id) && (
-																	<Button
-																		type="button"
-																		variant="ghost"
-																		size="icon"
-																		onClick={() => handleDownloadFile(file.id, file.original_filename)}
-																	>
-																		<Download className="w-4 h-4" />
-																	</Button>
-																)}
-																{failedFilePreviews.has(file.id) && (
-																	<>
-																		<input
-																			type="file"
-																			ref={el => {
-																				if (el) {
-																					fileReplaceInputRefs.current.set(file.id, el)
-																				} else {
-																					fileReplaceInputRefs.current.delete(file.id)
-																				}
-																			}}
-																			onChange={e => handleReplaceFileInput(file.id, e)}
-																			className="hidden"
-																			accept="image/*,.pdf"
-																			id={`replace-file-${file.id}`}
-																		/>
+														<div className="flex gap-2">
+															{!isMarkedForDeletion && (
+																<>
+																	{!failedFilePreviews.has(file.id) && (
 																		<Button
 																			type="button"
-																			variant="outline"
-																			size="sm"
-																			onClick={() => fileReplaceInputRefs.current.get(file.id)?.click()}
-																			disabled={replacingFileId === file.id}
+																			variant="ghost"
+																			size="icon"
+																			onClick={() => handleDownloadFile(file.id, file.original_filename)}
 																		>
-																			{replacingFileId === file.id ? (
-																				<>Replacing...</>
-																			) : (
-																				<>
-																					<Upload className="w-4 h-4 mr-2" />
-																					Replace
-																				</>
-																			)}
+																			<Download className="w-4 h-4" />
 																		</Button>
-																	</>
-																)}
-															</>
-														)}
-														<Button
-															type="button"
-															variant="ghost"
-															size="icon"
-															onClick={() => (isMarkedForDeletion ? handleRestoreFile(file.id) : handleDeleteFile(file.id))}
-															className={cn(
-																isMarkedForDeletion ? 'text-primary hover:text-primary' : 'text-destructive hover:text-destructive'
+																	)}
+																	{failedFilePreviews.has(file.id) && (
+																		<>
+																			<input
+																				type="file"
+																				ref={el => {
+																					if (el) {
+																						fileReplaceInputRefs.current.set(file.id, el)
+																					} else {
+																						fileReplaceInputRefs.current.delete(file.id)
+																					}
+																				}}
+																				onChange={e => handleReplaceFileInput(file.id, e)}
+																				className="hidden"
+																				accept="image/*,.pdf"
+																				id={`replace-file-${file.id}`}
+																			/>
+																			<Button
+																				type="button"
+																				variant="outline"
+																				size="sm"
+																				onClick={() => fileReplaceInputRefs.current.get(file.id)?.click()}
+																				disabled={replacingFileId === file.id}
+																			>
+																				{replacingFileId === file.id ? (
+																					<>Replacing...</>
+																				) : (
+																					<>
+																						<Upload className="w-4 h-4 mr-2" />
+																						Replace
+																					</>
+																				)}
+																			</Button>
+																		</>
+																	)}
+																</>
 															)}
-														>
-															{isMarkedForDeletion ? <X className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
-														</Button>
-													</div>
+															<Button
+																type="button"
+																variant="ghost"
+																size="icon"
+																onClick={() => (isMarkedForDeletion ? handleRestoreFile(file.id) : handleDeleteFile(file.id))}
+																className={cn(
+																	isMarkedForDeletion ? 'text-primary hover:text-primary' : 'text-destructive hover:text-destructive'
+																)}
+															>
+																{isMarkedForDeletion ? <X className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+															</Button>
+														</div>
 													</div>
 												)
 											})
@@ -791,7 +785,7 @@ export default function ReceiptDetailPage() {
 															<div className="text-center">
 																<File className="w-12 h-12 mx-auto mb-2 text-destructive" />
 																<p className="text-sm text-destructive">File not available</p>
-																<p className="text-xs text-muted-foreground mb-4">The file may have been deleted or moved</p>
+																<p className="mb-4 text-xs text-muted-foreground">The file may have been deleted or moved</p>
 																<input
 																	type="file"
 																	ref={el => {

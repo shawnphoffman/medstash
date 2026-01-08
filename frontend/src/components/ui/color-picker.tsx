@@ -97,6 +97,34 @@ export function getBadgeClassName(backgroundColor: string): string {
 	return color.class
 }
 
+/**
+ * Get Tailwind border color class for a given hex color
+ * Returns the className string with border color class (e.g., 'border-red-600')
+ */
+export function getBorderClassName(backgroundColor: string): string {
+	const borderColorMap: Record<string, string> = {
+		'#ef4444': 'border-red-600',
+		'#f97316': 'border-orange-600',
+		'#f59e0b': 'border-amber-600',
+		'#eab308': 'border-yellow-600',
+		'#84cc16': 'border-lime-600',
+		'#22c55e': 'border-green-600',
+		'#10b981': 'border-emerald-600',
+		'#14b8a6': 'border-teal-600',
+		'#06b6d4': 'border-cyan-600',
+		'#0ea5e9': 'border-sky-600',
+		'#3b82f6': 'border-blue-600',
+		'#6366f1': 'border-indigo-600',
+		'#8b5cf6': 'border-violet-600',
+		'#a855f7': 'border-purple-600',
+		'#d946ef': 'border-fuchsia-600',
+		'#ec4899': 'border-pink-600',
+		'#f43f5e': 'border-rose-600',
+		'#64748b': 'border-slate-600',
+	}
+	return borderColorMap[backgroundColor] || 'border-blue-600'
+}
+
 interface ColorPickerProps {
 	value: string
 	onChange: (color: string) => void

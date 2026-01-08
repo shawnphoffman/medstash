@@ -9,7 +9,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
 import { Select } from '../components/ui/select'
-import { getBadgeClassName } from '../components/ui/color-picker'
+import { getBadgeClassName, getBorderClassName } from '../components/ui/color-picker'
 import { Upload, X, File } from 'lucide-react'
 import { cn } from '../lib/utils'
 
@@ -55,11 +55,7 @@ export default function UploadPage() {
 	useEffect(() => {
 		const loadData = async () => {
 			try {
-				const [flagsRes, usersRes, receiptTypesRes] = await Promise.all([
-					flagsApi.getAll(),
-					usersApi.getAll(),
-					receiptTypesApi.getAll(),
-				])
+				const [flagsRes, usersRes, receiptTypesRes] = await Promise.all([flagsApi.getAll(), usersApi.getAll(), receiptTypesApi.getAll()])
 				setFlags(flagsRes.data)
 				setUsers(usersRes.data)
 				setReceiptTypes(receiptTypesRes.data)
@@ -338,12 +334,7 @@ export default function UploadPage() {
 												))}
 											</Select>
 										) : users.length === 1 ? (
-											<Input
-												id="user_id"
-												value={users[0].name}
-												readOnly
-												className="cursor-not-allowed bg-muted"
-											/>
+											<Input id="user_id" value={users[0].name} readOnly className="cursor-not-allowed bg-muted" />
 										) : (
 											<Input id="user_id" placeholder="No users available" disabled />
 										)}
@@ -360,12 +351,7 @@ export default function UploadPage() {
 												))}
 											</Select>
 										) : receiptTypes.length === 1 ? (
-											<Input
-												id="receipt_type_id"
-												value={receiptTypes[0].name}
-												readOnly
-												className="cursor-not-allowed bg-muted"
-											/>
+											<Input id="receipt_type_id" value={receiptTypes[0].name} readOnly className="cursor-not-allowed bg-muted" />
 										) : (
 											<Input id="receipt_type_id" placeholder="No types available" disabled />
 										)}
@@ -437,12 +423,12 @@ export default function UploadPage() {
 												<Button
 													key={flag.id}
 													type="button"
-													variant={selectedFlagIds.includes(flag.id) ? 'default' : 'outline'}
+													variant={'outline'}
 													size="sm"
 													onClick={() => toggleFlag(flag.id)}
 													className={
-														selectedFlagIds.includes(flag.id) && flag.color
-															? cn(getBadgeClassName(flag.color), `border-[${flag.color}]`)
+														flag.color
+															? cn(selectedFlagIds.includes(flag.id) && getBadgeClassName(flag.color), getBorderClassName(flag.color))
 															: undefined
 													}
 												>
