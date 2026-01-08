@@ -7,6 +7,7 @@ import {
   deleteReceiptType,
 } from '../services/dbService';
 import { CreateReceiptTypeInput, UpdateReceiptTypeInput } from '../models/receipt';
+import { sanitizeString } from '../utils/sanitization';
 
 const router = express.Router();
 
@@ -48,7 +49,12 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: 'Receipt type name is required' });
     }
 
-    const type = createReceiptType(name.trim());
+    const sanitizedName = sanitizeString(name);
+    if (sanitizedName.length === 0) {
+      return res.status(400).json({ error: 'Receipt type name cannot be empty after sanitization' });
+    }
+
+    const type = createReceiptType(sanitizedName);
     res.status(201).json(type);
   } catch (error) {
     console.error('Error creating receipt type:', error);
@@ -69,7 +75,12 @@ router.put('/:id', (req, res) => {
       return res.status(400).json({ error: 'Receipt type name must be a non-empty string' });
     }
 
-    const type = updateReceiptType(id, name?.trim());
+    const sanitizedName = name ? sanitizeString(name) : undefined;
+    if (sanitizedName !== undefined && sanitizedName.length === 0) {
+      return res.status(400).json({ error: 'Receipt type name cannot be empty after sanitization' });
+    }
+
+    const type = updateReceiptType(id, sanitizedName);
     if (!type) {
       return res.status(404).json({ error: 'Receipt type not found' });
     }

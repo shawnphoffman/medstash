@@ -21,6 +21,7 @@ import {
 	validateDescription,
 	validateProviderAddress,
 } from '../utils/validation'
+import { sanitizeString, sanitizeOptionalString } from '../utils/sanitization'
 
 const router = express.Router()
 
@@ -201,17 +202,18 @@ router.post('/', upload.array('files', 10), handleMulterError, async (req, res) 
 		}
 
 		// All fields are optional except files - provide defaults
+		// Sanitize all string inputs to prevent XSS attacks
 		const receiptData: CreateReceiptInput = {
 			user_id: parsedUserId,
 			receipt_type_id: parsedReceiptTypeId,
-			user: user || undefined, // Legacy support
-			type: type || undefined, // Legacy support
+			user: user ? sanitizeString(user) : undefined, // Legacy support
+			type: type ? sanitizeString(type) : undefined, // Legacy support
 			amount: parsedAmount,
-			vendor: (vendor || '').trim(),
-			provider_address: (provider_address || '').trim(),
-			description: (description || '').trim(),
+			vendor: sanitizeString(vendor),
+			provider_address: sanitizeString(provider_address),
+			description: sanitizeString(description),
 			date: dateToValidate,
-			notes: notes ? notes.trim() : undefined,
+			notes: sanitizeOptionalString(notes),
 			flag_ids: parsedFlagIds,
 		}
 
@@ -313,13 +315,13 @@ router.put('/:id', async (req, res) => {
 			updateData.date = date as string
 		}
 
-		// Validate string field lengths
+		// Validate string field lengths and sanitize inputs
 		if (vendor !== undefined) {
 			const vendorValidation = validateVendor(vendor)
 			if (!vendorValidation.valid) {
 				return res.status(400).json({ error: vendorValidation.error })
 			}
-			updateData.vendor = (vendor as string).trim()
+			updateData.vendor = sanitizeString(vendor)
 		}
 
 		if (provider_address !== undefined) {
@@ -327,7 +329,7 @@ router.put('/:id', async (req, res) => {
 			if (!addressValidation.valid) {
 				return res.status(400).json({ error: addressValidation.error })
 			}
-			updateData.provider_address = (provider_address as string).trim()
+			updateData.provider_address = sanitizeString(provider_address)
 		}
 
 		if (description !== undefined) {
@@ -335,9 +337,17 @@ router.put('/:id', async (req, res) => {
 			if (!descriptionValidation.valid) {
 				return res.status(400).json({ error: descriptionValidation.error })
 			}
-			updateData.description = (description as string).trim()
+			updateData.description = sanitizeString(description)
 		}
-		if (notes !== undefined) updateData.notes = notes
+		if (notes !== undefined) {
+			updateData.notes = sanitizeOptionalString(notes)
+		}
+		if (user !== undefined) {
+			updateData.user = sanitizeString(user) // Legacy support
+		}
+		if (type !== undefined) {
+			updateData.type = sanitizeString(type) // Legacy support
+		}
 
 		// Parse flag_ids safely
 		let flagIds: number[] | undefined

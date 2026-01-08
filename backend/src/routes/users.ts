@@ -7,6 +7,7 @@ import {
   deleteUser,
 } from '../services/dbService';
 import { CreateUserInput, UpdateUserInput } from '../models/receipt';
+import { sanitizeString } from '../utils/sanitization';
 
 const router = express.Router();
 
@@ -48,7 +49,12 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: 'User name is required' });
     }
 
-    const user = createUser(name.trim());
+    const sanitizedName = sanitizeString(name);
+    if (sanitizedName.length === 0) {
+      return res.status(400).json({ error: 'User name cannot be empty after sanitization' });
+    }
+
+    const user = createUser(sanitizedName);
     res.status(201).json(user);
   } catch (error) {
     console.error('Error creating user:', error);
@@ -69,7 +75,12 @@ router.put('/:id', (req, res) => {
       return res.status(400).json({ error: 'User name must be a non-empty string' });
     }
 
-    const user = updateUser(id, name?.trim());
+    const sanitizedName = name ? sanitizeString(name) : undefined;
+    if (sanitizedName !== undefined && sanitizedName.length === 0) {
+      return res.status(400).json({ error: 'User name cannot be empty after sanitization' });
+    }
+
+    const user = updateUser(id, sanitizedName);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }

@@ -7,6 +7,7 @@ import {
   deleteFlag,
 } from '../services/dbService';
 import { CreateFlagInput, UpdateFlagInput } from '../models/receipt';
+import { sanitizeString } from '../utils/sanitization';
 
 const router = express.Router();
 
@@ -48,7 +49,12 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: 'Flag name is required' });
     }
 
-    const flag = createFlag(name.trim(), color);
+    const sanitizedName = sanitizeString(name);
+    if (sanitizedName.length === 0) {
+      return res.status(400).json({ error: 'Flag name cannot be empty after sanitization' });
+    }
+
+    const flag = createFlag(sanitizedName, color);
     res.status(201).json(flag);
   } catch (error) {
     console.error('Error creating flag:', error);
@@ -69,7 +75,12 @@ router.put('/:id', (req, res) => {
       return res.status(400).json({ error: 'Flag name must be a non-empty string' });
     }
 
-    const flag = updateFlag(id, name?.trim(), color);
+    const sanitizedName = name ? sanitizeString(name) : undefined;
+    if (sanitizedName !== undefined && sanitizedName.length === 0) {
+      return res.status(400).json({ error: 'Flag name cannot be empty after sanitization' });
+    }
+
+    const flag = updateFlag(id, sanitizedName, color);
     if (!flag) {
       return res.status(404).json({ error: 'Flag not found' });
     }
