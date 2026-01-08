@@ -7,7 +7,7 @@ import { Request, Response, NextFunction } from 'express'
  */
 export function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
 	const isProduction = process.env.NODE_ENV === 'production'
-	
+
 	// Log error details server-side (never expose to client)
 	console.error('Error:', {
 		message: err.message,
@@ -30,14 +30,12 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
 		if (status >= 400 && status < 500) {
 			// Client errors - message is usually safe, but sanitize in production
 			return res.status(status).json({
-				error: isProduction && err.message?.includes('ENOENT') 
-					? 'Resource not found' 
-					: (err.message || 'An error occurred'),
+				error: isProduction && err.message?.includes('ENOENT') ? 'Resource not found' : err.message || 'An error occurred',
 			})
 		}
 		// Server errors (5xx) - never expose details in production
 		return res.status(status).json({
-			error: isProduction ? 'Internal server error' : (err.message || 'An error occurred'),
+			error: isProduction ? 'Internal server error' : err.message || 'An error occurred',
 		})
 	}
 
