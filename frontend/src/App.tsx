@@ -4,7 +4,7 @@ import UploadPage from './pages/UploadPage'
 import ReceiptsPage from './pages/ReceiptsPage'
 import ReceiptDetailPage from './pages/ReceiptDetailPage'
 import SettingsPage from './pages/SettingsPage'
-import { Receipt, Upload, Settings } from 'lucide-react'
+import { Receipt, Upload, Settings, ReceiptText } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { ThemeToggle } from './components/ThemeToggle'
 import UserSetupDialog from './components/UserSetupDialog'
@@ -23,9 +23,12 @@ function Navigation() {
 
 	return (
 		<nav className="border-b bg-background">
-			<div className="container mx-auto px-4 py-4">
+			<div className="container px-4 py-4 mx-auto">
 				<div className="flex items-center justify-between">
-					<h1 className="text-2xl font-bold">MedStash</h1>
+					<Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
+						<ReceiptText className="w-6 h-6" />
+						<h1 className="text-2xl font-bold cursor-pointer">MedStash</h1>
+					</Link>
 					<div className="flex items-center gap-2">
 						{navItems.map(item => {
 							const Icon = item.icon
@@ -36,7 +39,7 @@ function Navigation() {
 										variant={isActive ? 'default' : 'ghost'}
 										className={cn('gap-2', isActive && 'bg-primary text-primary-foreground')}
 									>
-										<Icon className="h-4 w-4" />
+										<Icon className="w-4 h-4" />
 										{item.label}
 									</Button>
 								</Link>
@@ -110,7 +113,7 @@ function App() {
 
 	if (isChecking) {
 		return (
-			<div className="min-h-screen bg-background flex items-center justify-center">
+			<div className="flex items-center justify-center min-h-screen bg-background">
 				<div className="text-center">
 					<p className="text-muted-foreground">Loading...</p>
 				</div>
@@ -118,28 +121,28 @@ function App() {
 		)
 	}
 
-  return (
-    <BrowserRouter
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <main className="container mx-auto px-4 py-8">
-          <Routes>
-            <Route path="/" element={<ReceiptsPage />} />
-            <Route path="/receipts/:id" element={<ReceiptDetailPage />} />
-            <Route path="/upload" element={<UploadPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Routes>
-        </main>
-        <UserSetupDialog open={showUserSetup} onComplete={handleUserSetupComplete} />
-        <Toaster />
-      </div>
-    </BrowserRouter>
-  )
+	return (
+		<BrowserRouter
+			future={{
+				v7_startTransition: true,
+				v7_relativeSplatPath: true,
+			}}
+		>
+			<div className="min-h-screen bg-background">
+				<Navigation />
+				<main className="container px-4 py-8 mx-auto">
+					<Routes>
+						<Route path="/" element={<ReceiptsPage />} />
+						<Route path="/receipts/:id" element={<ReceiptDetailPage />} />
+						<Route path="/upload" element={<UploadPage />} />
+						<Route path="/settings" element={<SettingsPage />} />
+					</Routes>
+				</main>
+				<UserSetupDialog open={showUserSetup} onComplete={handleUserSetupComplete} />
+				<Toaster />
+			</div>
+		</BrowserRouter>
+	)
 }
 
 export default App
