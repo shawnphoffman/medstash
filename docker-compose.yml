@@ -1,11 +1,14 @@
 services:
   medstash:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Image from GitHub Container Registry
+    # Defaults to :latest, but can be overridden with MEDSTASH_IMAGE_TAG env var
+    # Examples:
+    #   - ghcr.io/shawnphoffman/medstash:latest
+    #   - ghcr.io/shawnphoffman/medstash:v1.0.0
+    #   - ghcr.io/shawnphoffman/medstash:main-abc1234
+    image: ghcr.io/shawnphoffman/medstash:${MEDSTASH_IMAGE_TAG:-latest}
     ports:
       - "3020:3000"
     volumes:
       - ${MEDSTASH_DATA_DIR:-./data}:/data
     restart: unless-stopped
-

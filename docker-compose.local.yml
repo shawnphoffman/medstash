@@ -1,0 +1,11 @@
+services:
+  medstash:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3020:3000"
+    volumes:
+      - ${MEDSTASH_DATA_DIR:-./data}:/data
+    restart: unless-stopped
+
