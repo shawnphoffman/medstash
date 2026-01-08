@@ -304,6 +304,7 @@ const dbQueriesObj = {
     VALUES (?, ?, ?, ?)
   `),
   updateReceiptFilename: dbInstance.prepare('UPDATE receipt_files SET filename = ? WHERE id = ?'),
+  updateReceiptFileOriginalFilename: dbInstance.prepare('UPDATE receipt_files SET original_filename = ? WHERE id = ?'),
   deleteReceiptFile: dbInstance.prepare('DELETE FROM receipt_files WHERE id = ?'),
   deleteFilesByReceiptId: dbInstance.prepare('DELETE FROM receipt_files WHERE receipt_id = ?'),
 

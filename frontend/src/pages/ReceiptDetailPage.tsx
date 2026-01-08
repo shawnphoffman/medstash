@@ -42,7 +42,9 @@ export default function ReceiptDetailPage() {
 	const [existingFilePreviews, setExistingFilePreviews] = useState<Map<number, string>>(new Map())
 	const [failedFilePreviews, setFailedFilePreviews] = useState<Set<number>>(new Set())
 	const [filesToDelete, setFilesToDelete] = useState<Set<number>>(new Set())
+	const [replacingFileId, setReplacingFileId] = useState<number | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
+	const fileReplaceInputRefs = useRef<Map<number, HTMLInputElement>>(new Map())
 
 	const {
 		register,
@@ -319,12 +321,66 @@ export default function ReceiptDetailPage() {
 			const errorMessage =
 				err.response?.data?.error || err.message || 'Failed to download file. The file may not exist or may have been deleted.'
 
+			// Mark file as failed if it's a 404 (file not found)
+			if (err.response?.status === 404) {
+				setFailedFilePreviews(prev => new Set(prev).add(fileId))
+			}
+
 			toast({
 				title: 'Download Failed',
 				description: errorMessage,
 				variant: 'destructive',
 			})
 			setError(errorMessage)
+		}
+	}
+
+	const handleReplaceFile = async (fileId: number, file: File) => {
+		if (!id) return
+
+		try {
+			setReplacingFileId(fileId)
+			const updatedReceipt = await receiptsApi.replaceFile(parseInt(id), fileId, file)
+			setReceipt(updatedReceipt.data)
+
+			// Remove from failed previews and regenerate preview
+			setFailedFilePreviews(prev => {
+				const newSet = new Set(prev)
+				newSet.delete(fileId)
+				return newSet
+			})
+
+			// Regenerate preview URL
+			const previewUrl = `/api/receipts/${id}/files/${fileId}`
+			setExistingFilePreviews(prev => {
+				const newMap = new Map(prev)
+				newMap.set(fileId, previewUrl)
+				return newMap
+			})
+
+			toast({
+				title: 'Success',
+				description: 'File replaced successfully',
+			})
+		} catch (err: any) {
+			const errorMessage = err.response?.data?.error || err.message || 'Failed to replace file'
+			toast({
+				title: 'Replace Failed',
+				description: errorMessage,
+				variant: 'destructive',
+			})
+			setError(errorMessage)
+		} finally {
+			setReplacingFileId(null)
+		}
+	}
+
+	const handleReplaceFileInput = (fileId: number, e: React.ChangeEvent<HTMLInputElement>) => {
+		if (e.target.files && e.target.files.length > 0) {
+			const file = e.target.files[0]
+			handleReplaceFile(fileId, file)
+			// Reset input so the same file can be selected again
+			e.target.value = ''
 		}
 	}
 
@@ -535,29 +591,67 @@ export default function ReceiptDetailPage() {
 																<span className="ml-6 text-xs truncate text-muted-foreground">Original: {file.original_filename}</span>
 															)}
 														</div>
-														<div className="flex gap-2">
-															{!isMarkedForDeletion && (
-																<Button
-																	type="button"
-																	variant="ghost"
-																	size="icon"
-																	onClick={() => handleDownloadFile(file.id, file.original_filename)}
-																>
-																	<Download className="w-4 h-4" />
-																</Button>
-															)}
-															<Button
-																type="button"
-																variant="ghost"
-																size="icon"
-																onClick={() => (isMarkedForDeletion ? handleRestoreFile(file.id) : handleDeleteFile(file.id))}
-																className={cn(
-																	isMarkedForDeletion ? 'text-primary hover:text-primary' : 'text-destructive hover:text-destructive'
+													<div className="flex gap-2">
+														{!isMarkedForDeletion && (
+															<>
+																{!failedFilePreviews.has(file.id) && (
+																	<Button
+																		type="button"
+																		variant="ghost"
+																		size="icon"
+																		onClick={() => handleDownloadFile(file.id, file.original_filename)}
+																	>
+																		<Download className="w-4 h-4" />
+																	</Button>
 																)}
-															>
-																{isMarkedForDeletion ? <X className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
-															</Button>
-														</div>
+																{failedFilePreviews.has(file.id) && (
+																	<>
+																		<input
+																			type="file"
+																			ref={el => {
+																				if (el) {
+																					fileReplaceInputRefs.current.set(file.id, el)
+																				} else {
+																					fileReplaceInputRefs.current.delete(file.id)
+																				}
+																			}}
+																			onChange={e => handleReplaceFileInput(file.id, e)}
+																			className="hidden"
+																			accept="image/*,.pdf"
+																			id={`replace-file-${file.id}`}
+																		/>
+																		<Button
+																			type="button"
+																			variant="outline"
+																			size="sm"
+																			onClick={() => fileReplaceInputRefs.current.get(file.id)?.click()}
+																			disabled={replacingFileId === file.id}
+																		>
+																			{replacingFileId === file.id ? (
+																				<>Replacing...</>
+																			) : (
+																				<>
+																					<Upload className="w-4 h-4 mr-2" />
+																					Replace
+																				</>
+																			)}
+																		</Button>
+																	</>
+																)}
+															</>
+														)}
+														<Button
+															type="button"
+															variant="ghost"
+															size="icon"
+															onClick={() => (isMarkedForDeletion ? handleRestoreFile(file.id) : handleDeleteFile(file.id))}
+															className={cn(
+																isMarkedForDeletion ? 'text-primary hover:text-primary' : 'text-destructive hover:text-destructive'
+															)}
+														>
+															{isMarkedForDeletion ? <X className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+														</Button>
+													</div>
 													</div>
 												)
 											})
@@ -697,7 +791,37 @@ export default function ReceiptDetailPage() {
 															<div className="text-center">
 																<File className="w-12 h-12 mx-auto mb-2 text-destructive" />
 																<p className="text-sm text-destructive">File not available</p>
-																<p className="text-xs text-muted-foreground">The file may have been deleted or moved</p>
+																<p className="text-xs text-muted-foreground mb-4">The file may have been deleted or moved</p>
+																<input
+																	type="file"
+																	ref={el => {
+																		if (el) {
+																			fileReplaceInputRefs.current.set(file.id, el)
+																		} else {
+																			fileReplaceInputRefs.current.delete(file.id)
+																		}
+																	}}
+																	onChange={e => handleReplaceFileInput(file.id, e)}
+																	className="hidden"
+																	accept="image/*,.pdf"
+																	id={`replace-file-preview-${file.id}`}
+																/>
+																<Button
+																	type="button"
+																	variant="outline"
+																	size="sm"
+																	onClick={() => fileReplaceInputRefs.current.get(file.id)?.click()}
+																	disabled={replacingFileId === file.id}
+																>
+																	{replacingFileId === file.id ? (
+																		<>Replacing...</>
+																	) : (
+																		<>
+																			<Upload className="w-4 h-4 mr-2" />
+																			Replace File
+																		</>
+																	)}
+																</Button>
 															</div>
 														</div>
 													) : (

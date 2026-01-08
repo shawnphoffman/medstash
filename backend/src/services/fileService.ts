@@ -120,6 +120,44 @@ export async function saveReceiptFile(
 }
 
 /**
+ * Replace an existing file with a new one, keeping the same filename
+ * This is used when replacing missing files
+ */
+export async function replaceReceiptFile(
+	file: Express.Multer.File,
+	receiptId: number,
+	existingFilename: string
+): Promise<{ originalFilename: string; optimized: boolean }> {
+	await ensureReceiptDir(receiptId)
+	const receiptDir = getReceiptDir(receiptId)
+
+	const originalFilename = file.originalname
+	const filePath = path.join(receiptDir, existingFilename)
+
+	let optimized = false
+
+	// Optimize if it's an image
+	if (isImageFile(originalFilename)) {
+		try {
+			await optimizeImage(file.path, filePath)
+			optimized = true
+			// Delete temporary file
+			await fs.unlink(file.path)
+		} catch (error) {
+			// If optimization fails, just copy the original
+			await fs.copyFile(file.path, filePath)
+			await fs.unlink(file.path)
+		}
+	} else {
+		// For PDFs and other files, copy then delete (can't use rename across volumes in Docker)
+		await fs.copyFile(file.path, filePath)
+		await fs.unlink(file.path)
+	}
+
+	return { originalFilename, optimized }
+}
+
+/**
  * Delete a receipt file from disk
  */
 export async function deleteReceiptFile(receiptId: number, filename: string): Promise<void> {

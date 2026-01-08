@@ -157,6 +157,13 @@ export const receiptsApi = {
   deleteFile: (receiptId: number, fileId: number) => {
     return api.delete<Receipt>(`/receipts/${receiptId}/files/${fileId}`);
   },
+  replaceFile: (receiptId: number, fileId: number, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.put<Receipt>(`/receipts/${receiptId}/files/${fileId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   updateFlags: (id: number, flagIds: number[]) => {
     return api.put<Receipt>(`/receipts/${id}/flags`, { flag_ids: flagIds });
   },

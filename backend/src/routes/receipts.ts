@@ -16,6 +16,7 @@ import {
   fileExists,
   deleteReceiptFile as deleteFile,
   restoreFileAssociations,
+  replaceReceiptFile,
 } from '../services/fileService';
 import { CreateReceiptInput, UpdateReceiptInput } from '../models/receipt';
 import { dbQueries } from '../db';
@@ -363,6 +364,47 @@ router.delete('/:id/files/:fileId', async (req, res) => {
   } catch (error) {
     console.error('Error deleting file:', error);
     res.status(500).json({ error: 'Failed to delete file' });
+  }
+});
+
+// PUT /api/receipts/:id/files/:fileId - Replace a file
+router.put('/:id/files/:fileId', upload.single('file'), async (req, res) => {
+  try {
+    const receiptId = parseInt(req.params.id);
+    const fileId = parseInt(req.params.fileId);
+
+    const receipt = getReceiptById(receiptId);
+    if (!receipt) {
+      return res.status(404).json({ error: 'Receipt not found' });
+    }
+
+    const file = receipt.files.find((f) => f.id === fileId);
+    if (!file) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file provided' });
+    }
+
+    // Delete old file from disk (if it exists)
+    await deleteFile(receiptId, file.filename);
+
+    // Replace with new file, keeping the same filename
+    const { originalFilename } = await replaceReceiptFile(
+      req.file,
+      receiptId,
+      file.filename
+    );
+
+    // Update original_filename to the new file's original name
+    dbQueries.updateReceiptFileOriginalFilename.run(originalFilename, fileId);
+
+    const updatedReceipt = getReceiptById(receiptId);
+    res.json(updatedReceipt);
+  } catch (error) {
+    console.error('Error replacing file:', error);
+    res.status(500).json({ error: 'Failed to replace file' });
   }
 });
 
