@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { existsSync } from 'fs';
 import './db'; // Initialize database
+import { db } from './db';
 import receiptsRouter from './routes/receipts';
 import flagsRouter from './routes/flags';
 import usersRouter from './routes/users';
@@ -50,9 +51,22 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/export', exportRouter);
 app.use('/api/filenames', filenamesRouter);
 
-// Health check
+// Health check - verifies database connectivity
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+  try {
+    // Verify database connectivity by executing a simple query
+    db.prepare('SELECT 1').get();
+    res.json({ status: 'ok', database: 'connected' });
+  } catch (error: any) {
+    // Database connection failed
+    res.status(503).json({ 
+      status: 'error', 
+      database: 'disconnected',
+      error: process.env.NODE_ENV === 'production' 
+        ? 'Service unavailable' 
+        : error.message 
+    });
+  }
 });
 
 // Serve static files from frontend build (only in production)
