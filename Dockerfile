@@ -42,6 +42,9 @@ RUN npm run build
 # Stage 3: Runtime
 FROM node:20-alpine
 
+# Set production as default (can be overridden in docker-compose)
+ENV NODE_ENV=production
+
 WORKDIR /app
 
 # Copy backend package files and install production dependencies only
