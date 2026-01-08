@@ -41,141 +41,136 @@ describe('Settings API', () => {
     });
 
     it('should return all settings', async () => {
-      dbQueries.setSetting.run('key1', JSON.stringify('value1'));
-      dbQueries.setSetting.run('key2', JSON.stringify({ nested: 'value' }));
-      dbQueries.setSetting.run('key3', JSON.stringify(123));
+      dbQueries.setSetting.run('filenamePattern', JSON.stringify('{date}_{user}_{vendor}'));
+      dbQueries.setSetting.run('invalid_key', JSON.stringify('value')); // Direct DB insert bypasses validation
 
       const response = await request(app).get('/api/settings');
       expect(response.status).toBe(200);
-      expect(response.body.key1).toBe('value1');
-      expect(response.body.key2).toEqual({ nested: 'value' });
-      expect(response.body.key3).toBe(123);
+      expect(response.body.filenamePattern).toBe('{date}_{user}_{vendor}');
+      // Invalid keys in DB can still be read, but can't be set via API
     });
 
     it('should parse JSON values', async () => {
-      dbQueries.setSetting.run('json_key', JSON.stringify({ test: 'data' }));
+      dbQueries.setSetting.run('filenamePattern', JSON.stringify('{date}_{index}'));
 
       const response = await request(app).get('/api/settings');
       expect(response.status).toBe(200);
-      expect(response.body.json_key).toEqual({ test: 'data' });
+      expect(response.body.filenamePattern).toBe('{date}_{index}');
     });
 
     it('should handle non-JSON values gracefully', async () => {
-      dbQueries.setSetting.run('plain_key', 'not-json');
+      dbQueries.setSetting.run('filenamePattern', 'not-json');
 
       const response = await request(app).get('/api/settings');
       expect(response.status).toBe(200);
-      expect(response.body.plain_key).toBe('not-json');
+      expect(response.body.filenamePattern).toBe('not-json');
     });
   });
 
   describe('GET /api/settings/:key', () => {
     it('should return a specific setting', async () => {
-      dbQueries.setSetting.run('test_key', JSON.stringify('test_value'));
+      dbQueries.setSetting.run('filenamePattern', JSON.stringify('{date}_{user}'));
 
-      const response = await request(app).get('/api/settings/test_key');
+      const response = await request(app).get('/api/settings/filenamePattern');
       expect(response.status).toBe(200);
-      expect(response.body.key).toBe('test_key');
-      expect(response.body.value).toBe('test_value');
+      expect(response.body.key).toBe('filenamePattern');
+      expect(response.body.value).toBe('{date}_{user}');
     });
 
     it('should parse JSON value', async () => {
-      dbQueries.setSetting.run('json_key', JSON.stringify({ nested: 'value' }));
+      dbQueries.setSetting.run('filenamePattern', JSON.stringify('{date}_{vendor}_{index}'));
 
-      const response = await request(app).get('/api/settings/json_key');
+      const response = await request(app).get('/api/settings/filenamePattern');
       expect(response.status).toBe(200);
-      expect(response.body.value).toEqual({ nested: 'value' });
+      expect(response.body.value).toBe('{date}_{vendor}_{index}');
     });
 
     it('should return 404 for non-existent setting', async () => {
-      const response = await request(app).get('/api/settings/non_existent');
+      const response = await request(app).get('/api/settings/filenamePattern');
       expect(response.status).toBe(404);
       expect(response.body.error).toBe('Setting not found');
+    });
+
+    it('should return 400 for invalid setting key', async () => {
+      const response = await request(app).get('/api/settings/invalid_key');
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid setting key');
     });
   });
 
   describe('PUT /api/settings/:key', () => {
-    it('should set a setting', async () => {
+    it('should set filenamePattern setting', async () => {
       const response = await request(app)
-        .put('/api/settings/test_key')
+        .put('/api/settings/filenamePattern')
         .send({
-          value: 'test_value',
+          value: '{date}_{user}_{vendor}',
         });
 
       expect(response.status).toBe(200);
-      expect(response.body.key).toBe('test_key');
-      expect(response.body.value).toBe('test_value');
+      expect(response.body.key).toBe('filenamePattern');
+      expect(response.body.value).toBe('{date}_{user}_{vendor}');
 
       // Verify it was saved
-      const getResponse = await request(app).get('/api/settings/test_key');
-      expect(getResponse.body.value).toBe('test_value');
-    });
-
-    it('should set a JSON value', async () => {
-      const response = await request(app)
-        .put('/api/settings/json_key')
-        .send({
-          value: { nested: 'value' },
-        });
-
-      expect(response.status).toBe(200);
-      expect(response.body.value).toEqual({ nested: 'value' });
+      const getResponse = await request(app).get('/api/settings/filenamePattern');
+      expect(getResponse.body.value).toBe('{date}_{user}_{vendor}');
     });
 
     it('should overwrite existing setting', async () => {
-      dbQueries.setSetting.run('test_key', JSON.stringify('old_value'));
+      dbQueries.setSetting.run('filenamePattern', JSON.stringify('{date}_{index}'));
 
       const response = await request(app)
-        .put('/api/settings/test_key')
+        .put('/api/settings/filenamePattern')
         .send({
-          value: 'new_value',
+          value: '{date}_{user}_{vendor}_{index}',
         });
 
       expect(response.status).toBe(200);
-      expect(response.body.value).toBe('new_value');
+      expect(response.body.value).toBe('{date}_{user}_{vendor}_{index}');
     });
 
     it('should return 400 if value is missing', async () => {
       const response = await request(app)
-        .put('/api/settings/test_key')
+        .put('/api/settings/filenamePattern')
         .send({});
 
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('Value is required');
     });
 
-    it('should handle various value types', async () => {
-      // String
-      await request(app)
-        .put('/api/settings/string_key')
-        .send({ value: 'string' });
+    it('should return 400 for invalid setting key', async () => {
+      const response = await request(app)
+        .put('/api/settings/invalid_key')
+        .send({ value: 'test' });
 
-      // Number
-      await request(app)
-        .put('/api/settings/number_key')
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid setting key');
+    });
+
+    it('should return 400 for invalid filenamePattern value (not a string)', async () => {
+      const response = await request(app)
+        .put('/api/settings/filenamePattern')
         .send({ value: 123 });
 
-      // Boolean
-      await request(app)
-        .put('/api/settings/bool_key')
-        .send({ value: true });
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('filenamePattern must be a string');
+    });
 
-      // Array
-      await request(app)
-        .put('/api/settings/array_key')
-        .send({ value: [1, 2, 3] });
+    it('should return 400 for invalid filenamePattern format', async () => {
+      const response = await request(app)
+        .put('/api/settings/filenamePattern')
+        .send({ value: '{invalid_token}' });
 
-      // Object
-      await request(app)
-        .put('/api/settings/object_key')
-        .send({ value: { nested: 'value' } });
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Unknown token');
+    });
 
-      const allResponse = await request(app).get('/api/settings');
-      expect(allResponse.body.string_key).toBe('string');
-      expect(allResponse.body.number_key).toBe(123);
-      expect(allResponse.body.bool_key).toBe(true);
-      expect(allResponse.body.array_key).toEqual([1, 2, 3]);
-      expect(allResponse.body.object_key).toEqual({ nested: 'value' });
+    it('should accept valid filenamePattern', async () => {
+      const response = await request(app)
+        .put('/api/settings/filenamePattern')
+        .send({ value: '{date}_{user}_{vendor}_{amount}_{type}_{index}' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.value).toBe('{date}_{user}_{vendor}_{amount}_{type}_{index}');
     });
   });
 });
