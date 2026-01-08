@@ -11,6 +11,7 @@ import settingsRouter from './routes/settings';
 import exportRouter from './routes/export';
 import filenamesRouter from './routes/filenames';
 import { ensureReceiptsDir } from './services/fileService';
+import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -80,6 +81,9 @@ if (existsSync(publicPath)) {
 ensureReceiptsDir().catch((error) => {
   console.error('Failed to initialize receipts directory:', error);
 });
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
 
 // Start server
 app.listen(PORT, () => {
