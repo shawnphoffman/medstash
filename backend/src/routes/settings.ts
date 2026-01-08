@@ -9,9 +9,14 @@ const ALLOWED_SETTING_KEYS = ['filenamePattern'] as const;
 type AllowedSettingKey = typeof ALLOWED_SETTING_KEYS[number];
 
 /**
- * Validate setting key is in the whitelist
+ * Validate setting key is in the whitelist and doesn't contain dangerous characters
  */
 function isValidSettingKey(key: string): key is AllowedSettingKey {
+	// Reject empty keys, keys with path traversal, or keys with special characters
+	if (!key || key.includes('..') || key.includes('/') || key.includes('\\') || key.includes('\0')) {
+		return false;
+	}
+	// Only allow keys in the whitelist
 	return ALLOWED_SETTING_KEYS.includes(key as AllowedSettingKey);
 }
 

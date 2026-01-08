@@ -363,10 +363,29 @@ export function getSetting(key: string): string | null {
   return result?.value || null;
 }
 
+// Whitelist of allowed setting keys for security (defense in depth)
+const ALLOWED_SETTING_KEYS = ['filenamePattern'] as const;
+
+/**
+ * Validate setting key is safe and in whitelist
+ */
+function isValidSettingKey(key: string): boolean {
+  // Reject empty keys, keys with path traversal, or keys with special characters
+  if (!key || key.includes('..') || key.includes('/') || key.includes('\\') || key.includes('\0')) {
+    return false;
+  }
+  // Only allow keys in the whitelist
+  return ALLOWED_SETTING_KEYS.includes(key as any);
+}
+
 /**
  * Set setting
+ * @throws Error if key is not in whitelist or contains dangerous characters
  */
 export function setSetting(key: string, value: string): void {
+  if (!isValidSettingKey(key)) {
+    throw new Error(`Invalid setting key: ${key}. Only whitelisted keys are allowed.`);
+  }
   dbQueries.setSetting.run(key, value);
 }
 
