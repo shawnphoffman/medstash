@@ -14,6 +14,13 @@ import {
 import { CreateReceiptInput, UpdateReceiptInput } from '../models/receipt'
 import { dbQueries } from '../db'
 import fs from 'fs/promises'
+import {
+	validateDate,
+	validateAmount,
+	validateVendor,
+	validateDescription,
+	validateProviderAddress,
+} from '../utils/validation'
 
 const router = express.Router()
 
@@ -149,9 +156,33 @@ router.post('/', upload.array('files', 10), handleMulterError, async (req, res) 
 			if (isNaN(parsedAmount)) {
 				return res.status(400).json({ error: 'Invalid amount: must be a number' })
 			}
-			if (parsedAmount < 0) {
-				return res.status(400).json({ error: 'Amount cannot be negative' })
+			const amountValidation = validateAmount(parsedAmount)
+			if (!amountValidation.valid) {
+				return res.status(400).json({ error: amountValidation.error })
 			}
+		}
+
+		// Validate date format
+		const dateToValidate = date || new Date().toISOString().split('T')[0]
+		const dateValidation = validateDate(dateToValidate)
+		if (!dateValidation.valid) {
+			return res.status(400).json({ error: dateValidation.error })
+		}
+
+		// Validate string field lengths
+		const vendorValidation = validateVendor(vendor)
+		if (!vendorValidation.valid) {
+			return res.status(400).json({ error: vendorValidation.error })
+		}
+
+		const descriptionValidation = validateDescription(description)
+		if (!descriptionValidation.valid) {
+			return res.status(400).json({ error: descriptionValidation.error })
+		}
+
+		const addressValidation = validateProviderAddress(provider_address)
+		if (!addressValidation.valid) {
+			return res.status(400).json({ error: addressValidation.error })
 		}
 
 		// Parse flag_ids safely
@@ -176,11 +207,11 @@ router.post('/', upload.array('files', 10), handleMulterError, async (req, res) 
 			user: user || undefined, // Legacy support
 			type: type || undefined, // Legacy support
 			amount: parsedAmount,
-			vendor: vendor || '',
-			provider_address: provider_address || '',
-			description: description || '',
-			date: date || new Date().toISOString().split('T')[0],
-			notes: notes || undefined,
+			vendor: (vendor || '').trim(),
+			provider_address: (provider_address || '').trim(),
+			description: (description || '').trim(),
+			date: dateToValidate,
+			notes: notes ? notes.trim() : undefined,
 			flag_ids: parsedFlagIds,
 		}
 
@@ -266,16 +297,46 @@ router.put('/:id', async (req, res) => {
 			if (isNaN(parsedAmount)) {
 				return res.status(400).json({ error: 'Invalid amount: must be a number' })
 			}
-			if (parsedAmount < 0) {
-				return res.status(400).json({ error: 'Amount cannot be negative' })
+			const amountValidation = validateAmount(parsedAmount)
+			if (!amountValidation.valid) {
+				return res.status(400).json({ error: amountValidation.error })
 			}
 			updateData.amount = parsedAmount
 		}
 
-		if (vendor !== undefined) updateData.vendor = vendor
-		if (provider_address !== undefined) updateData.provider_address = provider_address
-		if (description !== undefined) updateData.description = description
-		if (date !== undefined) updateData.date = date
+		// Validate date format if provided
+		if (date !== undefined && date !== null && date !== '') {
+			const dateValidation = validateDate(date as string)
+			if (!dateValidation.valid) {
+				return res.status(400).json({ error: dateValidation.error })
+			}
+			updateData.date = date as string
+		}
+
+		// Validate string field lengths
+		if (vendor !== undefined) {
+			const vendorValidation = validateVendor(vendor)
+			if (!vendorValidation.valid) {
+				return res.status(400).json({ error: vendorValidation.error })
+			}
+			updateData.vendor = (vendor as string).trim()
+		}
+
+		if (provider_address !== undefined) {
+			const addressValidation = validateProviderAddress(provider_address)
+			if (!addressValidation.valid) {
+				return res.status(400).json({ error: addressValidation.error })
+			}
+			updateData.provider_address = (provider_address as string).trim()
+		}
+
+		if (description !== undefined) {
+			const descriptionValidation = validateDescription(description)
+			if (!descriptionValidation.valid) {
+				return res.status(400).json({ error: descriptionValidation.error })
+			}
+			updateData.description = (description as string).trim()
+		}
 		if (notes !== undefined) updateData.notes = notes
 
 		// Parse flag_ids safely
