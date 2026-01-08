@@ -1,7 +1,19 @@
 import express from 'express';
 import { getSetting, setSetting, getAllSettings } from '../services/dbService';
+import { validatePattern } from '../utils/filename';
 
 const router = express.Router();
+
+// Whitelist of allowed setting keys for security
+const ALLOWED_SETTING_KEYS = ['filenamePattern'] as const;
+type AllowedSettingKey = typeof ALLOWED_SETTING_KEYS[number];
+
+/**
+ * Validate setting key is in the whitelist
+ */
+function isValidSettingKey(key: string): key is AllowedSettingKey {
+	return ALLOWED_SETTING_KEYS.includes(key as AllowedSettingKey);
+}
 
 // GET /api/settings - Get all settings
 router.get('/', (req, res) => {
@@ -27,6 +39,14 @@ router.get('/', (req, res) => {
 router.get('/:key', (req, res) => {
   try {
     const { key } = req.params;
+    
+    // Validate setting key is in whitelist
+    if (!isValidSettingKey(key)) {
+      return res.status(400).json({ 
+        error: `Invalid setting key: ${key}. Allowed keys: ${ALLOWED_SETTING_KEYS.join(', ')}` 
+      });
+    }
+    
     const value = getSetting(key);
     if (value === null) {
       return res.status(404).json({ error: 'Setting not found' });
@@ -50,8 +70,26 @@ router.put('/:key', (req, res) => {
     const { key } = req.params;
     const { value } = req.body;
 
+    // Validate setting key is in whitelist
+    if (!isValidSettingKey(key)) {
+      return res.status(400).json({ 
+        error: `Invalid setting key: ${key}. Allowed keys: ${ALLOWED_SETTING_KEYS.join(', ')}` 
+      });
+    }
+
     if (value === undefined) {
       return res.status(400).json({ error: 'Value is required' });
+    }
+
+    // Validate value based on key type
+    if (key === 'filenamePattern') {
+      if (typeof value !== 'string') {
+        return res.status(400).json({ error: 'filenamePattern must be a string' });
+      }
+      const validation = validatePattern(value);
+      if (!validation.valid) {
+        return res.status(400).json({ error: validation.error || 'Invalid filename pattern' });
+      }
     }
 
     setSetting(key, JSON.stringify(value));
