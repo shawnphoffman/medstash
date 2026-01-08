@@ -90,6 +90,8 @@ router.get('/:id', (req, res) => {
 
 // Error handler for multer errors
 const handleMulterError = (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+	const isProduction = process.env.NODE_ENV === 'production'
+	
 	if (err instanceof multer.MulterError) {
 		if (err.code === 'LIMIT_FILE_SIZE') {
 			return res.status(400).json({ error: 'File too large. Maximum size is 50MB' })
@@ -97,14 +99,21 @@ const handleMulterError = (err: any, req: express.Request, res: express.Response
 		if (err.code === 'LIMIT_FILE_COUNT') {
 			return res.status(400).json({ error: 'Too many files. Maximum is 10 files' })
 		}
-		return res.status(400).json({ error: `Upload error: ${err.message}` })
+		// Don't expose internal multer error details in production
+		return res.status(400).json({ 
+			error: isProduction ? 'File upload error' : `Upload error: ${err.message}` 
+		})
 	}
 	if (err) {
-		// Handle fileFilter errors
+		// Handle fileFilter errors - only expose safe error messages
 		if (err.message && err.message.includes('Invalid file type')) {
+			// This is a safe error message we control, so it's okay to expose
 			return res.status(400).json({ error: err.message })
 		}
-		return res.status(400).json({ error: err.message || 'File upload error' })
+		// Don't expose internal error details in production
+		return res.status(400).json({ 
+			error: isProduction ? 'File upload error' : (err.message || 'File upload error')
+		})
 	}
 	next()
 }

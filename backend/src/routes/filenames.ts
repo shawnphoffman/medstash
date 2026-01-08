@@ -13,9 +13,11 @@ router.post('/rename-all', async (req, res) => {
     });
   } catch (error) {
     console.error('Error renaming all files:', error);
+    const isProduction = process.env.NODE_ENV === 'production';
     res.status(500).json({
       error: 'Failed to rename all files',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      // Only expose error details in development for debugging
+      ...(isProduction ? {} : { details: error instanceof Error ? error.message : 'Unknown error' })
     });
   }
 });
