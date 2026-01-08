@@ -221,6 +221,24 @@ describe('Flags API', () => {
       expect(response.status).toBe(404);
       expect(response.body.error).toBe('Flag not found');
     });
+
+    it('should reject invalid flag ID (non-numeric)', async () => {
+      const response = await request(app).get('/api/flags/abc');
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid flag ID');
+    });
+
+    it('should reject invalid flag ID in PUT request', async () => {
+      const response = await request(app).put('/api/flags/abc').send({ name: 'Test' });
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid flag ID');
+    });
+
+    it('should reject invalid flag ID in DELETE request', async () => {
+      const response = await request(app).delete('/api/flags/abc');
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid flag ID');
+    });
   });
 });
 

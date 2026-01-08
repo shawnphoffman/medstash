@@ -153,6 +153,24 @@ describe('Users API', () => {
       expect(response.status).toBe(404);
       expect(response.body.error).toBe('User not found');
     });
+
+    it('should reject invalid user ID (non-numeric)', async () => {
+      const response = await request(app).get('/api/users/abc');
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid user ID');
+    });
+
+    it('should reject invalid user ID in PUT request', async () => {
+      const response = await request(app).put('/api/users/abc').send({ name: 'Test' });
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid user ID');
+    });
+
+    it('should reject invalid user ID in DELETE request', async () => {
+      const response = await request(app).delete('/api/users/abc');
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid user ID');
+    });
   });
 });
 

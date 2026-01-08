@@ -24,7 +24,10 @@ router.get('/', (req, res) => {
 // GET /api/flags/:id - Get flag by ID
 router.get('/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid flag ID: must be a number' });
+    }
     const flag = getFlagById(id);
     if (!flag) {
       return res.status(404).json({ error: 'Flag not found' });
@@ -56,7 +59,10 @@ router.post('/', (req, res) => {
 // PUT /api/flags/:id - Update flag
 router.put('/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid flag ID: must be a number' });
+    }
     const { name, color } = req.body as UpdateFlagInput;
 
     if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
@@ -78,7 +84,10 @@ router.put('/:id', (req, res) => {
 // DELETE /api/flags/:id - Delete flag
 router.delete('/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid flag ID: must be a number' });
+    }
     const deleted = deleteFlag(id);
     if (!deleted) {
       return res.status(404).json({ error: 'Flag not found' });

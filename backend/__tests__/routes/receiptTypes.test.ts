@@ -153,6 +153,24 @@ describe('ReceiptTypes API', () => {
       expect(response.status).toBe(404);
       expect(response.body.error).toBe('Receipt type not found');
     });
+
+    it('should reject invalid receipt type ID (non-numeric)', async () => {
+      const response = await request(app).get('/api/receipt-types/abc');
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid receipt type ID');
+    });
+
+    it('should reject invalid receipt type ID in PUT request', async () => {
+      const response = await request(app).put('/api/receipt-types/abc').send({ name: 'Test' });
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid receipt type ID');
+    });
+
+    it('should reject invalid receipt type ID in DELETE request', async () => {
+      const response = await request(app).delete('/api/receipt-types/abc');
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid receipt type ID');
+    });
   });
 });
 

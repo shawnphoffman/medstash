@@ -31,7 +31,13 @@ router.get('/:key', (req, res) => {
     if (value === null) {
       return res.status(404).json({ error: 'Setting not found' });
     }
-    res.json({ key, value: JSON.parse(value) });
+    try {
+      const parsedValue = JSON.parse(value);
+      res.json({ key, value: parsedValue });
+    } catch (parseError) {
+      // If JSON parsing fails, return as string
+      res.json({ key, value });
+    }
   } catch (error) {
     console.error('Error fetching setting:', error);
     res.status(500).json({ error: 'Failed to fetch setting' });

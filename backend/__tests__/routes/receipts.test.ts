@@ -493,4 +493,109 @@ describe('Receipts API', () => {
 			expect(response.body.error).toBe('flag_ids must be an array')
 		})
 	})
+
+	describe('Input Validation', () => {
+		it('should reject invalid receipt ID (non-numeric)', async () => {
+			const response = await request(app).get('/api/receipts/abc')
+			expect(response.status).toBe(400)
+			expect(response.body.error).toContain('Invalid receipt ID')
+		})
+
+		it('should reject invalid flag_id query parameter', async () => {
+			const response = await request(app).get('/api/receipts').query({ flag_id: 'not-a-number' })
+			expect(response.status).toBe(400)
+			expect(response.body.error).toContain('Invalid flag_id')
+		})
+
+		it('should reject invalid user_id in POST request', async () => {
+			const testFilePath = path.join(testDirs.uploadDir, 'test.pdf')
+			await fs.writeFile(testFilePath, 'test content')
+
+			const response = await request(app)
+				.post('/api/receipts')
+				.field('user_id', 'not-a-number')
+				.attach('files', testFilePath)
+
+			expect(response.status).toBe(400)
+			expect(response.body.error).toContain('Invalid user_id')
+		})
+
+		it('should reject invalid amount in POST request', async () => {
+			const testFilePath = path.join(testDirs.uploadDir, 'test.pdf')
+			await fs.writeFile(testFilePath, 'test content')
+
+			const response = await request(app)
+				.post('/api/receipts')
+				.field('amount', 'not-a-number')
+				.attach('files', testFilePath)
+
+			expect(response.status).toBe(400)
+			expect(response.body.error).toContain('Invalid amount')
+		})
+
+		it('should reject negative amount', async () => {
+			const testFilePath = path.join(testDirs.uploadDir, 'test.pdf')
+			await fs.writeFile(testFilePath, 'test content')
+
+			const response = await request(app)
+				.post('/api/receipts')
+				.field('amount', '-100')
+				.attach('files', testFilePath)
+
+			expect(response.status).toBe(400)
+			expect(response.body.error).toContain('Amount cannot be negative')
+		})
+
+		it('should reject invalid flag_ids JSON in POST request', async () => {
+			const testFilePath = path.join(testDirs.uploadDir, 'test.pdf')
+			await fs.writeFile(testFilePath, 'test content')
+
+			const response = await request(app)
+				.post('/api/receipts')
+				.field('flag_ids', 'invalid-json')
+				.attach('files', testFilePath)
+
+			expect(response.status).toBe(400)
+			expect(response.body.error).toContain('Invalid flag_ids format')
+		})
+
+		it('should reject invalid file type', async () => {
+			const testFilePath = path.join(testDirs.uploadDir, 'test.txt')
+			await fs.writeFile(testFilePath, 'test content')
+
+			const response = await request(app)
+				.post('/api/receipts')
+				.field('vendor', 'Test')
+				.attach('files', testFilePath)
+
+			expect(response.status).toBe(400)
+			expect(response.body.error).toContain('Invalid file type')
+		})
+
+		it('should reject invalid receipt ID in PUT request', async () => {
+			const response = await request(app).put('/api/receipts/abc').send({})
+			expect(response.status).toBe(400)
+			expect(response.body.error).toContain('Invalid receipt ID')
+		})
+
+		it('should reject invalid file ID in GET file request', async () => {
+			const receiptData = createReceiptFixture()
+			const { userId, typeId } = createUserAndType(receiptData.user!, receiptData.type!)
+			const result = dbQueries.insertReceipt.run(
+				userId,
+				typeId,
+				receiptData.amount!,
+				receiptData.vendor!,
+				receiptData.provider_address!,
+				receiptData.description!,
+				receiptData.date!,
+				receiptData.notes || null
+			)
+			const receiptId = Number(result.lastInsertRowid)
+
+			const response = await request(app).get(`/api/receipts/${receiptId}/files/abc`)
+			expect(response.status).toBe(400)
+			expect(response.body.error).toContain('Invalid receipt ID or file ID')
+		})
+	})
 })

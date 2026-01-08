@@ -24,7 +24,10 @@ router.get('/', (req, res) => {
 // GET /api/users/:id - Get user by ID
 router.get('/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid user ID: must be a number' });
+    }
     const user = getUserById(id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -56,7 +59,10 @@ router.post('/', (req, res) => {
 // PUT /api/users/:id - Update user
 router.put('/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid user ID: must be a number' });
+    }
     const { name } = req.body as UpdateUserInput;
 
     if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
@@ -78,7 +84,10 @@ router.put('/:id', (req, res) => {
 // DELETE /api/users/:id - Delete user
 router.delete('/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid user ID: must be a number' });
+    }
     const deleted = deleteUser(id);
     if (!deleted) {
       return res.status(404).json({ error: 'User not found' });

@@ -119,7 +119,13 @@ export function generateReceiptFilename(
 	if (!pattern) {
 		const setting = getSetting('filenamePattern')
 		if (setting) {
-			usedPattern = JSON.parse(setting)
+			try {
+				usedPattern = JSON.parse(setting)
+			} catch (parseError) {
+				// If JSON parsing fails, use default pattern
+				console.warn('Failed to parse filenamePattern setting, using default:', parseError)
+				usedPattern = DEFAULT_PATTERN
+			}
 		}
 	}
 

@@ -24,7 +24,10 @@ router.get('/', (req, res) => {
 // GET /api/receipt-types/:id - Get receipt type by ID
 router.get('/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid receipt type ID: must be a number' });
+    }
     const type = getReceiptTypeById(id);
     if (!type) {
       return res.status(404).json({ error: 'Receipt type not found' });
@@ -56,7 +59,10 @@ router.post('/', (req, res) => {
 // PUT /api/receipt-types/:id - Update receipt type
 router.put('/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid receipt type ID: must be a number' });
+    }
     const { name } = req.body as UpdateReceiptTypeInput;
 
     if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
@@ -78,7 +84,10 @@ router.put('/:id', (req, res) => {
 // DELETE /api/receipt-types/:id - Delete receipt type
 router.delete('/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid receipt type ID: must be a number' });
+    }
     const deleted = deleteReceiptType(id);
     if (!deleted) {
       return res.status(404).json({ error: 'Receipt type not found' });
