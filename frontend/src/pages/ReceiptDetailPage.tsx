@@ -14,6 +14,7 @@ import { Badge } from '../components/ui/badge'
 import { getBadgeClassName, getBorderClassName } from '../components/ui/color-picker'
 import { ArrowLeft, Download, Trash2, Upload, X, File, Camera } from 'lucide-react'
 import { cn } from '../lib/utils'
+import { useConfirmDialog } from '../components/ConfirmDialog'
 
 interface ReceiptFormData {
 	user_id?: number
@@ -49,6 +50,7 @@ export default function ReceiptDetailPage() {
 	const cameraInputRef = useRef<HTMLInputElement>(null)
 	const fileReplaceInputRefs = useRef<Map<number, HTMLInputElement>>(new Map())
 	const fileReplaceCameraInputRefs = useRef<Map<number, HTMLInputElement>>(new Map())
+	const { confirm, ConfirmDialog } = useConfirmDialog()
 
 	const {
 		register,
@@ -401,7 +403,12 @@ export default function ReceiptDetailPage() {
 	}
 
 	const handleDeleteReceipt = async () => {
-		if (!id || !confirm('Are you sure you want to delete this receipt? This action cannot be undone.')) return
+		if (!id) return
+		const confirmed = await confirm({
+			message: 'Are you sure you want to delete this receipt? This action cannot be undone.',
+			variant: 'destructive',
+		})
+		if (!confirmed) return
 
 		try {
 			await receiptsApi.delete(parseInt(id))
@@ -429,6 +436,7 @@ export default function ReceiptDetailPage() {
 
 	return (
 		<div className="w-full px-4 -mx-4">
+			{ConfirmDialog}
 			<div className="flex items-center justify-between mb-6">
 				<Button variant="ghost" onClick={() => navigate('/')}>
 					<ArrowLeft className="w-4 h-4 mr-2" />

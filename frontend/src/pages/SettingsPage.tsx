@@ -19,6 +19,8 @@ import { Label } from '../components/ui/label'
 import { ColorPicker, TAILWIND_COLORS } from '../components/ui/color-picker'
 import { FlagBadge } from '../components/FlagBadge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { useConfirmDialog } from '../components/ConfirmDialog'
+import { useAlertDialog } from '../components/AlertDialog'
 import { Plus, Trash2, Edit2, Save, X, RefreshCw, Info, Flag as FlagIcon, RotateCcw, GripVertical } from 'lucide-react'
 import {
 	DndContext,
@@ -307,6 +309,8 @@ export default function SettingsPage() {
 	const [patternError, setPatternError] = useState<string | null>(null)
 	const [isRenaming, setIsRenaming] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	const { confirm, ConfirmDialog } = useConfirmDialog()
+	const { alert, AlertDialog } = useAlertDialog()
 
 	useEffect(() => {
 		loadData()
@@ -387,7 +391,11 @@ export default function SettingsPage() {
 	}
 
 	const handleDeleteFlag = async (id: number) => {
-		if (!confirm('Are you sure you want to delete this flag?')) return
+		const confirmed = await confirm({
+			message: 'Are you sure you want to delete this flag?',
+			variant: 'destructive',
+		})
+		if (!confirmed) return
 
 		try {
 			await flagsApi.delete(id)
@@ -446,7 +454,11 @@ export default function SettingsPage() {
 
 	const handleDeleteUser = async (id: number) => {
 		const user = users.find(u => u.id === id)
-		if (!confirm(`Are you sure you want to delete user "${user?.name}"?`)) return
+		const confirmed = await confirm({
+			message: `Are you sure you want to delete user "${user?.name}"?`,
+			variant: 'destructive',
+		})
+		if (!confirmed) return
 
 		try {
 			await usersApi.delete(id)
@@ -507,9 +519,13 @@ export default function SettingsPage() {
 		}
 	}
 
-	const handleDeleteGroup = (id: number) => {
+	const handleDeleteGroup = async (id: number) => {
 		const group = receiptTypeGroups.find(g => g.id === id)
-		if (!confirm(`Are you sure you want to delete group "${group?.name}"? All types in this group will be ungrouped.`)) return
+		const confirmed = await confirm({
+			message: `Are you sure you want to delete group "${group?.name}"? All types in this group will be ungrouped.`,
+			variant: 'destructive',
+		})
+		if (!confirmed) return
 
 		// Update local state only - deletion will be saved when "Save Changes" is clicked
 		setReceiptTypeGroups(receiptTypeGroups.filter(g => g.id !== id))
@@ -577,7 +593,11 @@ export default function SettingsPage() {
 
 	const handleDeleteReceiptType = async (id: number) => {
 		const type = receiptTypes.find(t => t.id === id)
-		if (!confirm(`Are you sure you want to delete receipt type "${type?.name}"?`)) return
+		const confirmed = await confirm({
+			message: `Are you sure you want to delete receipt type "${type?.name}"?`,
+			variant: 'destructive',
+		})
+		if (!confirmed) return
 
 		try {
 			await receiptTypesApi.delete(id)
@@ -601,11 +621,12 @@ export default function SettingsPage() {
 
 	// Reset receipt types and groups to defaults
 	const handleResetToDefaults = async () => {
-		if (
-			!confirm(
-				'Are you sure you want to reset all receipt types and groups to defaults? This will delete all existing types and groups. Any receipts using custom types will be reassigned to default types.'
-			)
-		) {
+		const confirmed = await confirm({
+			message:
+				'Are you sure you want to reset all receipt types and groups to defaults? This will delete all existing types and groups. Any receipts using custom types will be reassigned to default types.',
+			variant: 'destructive',
+		})
+		if (!confirmed) {
 			return
 		}
 
@@ -1083,7 +1104,12 @@ export default function SettingsPage() {
 
 			// Check if pattern changed and prompt for rename
 			if (filenamePattern !== originalPattern) {
-				const shouldRename = confirm('Pattern saved successfully. Would you like to rename all existing files to match the new pattern?')
+				const shouldRename = await confirm({
+					message: 'Pattern saved successfully. Would you like to rename all existing files to match the new pattern?',
+					title: 'Rename Files?',
+					confirmText: 'Yes, Rename',
+					cancelText: 'No, Skip',
+				})
 				if (shouldRename) {
 					await handleRenameAll()
 				}
@@ -1101,7 +1127,11 @@ export default function SettingsPage() {
 			return
 		}
 
-		if (!confirm('Are you sure you want to rename all existing files? This action cannot be undone.')) {
+		const confirmed = await confirm({
+			message: 'Are you sure you want to rename all existing files? This action cannot be undone.',
+			variant: 'destructive',
+		})
+		if (!confirmed) {
 			return
 		}
 
@@ -1113,7 +1143,10 @@ export default function SettingsPage() {
 				setError(`Renamed ${result.data.renamed} of ${result.data.totalFiles} files. Some errors occurred.`)
 			} else {
 				setError(null)
-				alert(`Successfully renamed ${result.data.renamed} files.`)
+				await alert({
+					title: 'Success',
+					message: `Successfully renamed ${result.data.renamed} files.`,
+				})
 			}
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to rename files')
@@ -1128,6 +1161,8 @@ export default function SettingsPage() {
 
 	return (
 		<div className="max-w-4xl mx-auto space-y-6">
+			{ConfirmDialog}
+			{AlertDialog}
 			<div>
 				<h2 className="text-3xl font-bold">Settings</h2>
 				<p className="text-muted-foreground">Manage flags and application settings</p>
