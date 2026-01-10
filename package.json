@@ -1,6 +1,6 @@
 {
 	"name": "medstash",
-	"version": "0.0.12",
+	"version": "0.0.13",
 	"description": "Self-hostable medical receipt storage system for HSA recordkeeping",
 	"private": true,
 	"workspaces": [
