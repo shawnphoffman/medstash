@@ -43,10 +43,10 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/shawnhoffman/medstash.git"
+		"url": "https://github.com/shawnphoffman/medstash.git"
 	},
 	"bugs": {
-		"url": "https://github.com/shawnhoffman/medstash/issues"
+		"url": "https://github.com/shawnphoffman/medstash/issues"
 	},
-	"homepage": "https://github.com/shawnhoffman/medstash#readme"
+	"homepage": "https://github.com/shawnphoffman/medstash#readme"
 }
