@@ -210,14 +210,14 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 					<div>
 						<Label htmlFor="bulk-user">User</Label>
 						<Select
-							value={userId?.toString() || ''}
-							onValueChange={value => setUserId(value ? parseInt(value) : undefined)}
+							value={userId?.toString() || '__none__'}
+							onValueChange={value => setUserId(value === '__none__' ? undefined : parseInt(value))}
 						>
 							<SelectTrigger id="bulk-user">
 								<SelectValue placeholder="Leave empty to keep existing" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="">None (keep existing)</SelectItem>
+								<SelectItem value="__none__">None (keep existing)</SelectItem>
 								{users.map(user => (
 									<SelectItem key={user.id} value={user.id.toString()}>
 										{user.name}
@@ -231,14 +231,14 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 					<div>
 						<Label htmlFor="bulk-type">Receipt Type</Label>
 						<Select
-							value={receiptTypeId?.toString() || ''}
-							onValueChange={value => setReceiptTypeId(value ? parseInt(value) : undefined)}
+							value={receiptTypeId?.toString() || '__none__'}
+							onValueChange={value => setReceiptTypeId(value === '__none__' ? undefined : parseInt(value))}
 						>
 							<SelectTrigger id="bulk-type">
 								<SelectValue placeholder="Leave empty to keep existing" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="">None (keep existing)</SelectItem>
+								<SelectItem value="__none__">None (keep existing)</SelectItem>
 								{hasGroups || hasUngrouped ? (
 									<>
 										{sortedGroups.map(group => {
