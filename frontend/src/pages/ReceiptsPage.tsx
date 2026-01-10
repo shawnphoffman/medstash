@@ -4,7 +4,7 @@ import { receiptsApi, flagsApi, exportApi, Receipt, Flag } from '../lib/api'
 import { Card, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
-import { Select } from '../components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Download, Search, File, ArrowUp, ArrowDown, ArrowUpDown, Flag as FlagIcon } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip'
@@ -161,8 +161,8 @@ export default function ReceiptsPage() {
 			</div>
 
 			{/* Filters */}
-			<Card>
-				<CardContent className="pt-6">
+			<Card className="border-0">
+				<CardContent className="p-0">
 					<div className="flex gap-4">
 						<div className="flex-1">
 							<div className="relative">
@@ -176,16 +176,28 @@ export default function ReceiptsPage() {
 							</div>
 						</div>
 						<Select
-							value={selectedFlagId?.toString() || ''}
-							onChange={e => setSelectedFlagId(e.target.value ? parseInt(e.target.value) : undefined)}
-							className="w-48"
+							value={selectedFlagId?.toString() || 'all'}
+							onValueChange={value => setSelectedFlagId(value === 'all' ? undefined : parseInt(value))}
 						>
-							<option value="">All Flags</option>
-							{flags.map(flag => (
-								<option key={flag.id} value={flag.id.toString()}>
-									{flag.name}
-								</option>
-							))}
+							<SelectTrigger className="w-48">
+								<SelectValue placeholder="All Flags" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">
+									<div className="flex items-center gap-2">
+										<FlagIcon className="size-4 text-muted-foreground" />
+										<span>All Flags</span>
+									</div>
+								</SelectItem>
+								{flags.map(flag => (
+									<SelectItem key={flag.id} value={flag.id.toString()}>
+										<div className="flex items-center gap-2">
+											<FlagIcon className="size-4" style={flag.color ? { color: flag.color } : undefined} />
+											<span>{flag.name}</span>
+										</div>
+									</SelectItem>
+								))}
+							</SelectContent>
 						</Select>
 					</div>
 				</CardContent>

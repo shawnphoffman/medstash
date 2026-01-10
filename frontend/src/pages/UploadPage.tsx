@@ -8,7 +8,8 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
-import { Select } from '../components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { DatePicker } from '../components/DatePicker'
 import { getBadgeClassName, getBorderClassName } from '../components/ui/color-picker'
 import { Upload, X, File, Camera } from 'lucide-react'
 import { cn } from '../lib/utils'
@@ -357,12 +358,20 @@ export default function UploadPage() {
 									<div>
 										<Label htmlFor="user_id">User</Label>
 										{users.length > 1 ? (
-											<Select id="user_id" {...register('user_id', { valueAsNumber: true })}>
-												{users.map(user => (
-													<option key={user.id} value={user.id}>
-														{user.name}
-													</option>
-												))}
+											<Select
+												value={watch('user_id')?.toString() || ''}
+												onValueChange={value => setValue('user_id', parseInt(value), { shouldValidate: true })}
+											>
+												<SelectTrigger id="user_id">
+													<SelectValue placeholder="Select a user..." />
+												</SelectTrigger>
+												<SelectContent>
+													{users.map(user => (
+														<SelectItem key={user.id} value={user.id.toString()}>
+															{user.name}
+														</SelectItem>
+													))}
+												</SelectContent>
 											</Select>
 										) : users.length === 1 ? (
 											<Input id="user_id" value={users[0].name} readOnly className="cursor-not-allowed bg-muted" />
@@ -373,13 +382,20 @@ export default function UploadPage() {
 									<div>
 										<Label htmlFor="receipt_type_id">Receipt Type</Label>
 										{receiptTypes.length > 1 ? (
-											<Select id="receipt_type_id" {...register('receipt_type_id', { valueAsNumber: true })}>
-												<option value="">Select a type...</option>
-												{receiptTypes.map(type => (
-													<option key={type.id} value={type.id}>
-														{type.name}
-													</option>
-												))}
+											<Select
+												value={watch('receipt_type_id')?.toString() || ''}
+												onValueChange={value => setValue('receipt_type_id', value ? parseInt(value) : undefined, { shouldValidate: true })}
+											>
+												<SelectTrigger id="receipt_type_id">
+													<SelectValue placeholder="Select a type..." />
+												</SelectTrigger>
+												<SelectContent>
+													{receiptTypes.map(type => (
+														<SelectItem key={type.id} value={type.id.toString()}>
+															{type.name}
+														</SelectItem>
+													))}
+												</SelectContent>
 											</Select>
 										) : receiptTypes.length === 1 ? (
 											<Input id="receipt_type_id" value={receiptTypes[0].name} readOnly className="cursor-not-allowed bg-muted" />
@@ -407,7 +423,7 @@ export default function UploadPage() {
 								<div className="grid grid-cols-2 gap-4">
 									<div>
 										<Label htmlFor="date">Date of Service</Label>
-										<Input id="date" type="date" {...register('date')} />
+										<DatePicker id="date" value={watch('date')} onChange={value => setValue('date', value, { shouldValidate: true })} />
 									</div>
 									<div>
 										<Label htmlFor="amount">Amount Paid</Label>

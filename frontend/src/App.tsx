@@ -6,7 +6,7 @@ import ReceiptDetailPage from './pages/ReceiptDetailPage'
 import SettingsPage from './pages/SettingsPage'
 import AboutPage from './pages/AboutPage'
 import ErrorPage from './pages/ErrorPage'
-import { Receipt, Upload, Settings, ReceiptText, HelpCircle, Github } from 'lucide-react'
+import { Receipt, Upload, Settings, ReceiptText, HelpCircle, Github, Menu, X } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { ThemeToggle } from './components/ThemeToggle'
 import UserSetupDialog from './components/UserSetupDialog'
@@ -18,6 +18,7 @@ import { REPOSITORY_URL } from './lib/version'
 
 function Navigation() {
 	const location = useLocation()
+	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
 	const navItems = [
 		{ path: '/', label: 'Receipts', icon: Receipt },
@@ -25,15 +26,29 @@ function Navigation() {
 		{ path: '/settings', label: 'Settings', icon: Settings },
 	]
 
+	const toggleMobileMenu = () => {
+		setIsMobileMenuOpen(!isMobileMenuOpen)
+	}
+
+	const closeMobileMenu = () => {
+		setIsMobileMenuOpen(false)
+	}
+
 	return (
 		<nav className="border-b bg-background">
 			<div className="container px-4 py-4 mx-auto">
 				<div className="flex items-center justify-between">
-					<Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
+					<Link 
+						to="/" 
+						className="flex items-center gap-2 transition-opacity hover:opacity-80"
+						onClick={closeMobileMenu}
+					>
 						<ReceiptText className="w-6 h-6" />
 						<h1 className="text-2xl font-bold cursor-pointer">MedStash</h1>
 					</Link>
-					<div className="flex items-center gap-2">
+					
+					{/* Desktop Navigation */}
+					<div className="hidden md:flex items-center gap-2">
 						{navItems.map(item => {
 							const Icon = item.icon
 							const isActive = location.pathname === item.path
@@ -71,7 +86,77 @@ function Navigation() {
 						</a>
 						<ThemeToggle />
 					</div>
+
+					{/* Mobile Menu Button */}
+					<div className="flex md:hidden items-center gap-2">
+						<ThemeToggle />
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={toggleMobileMenu}
+							aria-label="Toggle menu"
+						>
+							{isMobileMenuOpen ? (
+								<X className="h-5 w-5" />
+							) : (
+								<Menu className="h-5 w-5" />
+							)}
+						</Button>
+					</div>
 				</div>
+
+				{/* Mobile Menu Dropdown */}
+				{isMobileMenuOpen && (
+					<div className="md:hidden mt-4 pb-4 border-t pt-4">
+						<div className="flex flex-col gap-2">
+							{navItems.map(item => {
+								const Icon = item.icon
+								const isActive = location.pathname === item.path
+								return (
+									<Link 
+										key={item.path} 
+										to={item.path}
+										onClick={closeMobileMenu}
+									>
+										<Button
+											variant={isActive ? 'default' : 'ghost'}
+											className={cn(
+												'w-full justify-start gap-2',
+												isActive && 'bg-primary text-primary-foreground'
+											)}
+										>
+											<Icon className="w-4 h-4" />
+											{item.label}
+										</Button>
+									</Link>
+								)
+							})}
+							<Link to="/about" onClick={closeMobileMenu}>
+								<Button
+									variant="ghost"
+									className={cn(
+										'w-full justify-start gap-2',
+										location.pathname === '/about' && 'bg-primary text-primary-foreground'
+									)}
+								>
+									<HelpCircle className="h-4 w-4" />
+									About
+								</Button>
+							</Link>
+							<a
+								href={REPOSITORY_URL.replace('.git', '')}
+								target="_blank"
+								rel="noopener noreferrer"
+								onClick={closeMobileMenu}
+							>
+								<Button variant="ghost" className="w-full justify-start gap-2">
+									<Github className="h-4 w-4" />
+									GitHub
+								</Button>
+							</a>
+						</div>
+					</div>
+				)}
 			</div>
 		</nav>
 	)
