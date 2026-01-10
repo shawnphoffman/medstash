@@ -4,11 +4,11 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from './ui/select'
-import { Checkbox } from './ui/checkbox'
 import { DatePicker } from './DatePicker'
 import { receiptsApi, usersApi, receiptTypesApi, receiptTypeGroupsApi, flagsApi, BulkUpdateReceiptInput, User, ReceiptType, ReceiptTypeGroup, Flag } from '../lib/api'
 import { useToast } from './ui/use-toast'
-import { Flag as FlagIcon } from 'lucide-react'
+import { getBadgeClassName, getBorderClassName } from './ui/color-picker'
+import { cn } from '../lib/utils'
 
 interface BulkEditDialogProps {
 	open: boolean
@@ -130,12 +130,14 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 		}
 	}
 
-	const handleFlagToggle = (flagId: number, checked: boolean) => {
-		if (checked) {
-			setSelectedFlagIds(prev => [...prev, flagId])
-		} else {
-			setSelectedFlagIds(prev => prev.filter(id => id !== flagId))
-		}
+	const toggleFlag = (flagId: number) => {
+		setSelectedFlagIds(prev => {
+			if (prev.includes(flagId)) {
+				return prev.filter(id => id !== flagId)
+			} else {
+				return [...prev, flagId]
+			}
+		})
 	}
 
 	// Organize receipt types by group
@@ -278,61 +280,59 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 					</div>
 
 					{/* Flags */}
-					<div>
-						<Label>Flags</Label>
-						<div className="space-y-3">
-							<div className="flex items-center gap-4">
-								<Label className="text-sm font-normal">Operation:</Label>
-								<div className="flex gap-4">
-									<label className="flex items-center gap-2 cursor-pointer">
-										<input
-											type="radio"
-											checked={flagOperation === 'replace'}
-											onChange={() => setFlagOperation('replace')}
-											className="h-4 w-4"
-										/>
-										<span className="text-sm">Replace</span>
-									</label>
-									<label className="flex items-center gap-2 cursor-pointer">
-										<input
-											type="radio"
-											checked={flagOperation === 'append'}
-											onChange={() => setFlagOperation('append')}
-											className="h-4 w-4"
-										/>
-										<span className="text-sm">Append</span>
-									</label>
-								</div>
-							</div>
-							<div className="flex flex-wrap gap-2 p-3 border rounded-md min-h-[60px]">
-								{flags.length === 0 ? (
-									<span className="text-sm text-muted-foreground">No flags available</span>
-								) : (
-									flags.map(flag => (
-										<label
-											key={flag.id}
-											className="flex items-center gap-2 cursor-pointer p-2 rounded border hover:bg-muted transition-colors"
-										>
-											<Checkbox
-												checked={selectedFlagIds.includes(flag.id)}
-												onCheckedChange={checked => handleFlagToggle(flag.id, checked === true)}
+					{flags.length > 0 && (
+						<div>
+							<Label>Flags</Label>
+							<div className="space-y-3">
+								<div className="flex items-center gap-4">
+									<Label className="text-sm font-normal">Operation:</Label>
+									<div className="flex gap-4">
+										<label className="flex items-center gap-2 cursor-pointer">
+											<input
+												type="radio"
+												checked={flagOperation === 'replace'}
+												onChange={() => setFlagOperation('replace')}
+												className="h-4 w-4"
 											/>
-											<FlagIcon
-												className="size-4"
-												style={flag.color ? { color: flag.color } : undefined}
-											/>
-											<span className="text-sm">{flag.name}</span>
+											<span className="text-sm">Replace</span>
 										</label>
-									))
-								)}
+										<label className="flex items-center gap-2 cursor-pointer">
+											<input
+												type="radio"
+												checked={flagOperation === 'append'}
+												onChange={() => setFlagOperation('append')}
+												className="h-4 w-4"
+											/>
+											<span className="text-sm">Append</span>
+										</label>
+									</div>
+								</div>
+								<div className="flex flex-wrap gap-2 mt-2">
+									{flags.map(flag => (
+										<Button
+											key={flag.id}
+											type="button"
+											variant="outline"
+											size="sm"
+											onClick={() => toggleFlag(flag.id)}
+											className={
+												flag.color
+													? cn(selectedFlagIds.includes(flag.id) && getBadgeClassName(flag.color), getBorderClassName(flag.color))
+													: undefined
+											}
+										>
+											{flag.name}
+										</Button>
+									))}
+								</div>
+								<p className="text-xs text-muted-foreground">
+									{flagOperation === 'replace' 
+										? 'Selected flags will replace all existing flags'
+										: 'Selected flags will be added to existing flags'}
+								</p>
 							</div>
-							<p className="text-xs text-muted-foreground">
-								{flagOperation === 'replace' 
-									? 'Selected flags will replace all existing flags'
-									: 'Selected flags will be added to existing flags'}
-							</p>
 						</div>
-					</div>
+					)}
 				</div>
 
 				<DialogFooter>
