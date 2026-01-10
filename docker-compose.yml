@@ -4,7 +4,8 @@ services:
     # Defaults to :latest, but can be overridden with MEDSTASH_IMAGE_TAG env var
     # Examples:
     #   - ghcr.io/shawnphoffman/medstash:latest
-    #   - ghcr.io/shawnphoffman/medstash:v1.0.0
+    #   - ghcr.io/shawnphoffman/medstash:v0.0.6 (version tag with v prefix)
+    #   - ghcr.io/shawnphoffman/medstash:0.0.6 (version tag without v prefix)
     #   - ghcr.io/shawnphoffman/medstash:main-abc1234
     image: ghcr.io/shawnphoffman/medstash:${MEDSTASH_IMAGE_TAG:-latest}
     restart: unless-stopped
