@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { receiptsApi, flagsApi, usersApi, receiptTypesApi, CreateReceiptInput, Flag, User, ReceiptType } from '../lib/api'
@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
 import { Select } from '../components/ui/select'
 import { getBadgeClassName, getBorderClassName } from '../components/ui/color-picker'
-import { Upload, X, File } from 'lucide-react'
+import { Upload, X, File, Camera } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 interface UploadFormData {
@@ -35,6 +35,7 @@ export default function UploadPage() {
 	const [receiptTypes, setReceiptTypes] = useState<ReceiptType[]>([])
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	const cameraInputRef = useRef<HTMLInputElement>(null)
 
 	const {
 		register,
@@ -124,9 +125,15 @@ export default function UploadPage() {
 					return newFiles
 				})
 			}
+			// Reset input so the same file can be selected again
+			e.target.value = ''
 		},
 		[generatePreview]
 	)
+
+	const handleCameraCapture = useCallback(() => {
+		cameraInputRef.current?.click()
+	}, [])
 
 	const removeFile = (index: number) => {
 		// Clean up preview URL if it exists
@@ -272,11 +279,35 @@ export default function UploadPage() {
 										)}
 									>
 										<input type="file" multiple onChange={onFileInput} className="hidden" id="file-input" accept="image/*,.pdf" />
+										<input
+											type="file"
+											ref={cameraInputRef}
+											onChange={onFileInput}
+											className="hidden"
+											id="camera-input"
+											accept="image/*"
+											capture="environment"
+										/>
 										<label htmlFor="file-input" className="cursor-pointer">
 											<Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
 											<p className="text-sm text-muted-foreground">Drag and drop files here, or click to select</p>
 											<p className="mt-2 text-xs text-muted-foreground">Supports images and PDFs</p>
 										</label>
+									</div>
+									<div className="flex gap-2 mt-4">
+										<Button type="button" variant="outline" onClick={handleCameraCapture} className="flex-1">
+											<Camera className="w-4 h-4 mr-2" />
+											Take Photo
+										</Button>
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() => document.getElementById('file-input')?.click()}
+											className="flex-1"
+										>
+											<Upload className="w-4 h-4 mr-2" />
+											Select Files
+										</Button>
 									</div>
 									{files.length > 0 && (
 										<div className="mt-4 space-y-2">

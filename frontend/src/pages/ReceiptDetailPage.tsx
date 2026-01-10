@@ -11,7 +11,7 @@ import { Textarea } from '../components/ui/textarea'
 import { Select } from '../components/ui/select'
 import { Badge } from '../components/ui/badge'
 import { getBadgeClassName, getBorderClassName } from '../components/ui/color-picker'
-import { ArrowLeft, Download, Trash2, Upload, X, File } from 'lucide-react'
+import { ArrowLeft, Download, Trash2, Upload, X, File, Camera } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 interface ReceiptFormData {
@@ -44,7 +44,9 @@ export default function ReceiptDetailPage() {
 	const [filesToDelete, setFilesToDelete] = useState<Set<number>>(new Set())
 	const [replacingFileId, setReplacingFileId] = useState<number | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
+	const cameraInputRef = useRef<HTMLInputElement>(null)
 	const fileReplaceInputRefs = useRef<Map<number, HTMLInputElement>>(new Map())
+	const fileReplaceCameraInputRefs = useRef<Map<number, HTMLInputElement>>(new Map())
 
 	const {
 		register,
@@ -154,9 +156,15 @@ export default function ReceiptDetailPage() {
 					return newFiles
 				})
 			}
+			// Reset input so the same file can be selected again
+			e.target.value = ''
 		},
 		[generatePreview]
 	)
+
+	const handleCameraCapture = useCallback(() => {
+		cameraInputRef.current?.click()
+	}, [])
 
 	const removeNewFile = (index: number) => {
 		const preview = filePreviews.get(index)
@@ -382,6 +390,10 @@ export default function ReceiptDetailPage() {
 			// Reset input so the same file can be selected again
 			e.target.value = ''
 		}
+	}
+
+	const handleReplaceFileCamera = (fileId: number) => {
+		fileReplaceCameraInputRefs.current.get(fileId)?.click()
 	}
 
 	const handleDeleteReceipt = async () => {
@@ -614,22 +626,49 @@ export default function ReceiptDetailPage() {
 																				accept="image/*,.pdf"
 																				id={`replace-file-${file.id}`}
 																			/>
-																			<Button
-																				type="button"
-																				variant="outline"
-																				size="sm"
-																				onClick={() => fileReplaceInputRefs.current.get(file.id)?.click()}
-																				disabled={replacingFileId === file.id}
-																			>
-																				{replacingFileId === file.id ? (
-																					<>Replacing...</>
-																				) : (
-																					<>
-																						<Upload className="w-4 h-4 mr-2" />
-																						Replace
-																					</>
-																				)}
-																			</Button>
+																			<input
+																				type="file"
+																				ref={el => {
+																					if (el) {
+																						fileReplaceCameraInputRefs.current.set(file.id, el)
+																					} else {
+																						fileReplaceCameraInputRefs.current.delete(file.id)
+																					}
+																				}}
+																				onChange={e => handleReplaceFileInput(file.id, e)}
+																				className="hidden"
+																				accept="image/*"
+																				capture="environment"
+																				id={`replace-camera-${file.id}`}
+																			/>
+																			<div className="flex gap-2">
+																				<Button
+																					type="button"
+																					variant="outline"
+																					size="sm"
+																					onClick={() => handleReplaceFileCamera(file.id)}
+																					disabled={replacingFileId === file.id}
+																				>
+																					<Camera className="w-4 h-4 mr-2" />
+																					Camera
+																				</Button>
+																				<Button
+																					type="button"
+																					variant="outline"
+																					size="sm"
+																					onClick={() => fileReplaceInputRefs.current.get(file.id)?.click()}
+																					disabled={replacingFileId === file.id}
+																				>
+																					{replacingFileId === file.id ? (
+																						<>Replacing...</>
+																					) : (
+																						<>
+																							<Upload className="w-4 h-4 mr-2" />
+																							Replace
+																						</>
+																					)}
+																				</Button>
+																			</div>
 																		</>
 																	)}
 																</>
@@ -666,10 +705,25 @@ export default function ReceiptDetailPage() {
 											id="add-files-input"
 											accept="image/*,.pdf"
 										/>
-										<Button type="button" variant="outline" className="cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-											<Upload className="w-4 h-4 mr-2" />
-											Select Files
-										</Button>
+										<input
+											ref={cameraInputRef}
+											type="file"
+											onChange={onFileInput}
+											className="hidden"
+											id="add-camera-input"
+											accept="image/*"
+											capture="environment"
+										/>
+										<div className="flex gap-2">
+											<Button type="button" variant="outline" className="flex-1" onClick={handleCameraCapture}>
+												<Camera className="w-4 h-4 mr-2" />
+												Take Photo
+											</Button>
+											<Button type="button" variant="outline" className="flex-1" onClick={() => fileInputRef.current?.click()}>
+												<Upload className="w-4 h-4 mr-2" />
+												Select Files
+											</Button>
+										</div>
 									</div>
 									{newFiles.length > 0 && (
 										<div className="mt-4 space-y-2">
@@ -800,22 +854,49 @@ export default function ReceiptDetailPage() {
 																	accept="image/*,.pdf"
 																	id={`replace-file-preview-${file.id}`}
 																/>
-																<Button
-																	type="button"
-																	variant="outline"
-																	size="sm"
-																	onClick={() => fileReplaceInputRefs.current.get(file.id)?.click()}
-																	disabled={replacingFileId === file.id}
-																>
-																	{replacingFileId === file.id ? (
-																		<>Replacing...</>
-																	) : (
-																		<>
-																			<Upload className="w-4 h-4 mr-2" />
-																			Replace File
-																		</>
-																	)}
-																</Button>
+																<input
+																	type="file"
+																	ref={el => {
+																		if (el) {
+																			fileReplaceCameraInputRefs.current.set(file.id, el)
+																		} else {
+																			fileReplaceCameraInputRefs.current.delete(file.id)
+																		}
+																	}}
+																	onChange={e => handleReplaceFileInput(file.id, e)}
+																	className="hidden"
+																	accept="image/*"
+																	capture="environment"
+																	id={`replace-camera-preview-${file.id}`}
+																/>
+																<div className="flex gap-2">
+																	<Button
+																		type="button"
+																		variant="outline"
+																		size="sm"
+																		onClick={() => handleReplaceFileCamera(file.id)}
+																		disabled={replacingFileId === file.id}
+																	>
+																		<Camera className="w-4 h-4 mr-2" />
+																		Camera
+																	</Button>
+																	<Button
+																		type="button"
+																		variant="outline"
+																		size="sm"
+																		onClick={() => fileReplaceInputRefs.current.get(file.id)?.click()}
+																		disabled={replacingFileId === file.id}
+																	>
+																		{replacingFileId === file.id ? (
+																			<>Replacing...</>
+																		) : (
+																			<>
+																				<Upload className="w-4 h-4 mr-2" />
+																				Replace File
+																			</>
+																		)}
+																	</Button>
+																</div>
 															</div>
 														</div>
 													) : (
