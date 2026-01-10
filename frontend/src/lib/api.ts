@@ -315,6 +315,8 @@ export const receiptTypesApi = {
   move: (id: number, groupId: number | null, displayOrder?: number) =>
     api.put<ReceiptType>(`/receipt-types/${id}/move`, { group_id: groupId, display_order: displayOrder }),
   delete: (id: number) => api.delete(`/receipt-types/${id}`),
+  bulkUpdate: (updates: Array<{ id: number; group_id: number | null; display_order: number }>) =>
+    api.post<ReceiptType[]>('/receipt-types/bulk-update', { updates }),
 };
 
 // Settings API

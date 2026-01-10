@@ -262,6 +262,8 @@ export default function SettingsPage() {
 	const [newGroupName, setNewGroupName] = useState('')
 	const [activeId, setActiveId] = useState<string | null>(null)
 	const [dragOverId, setDragOverId] = useState<string | null>(null)
+	const [isSavingTypes, setIsSavingTypes] = useState(false)
+	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
 	const sensors = useSensors(
 		useSensor(PointerSensor),
@@ -297,6 +299,7 @@ export default function SettingsPage() {
 			const pattern = settingsRes.data?.filenamePattern || DEFAULT_FILENAME_PATTERN
 			setFilenamePattern(pattern)
 			setOriginalPattern(pattern)
+			setHasUnsavedChanges(false)
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to load settings')
 		} finally {
@@ -542,15 +545,6 @@ export default function SettingsPage() {
 		}
 	}
 
-	const handleMoveReceiptType = async (typeId: number, groupId: number | null, displayOrder?: number) => {
-		try {
-			const movedType = await receiptTypesApi.move(typeId, groupId, displayOrder)
-			setReceiptTypes(receiptTypes.map(t => (t.id === typeId ? movedType.data : t)))
-		} catch (err: any) {
-			setError(err.response?.data?.error || 'Failed to move receipt type')
-		}
-	}
-
 	const handleDeleteReceiptType = async (id: number) => {
 		const type = receiptTypes.find(t => t.id === id)
 		if (!confirm(`Are you sure you want to delete receipt type "${type?.name}"?`)) return
@@ -737,7 +731,7 @@ export default function SettingsPage() {
 		setDragOverId(overId)
 	}
 
-	const handleDragEnd = async (event: DragEndEvent) => {
+	const handleDragEnd = (event: DragEndEvent) => {
 		const { active, over } = event
 		setActiveId(null)
 		setDragOverId(null)
@@ -747,7 +741,7 @@ export default function SettingsPage() {
 		const activeId = active.id as string
 		const overId = over.id as string
 
-		// Handle group reordering
+		// Handle group reordering - only update local state
 		if (activeId.startsWith('group-') && overId.startsWith('group-')) {
 			const activeGroupId = parseInt(activeId.replace('group-', ''))
 			const overGroupId = parseInt(overId.replace('group-', ''))
@@ -763,26 +757,12 @@ export default function SettingsPage() {
 
 			const newGroups = arrayMove(currentGroups, activeIndex, overIndex)
 
-			// Optimistically update the UI first with new display orders
-			const optimisticallyUpdated = newGroups.map((g, i) => ({ ...g, display_order: i }))
-			setReceiptTypeGroups(optimisticallyUpdated)
-
-			// Update display_order for all affected groups in the backend
-			const updatePromises = newGroups.map((g, i) =>
-				receiptTypeGroupsApi.update(g.id, { display_order: i }).catch(err => {
-					console.error(`Failed to update group ${g.id}:`, err)
-					throw err
-				})
-			)
-
-			try {
-				await Promise.all(updatePromises)
-			} catch (err) {
-				// On error, reload to get correct state
-				await loadData()
-			}
+			// Update local state with new display orders
+			const updatedGroups = newGroups.map((g, i) => ({ ...g, display_order: i }))
+			setReceiptTypeGroups(updatedGroups)
+			setHasUnsavedChanges(true)
 		}
-		// Handle type reordering within same group
+		// Handle type reordering within same group - only update local state
 		else if (activeId.startsWith('type-') && overId.startsWith('type-')) {
 			const activeTypeId = parseInt(activeId.replace('type-', ''))
 			const overTypeId = parseInt(overId.replace('type-', ''))
@@ -805,27 +785,14 @@ export default function SettingsPage() {
 
 				const newTypes = arrayMove(typesInGroup, activeIndex, overIndex)
 
-				// Update display_order for all affected types
-				const updatedTypes: ReceiptType[] = []
-				for (let i = 0; i < newTypes.length; i++) {
-					if (newTypes[i].display_order !== i) {
-						try {
-							const updated = await receiptTypesApi.update(newTypes[i].id, { display_order: i })
-							updatedTypes.push(updated.data)
-						} catch (err) {
-							console.error(`Failed to update type ${newTypes[i].id}:`, err)
-							updatedTypes.push(newTypes[i])
-						}
-					} else {
-						updatedTypes.push(newTypes[i])
-					}
-				}
-				// Update the types in state
+				// Update local state with new display orders
+				const updatedTypes = newTypes.map((t, i) => ({ ...t, display_order: i }))
 				const typeMap = new Map(updatedTypes.map(t => [t.id, t]))
 				setReceiptTypes(receiptTypes.map(t => typeMap.get(t.id) || t))
+				setHasUnsavedChanges(true)
 			}
 		}
-		// Handle type moved to different group (dropped on group container or another type in that group)
+		// Handle type moved to different group - only update local state
 		else if (activeId.startsWith('type-')) {
 			const activeTypeId = parseInt(activeId.replace('type-', ''))
 			const activeType = receiptTypes.find(t => t.id === activeTypeId)
@@ -851,15 +818,87 @@ export default function SettingsPage() {
 
 			// Only move if target group is different
 			if (targetGroupId !== activeType.group_id) {
-				const typesInTargetGroup = targetGroupId ? typesByGroup.grouped[targetGroupId] || [] : typesByGroup.grouped.ungrouped || []
-				const newDisplayOrder = typesInTargetGroup.length
+				// Get types that will be in the target group after the move
+				const typesInTargetGroup = receiptTypes
+					.filter(t => t.id !== activeTypeId && t.group_id === targetGroupId)
+					.sort((a, b) => {
+						if (a.display_order !== b.display_order) return a.display_order - b.display_order
+						return a.name.localeCompare(b.name)
+					})
 
-				try {
-					await handleMoveReceiptType(activeTypeId, targetGroupId, newDisplayOrder)
-				} catch (err) {
-					console.error(`Failed to move type ${activeTypeId}:`, err)
-				}
+				// Update local state: move the type and recalculate display_order for all types in target group
+				const updatedTypes = receiptTypes.map(t => {
+					if (t.id === activeTypeId) {
+						// Move the active type to the target group
+						return { ...t, group_id: targetGroupId, display_order: typesInTargetGroup.length }
+					} else if (t.group_id === targetGroupId) {
+						// Keep existing types in target group as-is (display_order will be recalculated on save)
+						return t
+					}
+					return t
+				})
+
+				setReceiptTypes(updatedTypes)
+				setHasUnsavedChanges(true)
 			}
+		}
+	}
+
+	// Save all receipt type changes
+	const handleSaveReceiptTypes = async () => {
+		try {
+			setIsSavingTypes(true)
+			setError(null)
+
+			// Recalculate display_order for all types based on their current grouping
+			// Group types by group_id and assign sequential display_order within each group
+			const typesByGroupForSave: Record<number | 'ungrouped', ReceiptType[]> = { ungrouped: [] }
+			
+			receiptTypes.forEach(type => {
+				const key = type.group_id ?? 'ungrouped'
+				if (!typesByGroupForSave[key]) {
+					typesByGroupForSave[key] = []
+				}
+				typesByGroupForSave[key].push(type)
+			})
+
+			// Sort types within each group by current display_order, then name
+			Object.keys(typesByGroupForSave).forEach(key => {
+				typesByGroupForSave[key as number | 'ungrouped'].sort((a, b) => {
+					if (a.display_order !== b.display_order) return a.display_order - b.display_order
+					return a.name.localeCompare(b.name)
+				})
+			})
+
+			// Prepare bulk update with recalculated display_order
+			const updates: Array<{ id: number; group_id: number | null; display_order: number }> = []
+			
+			Object.keys(typesByGroupForSave).forEach(key => {
+				const types = typesByGroupForSave[key as number | 'ungrouped']
+				types.forEach((type, index) => {
+					updates.push({
+						id: type.id,
+						group_id: key === 'ungrouped' ? null : parseInt(key),
+						display_order: index,
+					})
+				})
+			})
+
+			// Update all types at once
+			await receiptTypesApi.bulkUpdate(updates)
+
+			// Update groups display_order
+			const groupUpdates = receiptTypeGroups.map((g, i) => 
+				receiptTypeGroupsApi.update(g.id, { display_order: i })
+			)
+			await Promise.all(groupUpdates)
+
+			// Reload data to ensure consistency
+			await loadData()
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to save receipt type changes')
+		} finally {
+			setIsSavingTypes(false)
 		}
 	}
 
@@ -1243,6 +1282,28 @@ export default function SettingsPage() {
 							</Button>
 						</div>
 					</div>
+
+					{/* Save Changes Button */}
+					{hasUnsavedChanges && (
+						<div className="p-4 border rounded-lg bg-muted/50">
+							<div className="flex items-center justify-between">
+								<div>
+									<Label>Unsaved Changes</Label>
+									<p className="text-sm text-muted-foreground mt-1">
+										You have unsaved changes to receipt type organization. Click Save to apply all changes.
+									</p>
+								</div>
+								<Button 
+									type="button" 
+									onClick={handleSaveReceiptTypes}
+									disabled={isSavingTypes}
+								>
+									<Save className={`w-4 h-4 mr-2 ${isSavingTypes ? 'animate-spin' : ''}`} />
+									{isSavingTypes ? 'Saving...' : 'Save Changes'}
+								</Button>
+							</div>
+						</div>
+					)}
 
 					{/* Groups List */}
 					<DndContext

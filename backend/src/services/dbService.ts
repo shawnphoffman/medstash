@@ -549,6 +549,28 @@ export function moveReceiptTypeToGroup(typeId: number, groupId: number | null, d
 }
 
 /**
+ * Bulk update receipt types
+ * Updates multiple receipt types at once with their new group_id and display_order values
+ */
+export function bulkUpdateReceiptTypes(updates: Array<{ id: number; group_id: number | null; display_order: number }>): ReceiptType[] {
+	const updatedTypes: ReceiptType[] = []
+
+	for (const update of updates) {
+		const existing = dbQueries.getReceiptTypeById.get(update.id) as ReceiptType | null
+		if (!existing) {
+			logger.warn(`Receipt type ${update.id} not found, skipping`)
+			continue
+		}
+
+		dbQueries.updateReceiptTypeGroupId.run(update.group_id, update.display_order, update.id)
+		const updated = dbQueries.getReceiptTypeById.get(update.id) as ReceiptType
+		updatedTypes.push(updated)
+	}
+
+	return updatedTypes
+}
+
+/**
  * Delete a receipt type
  * Updates all receipts using this type to use a default type before deletion
  */
@@ -558,13 +580,13 @@ export function deleteReceiptType(id: number): boolean {
 
 	// Check if any receipts are using this type
 	const receiptsUsingType = dbQueries.getReceiptsByReceiptType.all(id) as Receipt[]
-	
+
 	if (receiptsUsingType.length > 0) {
 		// Find a replacement type (prefer "Other", otherwise use the first available type)
 		const allTypes = dbQueries.getAllReceiptTypes.all() as ReceiptType[]
 		const otherType = allTypes.find(t => t.id !== id && t.name.toLowerCase() === 'other')
 		const replacementType = otherType || allTypes.find(t => t.id !== id)
-		
+
 		if (!replacementType) {
 			throw new Error('Cannot delete receipt type: it is the only type remaining')
 		}

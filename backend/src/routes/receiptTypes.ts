@@ -6,6 +6,7 @@ import {
   updateReceiptType,
   deleteReceiptType,
   moveReceiptTypeToGroup,
+  bulkUpdateReceiptTypes,
 } from '../services/dbService';
 import { CreateReceiptTypeInput, UpdateReceiptTypeInput } from '../models/receipt';
 import { sanitizeString } from '../utils/sanitization';
@@ -159,6 +160,40 @@ router.delete('/:id', (req, res) => {
       return res.status(400).json({ error: error.message });
     }
     res.status(500).json({ error: 'Failed to delete receipt type' });
+  }
+});
+
+// POST /api/receipt-types/bulk-update - Bulk update receipt types
+router.post('/bulk-update', (req, res) => {
+  try {
+    const { updates } = req.body as { updates: Array<{ id: number; group_id: number | null; display_order: number }> };
+
+    if (!Array.isArray(updates)) {
+      return res.status(400).json({ error: 'updates must be an array' });
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'updates array cannot be empty' });
+    }
+
+    // Validate each update
+    for (const update of updates) {
+      if (typeof update.id !== 'number' || isNaN(update.id)) {
+        return res.status(400).json({ error: 'Each update must have a valid id (number)' });
+      }
+      if (update.group_id !== null && (typeof update.group_id !== 'number' || isNaN(update.group_id))) {
+        return res.status(400).json({ error: 'group_id must be a number or null' });
+      }
+      if (typeof update.display_order !== 'number' || isNaN(update.display_order)) {
+        return res.status(400).json({ error: 'Each update must have a valid display_order (number)' });
+      }
+    }
+
+    const updatedTypes = bulkUpdateReceiptTypes(updates);
+    res.json(updatedTypes);
+  } catch (error) {
+    logger.error('Error bulk updating receipt types:', error);
+    res.status(500).json({ error: 'Failed to bulk update receipt types' });
   }
 });
 
