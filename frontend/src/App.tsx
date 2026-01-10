@@ -16,6 +16,7 @@ import { usersApi, receiptTypesApi, receiptTypeGroupsApi, setApiErrorHandler } f
 import { cn } from './lib/utils'
 import { ErrorProvider, useErrorContext } from './contexts/ErrorContext'
 import { REPOSITORY_URL } from './lib/version'
+import { DEFAULT_RECEIPT_TYPE_GROUPS, DEFAULT_UNGROUPED_TYPES } from './lib/defaults'
 
 function Navigation() {
 	const location = useLocation()
@@ -160,31 +161,8 @@ function AppContent() {
 					setShowUserSetup(true)
 				}
 
-				// Reset to default groups and types structure
-				const defaultGroups = [
-					{
-						name: 'Medical Expenses',
-						display_order: 0,
-						types: ['Doctor Visits', 'Hospital Services', 'Prescription Medications', 'Medical Equipment'],
-					},
-					{ name: 'Dental Expenses', display_order: 1, types: ['Routine Care', 'Major Procedures'] },
-					{ name: 'Vision Expenses', display_order: 2, types: ['Eye Exams', 'Eyewear', 'Surgical Procedures'] },
-					{
-						name: 'Other Eligible Expenses',
-						display_order: 3,
-						types: [
-							'Vaccinations',
-							'Physical Exams',
-							'Family Planning',
-							'Mental Health Services',
-							'Over-the-Counter Medications',
-							'Health-Related Travel',
-						],
-					},
-				]
-
 				// Check if we need to reset (if groups/types don't match expected structure)
-				const expectedGroupNames = defaultGroups.map(g => g.name).sort()
+				const expectedGroupNames = DEFAULT_RECEIPT_TYPE_GROUPS.map(g => g.name).sort()
 				const existingGroupNames = groups.map(g => g.name).sort()
 				const needsReset =
 					groups.length === 0 ||
@@ -193,60 +171,8 @@ function AppContent() {
 					!expectedGroupNames.every(name => existingGroupNames.includes(name))
 
 				if (needsReset) {
-					// Delete all existing types first (to handle foreign key constraints)
-					for (const type of receiptTypes) {
-						try {
-							await receiptTypesApi.delete(type.id)
-						} catch (err) {
-							console.warn(`Failed to delete receipt type ${type.id}:`, err)
-						}
-					}
-
-					// Delete all existing groups
-					for (const group of groups) {
-						try {
-							await receiptTypeGroupsApi.delete(group.id)
-						} catch (err) {
-							console.warn(`Failed to delete group ${group.id}:`, err)
-						}
-					}
-
-					// Create new groups and types
-					for (const groupData of defaultGroups) {
-						try {
-							const groupRes = await receiptTypeGroupsApi.create({
-								name: groupData.name,
-								display_order: groupData.display_order,
-							})
-							const groupId = groupRes.data.id
-
-							// Create types for this group
-							for (let i = 0; i < groupData.types.length; i++) {
-								try {
-									await receiptTypesApi.create({
-										name: groupData.types[i],
-										group_id: groupId,
-										display_order: i,
-									})
-								} catch (err) {
-									console.warn(`Failed to create receipt type ${groupData.types[i]}:`, err)
-								}
-							}
-						} catch (err) {
-							console.warn(`Failed to create group ${groupData.name}:`, err)
-						}
-					}
-
-					// Create ungrouped types
-					try {
-						await receiptTypesApi.create({
-							name: 'Other',
-							group_id: null,
-							display_order: 0,
-						})
-					} catch (err) {
-						console.warn(`Failed to create ungrouped type "Other":`, err)
-					}
+					// Use the bulk reset endpoint with defaults from constants
+					await receiptTypesApi.resetToDefaults(DEFAULT_RECEIPT_TYPE_GROUPS, DEFAULT_UNGROUPED_TYPES)
 				}
 			} catch (err) {
 				console.error('Failed to initialize app:', err)

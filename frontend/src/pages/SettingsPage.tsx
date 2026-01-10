@@ -11,6 +11,7 @@ import {
 	ReceiptType,
 	ReceiptTypeGroup,
 } from '../lib/api'
+import { DEFAULT_RECEIPT_TYPE_GROUPS, DEFAULT_UNGROUPED_TYPES } from '../lib/defaults'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -506,18 +507,14 @@ export default function SettingsPage() {
 		}
 	}
 
-	const handleDeleteGroup = async (id: number) => {
+	const handleDeleteGroup = (id: number) => {
 		const group = receiptTypeGroups.find(g => g.id === id)
 		if (!confirm(`Are you sure you want to delete group "${group?.name}"? All types in this group will be ungrouped.`)) return
 
-		try {
-			await receiptTypeGroupsApi.delete(id)
-			setReceiptTypeGroups(receiptTypeGroups.filter(g => g.id !== id))
-			// Update types that were in this group to have null group_id
-			setReceiptTypes(receiptTypes.map(t => (t.group_id === id ? { ...t, group_id: null } : t)))
-		} catch (err: any) {
-			setError(err.response?.data?.error || 'Failed to delete group')
-		}
+		// Update local state only - deletion will be saved when "Save Changes" is clicked
+		setReceiptTypeGroups(receiptTypeGroups.filter(g => g.id !== id))
+		// Update types that were in this group to have null group_id
+		setReceiptTypes(receiptTypes.map(t => (t.group_id === id ? { ...t, group_id: null } : t)))
 	}
 
 	const startEditGroup = (group: ReceiptTypeGroup) => {
@@ -615,91 +612,8 @@ export default function SettingsPage() {
 		try {
 			setError(null)
 
-			// Default groups and types structure
-			const defaultGroups = [
-				{
-					name: 'Medical Expenses',
-					display_order: 0,
-					types: ['Doctor Visits', 'Hospital Services', 'Prescription Medications', 'Medical Equipment'],
-				},
-				{ name: 'Dental Expenses', display_order: 1, types: ['Routine Care', 'Major Procedures'] },
-				{ name: 'Vision Expenses', display_order: 2, types: ['Eye Exams', 'Eyewear', 'Surgical Procedures'] },
-				{
-					name: 'Other Eligible Expenses',
-					display_order: 3,
-					types: [
-						'Vaccinations',
-						'Physical Exams',
-						'Family Planning',
-						'Mental Health Services',
-						'Over-the-Counter Medications',
-						'Health-Related Travel',
-					],
-				},
-			]
-
-			// Step 1: Delete all old types FIRST (before creating new ones to avoid name conflicts)
-			for (const type of receiptTypes) {
-				try {
-					await receiptTypesApi.delete(type.id)
-				} catch (err) {
-					console.warn(`Failed to delete receipt type ${type.id}:`, err)
-				}
-			}
-
-			// Step 2: Delete all old groups
-			for (const group of receiptTypeGroups) {
-				try {
-					await receiptTypeGroupsApi.delete(group.id)
-				} catch (err) {
-					console.warn(`Failed to delete group ${group.id}:`, err)
-				}
-			}
-
-			// Step 3: Create new default groups (sequentially to avoid race conditions)
-			const newGroupsMap = new Map<string, number>()
-			for (const groupData of defaultGroups) {
-				try {
-					const groupRes = await receiptTypeGroupsApi.create({
-						name: groupData.name,
-						display_order: groupData.display_order,
-					})
-					newGroupsMap.set(groupData.name, groupRes.data.id)
-				} catch (err) {
-					console.warn(`Failed to create group ${groupData.name}:`, err)
-				}
-			}
-
-			// Step 4: Create all default types (sequentially, using name-based lookup)
-			for (const groupData of defaultGroups) {
-				const groupId = newGroupsMap.get(groupData.name)
-				if (!groupId) {
-					continue
-				}
-
-				for (let i = 0; i < groupData.types.length; i++) {
-					try {
-						await receiptTypesApi.create({
-							name: groupData.types[i],
-							group_id: groupId,
-							display_order: i,
-						})
-					} catch (err) {
-						console.warn(`Failed to create receipt type ${groupData.types[i]}:`, err)
-					}
-				}
-			}
-
-			// Step 5: Create ungrouped types
-			try {
-				await receiptTypesApi.create({
-					name: 'Other',
-					group_id: null,
-					display_order: 0,
-				})
-			} catch (err) {
-				console.warn(`Failed to create ungrouped type "Other":`, err)
-			}
+			// Use the new bulk reset endpoint with defaults from constants
+			await receiptTypesApi.resetToDefaults(DEFAULT_RECEIPT_TYPE_GROUPS, DEFAULT_UNGROUPED_TYPES)
 
 			// Reload data to refresh the UI
 			await loadData()
@@ -749,8 +663,22 @@ export default function SettingsPage() {
 			}
 		})
 
+		// Check for deleted groups
+		const currentGroupsMap = new Map(receiptTypeGroups.map(g => [g.id, g]))
+		originalReceiptTypeGroups.forEach(originalGroup => {
+			if (!currentGroupsMap.has(originalGroup.id)) {
+				// Group was deleted - mark it as changed
+				changed.add(originalGroup.id)
+			}
+		})
+
 		return changed
 	}, [receiptTypes, receiptTypeGroups, originalReceiptTypes, originalReceiptTypeGroups])
+
+	// Automatically update hasUnsavedChanges based on changedGroupIds
+	useEffect(() => {
+		setHasUnsavedChanges(changedGroupIds.size > 0)
+	}, [changedGroupIds])
 
 	const typesByGroup = useMemo(() => {
 		const grouped: Record<number | 'ungrouped', ReceiptType[]> = { ungrouped: [] }
@@ -1029,6 +957,11 @@ export default function SettingsPage() {
 
 			// Update all types at once
 			await receiptTypesApi.bulkUpdate(updates)
+
+			// Delete groups that were removed
+			const currentGroupIds = new Set(receiptTypeGroups.map(g => g.id))
+			const groupsToDelete = originalReceiptTypeGroups.filter(g => !currentGroupIds.has(g.id))
+			await Promise.all(groupsToDelete.map(g => receiptTypeGroupsApi.delete(g.id)))
 
 			// Update groups display_order
 			const groupUpdates = receiptTypeGroups.map((g, i) => receiptTypeGroupsApi.update(g.id, { display_order: i }))
@@ -1419,20 +1352,6 @@ export default function SettingsPage() {
 						</div>
 					</div>
 
-					{/* Reset to Defaults */}
-					<div className="p-4 border rounded-lg">
-						<div className="flex items-center justify-between">
-							<div>
-								<Label>Reset to Default Types</Label>
-								<p className="mt-1 text-sm text-muted-foreground">Restore all receipt types and groups to their default values</p>
-							</div>
-							<Button type="button" variant="outline" onClick={handleResetToDefaults}>
-								<RotateCcw className="w-4 h-4 mr-2" />
-								Reset to Defaults
-							</Button>
-						</div>
-					</div>
-
 					{/* Save Changes Button */}
 					{hasUnsavedChanges && (
 						<div className="p-4 border rounded-lg bg-muted/50">
@@ -1546,6 +1465,20 @@ export default function SettingsPage() {
 							) : null}
 						</DragOverlay>
 					</DndContext>
+
+					{/* Reset to Defaults */}
+					<div className="p-4 border rounded-lg border-destructive">
+						<div className="flex items-center justify-between">
+							<div>
+								<Label>Reset to Default Types (DANGER)</Label>
+								<p className="mt-1 text-sm text-muted-foreground">Restore all receipt types and groups to their default values</p>
+							</div>
+							<Button type="button" variant="destructive" onClick={handleResetToDefaults}>
+								<RotateCcw className="w-4 h-4 mr-2" />
+								Reset to Defaults
+							</Button>
+						</div>
+					</div>
 				</CardContent>
 			</Card>
 

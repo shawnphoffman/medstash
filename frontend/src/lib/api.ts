@@ -317,6 +317,11 @@ export const receiptTypesApi = {
   delete: (id: number) => api.delete(`/receipt-types/${id}`),
   bulkUpdate: (updates: Array<{ id: number; group_id: number | null; display_order: number }>) =>
     api.post<ReceiptType[]>('/receipt-types/bulk-update', { updates }),
+  resetToDefaults: (defaultGroups: Array<{ name: string; display_order: number; types: string[] }>, ungroupedTypes?: string[]) =>
+    api.post<{ groups: ReceiptTypeGroup[]; types: ReceiptType[] }>('/receipt-types/reset-to-defaults', {
+      defaultGroups,
+      ungroupedTypes,
+    }),
 };
 
 // Settings API

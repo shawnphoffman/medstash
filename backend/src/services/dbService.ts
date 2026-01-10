@@ -599,3 +599,143 @@ export function deleteReceiptType(id: number): boolean {
 	dbQueries.deleteReceiptType.run(id)
 	return true
 }
+
+/**
+ * Reset receipt types and groups to defaults
+ * Deletes all existing types and groups, then creates the new default structure
+ * Uses a transaction to ensure atomicity
+ */
+export function resetReceiptTypesToDefaults(
+	defaultGroups: Array<{
+		name: string
+		display_order: number
+		types: string[]
+	}>,
+	ungroupedTypes: string[] = ['Other']
+): { groups: ReceiptTypeGroup[]; types: ReceiptType[] } {
+	// Ensure ungroupedTypes is defined
+	const finalUngroupedTypes = ungroupedTypes || ['Other']
+
+	const transaction = db.transaction(() => {
+		// Step 1: Find a temporary replacement type for receipts (before we delete everything)
+		const allTypes = dbQueries.getAllReceiptTypes.all() as ReceiptType[]
+		let tempReplacementTypeId: number | null = null
+		let tempReplacementTypeName: string | null = null
+		if (allTypes.length > 0) {
+			const otherType = allTypes.find(t => t.name.toLowerCase() === 'other')
+			tempReplacementTypeId = otherType ? otherType.id : allTypes[0].id
+			if (tempReplacementTypeId) {
+				const tempType = dbQueries.getReceiptTypeById.get(tempReplacementTypeId) as ReceiptType | undefined
+				tempReplacementTypeName = tempType?.name || null
+			}
+		}
+
+		// Step 2: Update ALL receipts to use the temporary replacement type
+		// This prevents foreign key constraint issues when we delete types
+		if (tempReplacementTypeId) {
+			const updateAllReceipts = db.prepare('UPDATE receipts SET receipt_type_id = ?')
+			updateAllReceipts.run(tempReplacementTypeId)
+		}
+
+		// Step 3: Ungroup all types to avoid foreign key issues
+		const ungroupAllTypes = db.prepare('UPDATE receipt_types SET group_id = NULL')
+		ungroupAllTypes.run()
+
+		// Step 4: Delete all types EXCEPT the temporary one (to avoid foreign key constraint)
+		// We'll reuse or delete the temporary one after creating new types
+		if (tempReplacementTypeId) {
+			const deleteAllTypesExceptTemp = db.prepare('DELETE FROM receipt_types WHERE id != ?')
+			deleteAllTypesExceptTemp.run(tempReplacementTypeId)
+		} else {
+			// If no types exist, just delete all
+			const deleteAllTypes = db.prepare('DELETE FROM receipt_types')
+			deleteAllTypes.run()
+		}
+
+		// Step 5: Delete all groups
+		const deleteAllGroups = db.prepare('DELETE FROM receipt_type_groups')
+		deleteAllGroups.run()
+
+		// Step 6: Create new groups
+		const createdGroups: ReceiptTypeGroup[] = []
+		for (const groupData of defaultGroups) {
+			const result = dbQueries.insertReceiptTypeGroup.run(groupData.name, groupData.display_order)
+			const groupId = result.lastInsertRowid as number
+			const group = dbQueries.getReceiptTypeGroupById.get(groupId) as ReceiptTypeGroup
+			createdGroups.push(group)
+		}
+
+		// Step 7: Create types for each group
+		const createdTypes: ReceiptType[] = []
+		for (let i = 0; i < defaultGroups.length; i++) {
+			const groupData = defaultGroups[i]
+			const group = createdGroups[i]
+			if (!group) continue
+
+			for (let j = 0; j < groupData.types.length; j++) {
+				const typeName = groupData.types[j]
+				// Check if temp type has this name - if so, reuse it instead of creating new
+				if (tempReplacementTypeId && tempReplacementTypeName === typeName) {
+					// Reuse temp type by updating it
+					dbQueries.updateReceiptType.run(typeName, group.id, j, tempReplacementTypeId)
+					const updatedType = dbQueries.getReceiptTypeById.get(tempReplacementTypeId) as ReceiptType
+					createdTypes.push(updatedType)
+					// Clear tempReplacementTypeId so we don't try to delete it later
+					tempReplacementTypeId = null
+					tempReplacementTypeName = null
+				} else {
+					// Create new type
+					const result = dbQueries.insertReceiptType.run(typeName, group.id, j)
+					const typeId = result.lastInsertRowid as number
+					const type = dbQueries.getReceiptTypeById.get(typeId) as ReceiptType
+					createdTypes.push(type)
+				}
+			}
+		}
+
+		// Step 8: Create ungrouped types
+		for (let i = 0; i < finalUngroupedTypes.length; i++) {
+			const typeName = finalUngroupedTypes[i]
+			// Check if temp type has this name - if so, reuse it instead of creating new
+			if (tempReplacementTypeId && tempReplacementTypeName === typeName) {
+				// Reuse temp type by updating it
+				dbQueries.updateReceiptType.run(typeName, null, i, tempReplacementTypeId)
+				const updatedType = dbQueries.getReceiptTypeById.get(tempReplacementTypeId) as ReceiptType
+				createdTypes.push(updatedType)
+				// Clear tempReplacementTypeId so we don't try to delete it later
+				tempReplacementTypeId = null
+				tempReplacementTypeName = null
+			} else {
+				// Create new type
+				const result = dbQueries.insertReceiptType.run(typeName, null, i)
+				const typeId = result.lastInsertRowid as number
+				const type = dbQueries.getReceiptTypeById.get(typeId) as ReceiptType
+				createdTypes.push(type)
+			}
+		}
+
+		// Step 9: Update receipts to use "Other" or first available type from the new defaults
+		const finalTypes = dbQueries.getAllReceiptTypes.all() as ReceiptType[]
+		if (finalTypes.length > 0) {
+			const otherType = finalTypes.find(t => t.name.toLowerCase() === 'other')
+			const defaultTypeId = otherType ? otherType.id : finalTypes[0].id
+			const updateAllReceiptsToDefault = db.prepare('UPDATE receipts SET receipt_type_id = ?')
+			updateAllReceiptsToDefault.run(defaultTypeId)
+		}
+
+		// Step 10: Delete the temporary type if no receipts are using it anymore
+		if (tempReplacementTypeId) {
+			// Check if any receipts are still using the temp type
+			const receiptsUsingTempType = dbQueries.getReceiptsByReceiptType.all(tempReplacementTypeId) as Receipt[]
+			if (receiptsUsingTempType.length === 0) {
+				// No receipts are using it, safe to delete
+				const deleteTempType = db.prepare('DELETE FROM receipt_types WHERE id = ?')
+				deleteTempType.run(tempReplacementTypeId)
+			}
+		}
+
+		return { groups: createdGroups, types: createdTypes }
+	})
+
+	return transaction()
+}
