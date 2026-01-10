@@ -18,7 +18,7 @@ import { Label } from '../components/ui/label'
 import { ColorPicker, TAILWIND_COLORS } from '../components/ui/color-picker'
 import { FlagBadge } from '../components/FlagBadge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
-import { Plus, Trash2, Edit2, Save, X, RefreshCw, Info, Flag as FlagIcon, RotateCcw, Move, GripVertical } from 'lucide-react'
+import { Plus, Trash2, Edit2, Save, X, RefreshCw, Info, Flag as FlagIcon, RotateCcw, GripVertical } from 'lucide-react'
 import {
 	DndContext,
 	closestCenter,
@@ -41,9 +41,7 @@ function SortableGroup({
 	group,
 	editingGroup,
 	editGroupName,
-	editGroupDisplayOrder,
 	setEditGroupName,
-	setEditGroupDisplayOrder,
 	onEdit,
 	onSave,
 	onCancel,
@@ -53,9 +51,7 @@ function SortableGroup({
 	group: ReceiptTypeGroup
 	editingGroup: number | null
 	editGroupName: string
-	editGroupDisplayOrder: number
 	setEditGroupName: (name: string) => void
-	setEditGroupDisplayOrder: (order: number) => void
 	onEdit: () => void
 	onSave: () => void
 	onCancel: () => void
@@ -77,12 +73,6 @@ function SortableGroup({
 				{editingGroup === group.id ? (
 					<div className="flex items-center flex-1 gap-2">
 						<Input value={editGroupName} onChange={e => setEditGroupName(e.target.value)} className="flex-1" />
-						<Input
-							type="number"
-							value={editGroupDisplayOrder}
-							onChange={e => setEditGroupDisplayOrder(parseInt(e.target.value) || 0)}
-							className="w-24"
-						/>
 						<Button size="icon" variant="ghost" onClick={onSave}>
 							<Save className="size-4" />
 						</Button>
@@ -120,31 +110,21 @@ function SortableGroup({
 function SortableType({
 	type,
 	editingReceiptType,
-	movingType,
 	editReceiptTypeName,
 	setEditReceiptTypeName,
-	receiptTypeGroups,
 	onEdit,
 	onSave,
 	onCancel,
-	onMove,
-	onCancelMove,
 	onDelete,
-	onMoveToGroup,
 }: {
 	type: ReceiptType
 	editingReceiptType: number | null
-	movingType: number | null
 	editReceiptTypeName: string
 	setEditReceiptTypeName: (name: string) => void
-	receiptTypeGroups: ReceiptTypeGroup[]
 	onEdit: () => void
 	onSave: () => void
 	onCancel: () => void
-	onMove: () => void
-	onCancelMove: () => void
 	onDelete: () => void
-	onMoveToGroup: (groupId: number | null) => void
 }) {
 	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `type-${type.id}` })
 
@@ -166,31 +146,6 @@ function SortableType({
 						<X className="size-4" />
 					</Button>
 				</div>
-			) : movingType === type.id ? (
-				<div className="flex items-center flex-1 gap-2">
-					<Select
-						value={type.group_id?.toString() || 'ungrouped'}
-						onValueChange={value => {
-							const newGroupId = value === 'ungrouped' ? null : parseInt(value)
-							onMoveToGroup(newGroupId)
-						}}
-					>
-						<SelectTrigger className="flex-1">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="ungrouped">Ungrouped</SelectItem>
-							{receiptTypeGroups.map(g => (
-								<SelectItem key={g.id} value={g.id.toString()}>
-									{g.name}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-					<Button size="icon" variant="ghost" onClick={onCancelMove}>
-						<X className="size-4" />
-					</Button>
-				</div>
 			) : (
 				<>
 					<div className="flex items-center flex-1 gap-2">
@@ -200,9 +155,6 @@ function SortableType({
 						<span className="font-medium">{type.name}</span>
 					</div>
 					<div className="flex gap-2">
-						<Button size="icon" variant="ghost" onClick={onMove} title="Move to group">
-							<Move className="size-4" />
-						</Button>
 						<Button size="icon" variant="ghost" onClick={onEdit}>
 							<Edit2 className="size-4" />
 						</Button>
@@ -220,31 +172,21 @@ function SortableType({
 function UngroupedSection({
 	types,
 	editingReceiptType,
-	movingType,
 	editReceiptTypeName,
 	setEditReceiptTypeName,
-	receiptTypeGroups,
 	onEditType,
 	onSaveType,
 	onCancelEdit,
-	onMoveType,
-	onCancelMove,
 	onDeleteType,
-	onMoveToGroup,
 }: {
 	types: ReceiptType[]
 	editingReceiptType: number | null
-	movingType: number | null
 	editReceiptTypeName: string
 	setEditReceiptTypeName: (name: string) => void
-	receiptTypeGroups: ReceiptTypeGroup[]
 	onEditType: (type: ReceiptType) => void
 	onSaveType: (id: number) => void
 	onCancelEdit: () => void
-	onMoveType: (id: number) => void
-	onCancelMove: () => void
 	onDeleteType: (id: number) => void
-	onMoveToGroup: (typeId: number, groupId: number | null) => void
 }) {
 	const { setNodeRef, isOver } = useDroppable({ id: 'ungrouped' })
 
@@ -271,17 +213,12 @@ function UngroupedSection({
 							key={type.id}
 							type={type}
 							editingReceiptType={editingReceiptType}
-							movingType={movingType}
 							editReceiptTypeName={editReceiptTypeName}
 							setEditReceiptTypeName={setEditReceiptTypeName}
-							receiptTypeGroups={receiptTypeGroups}
 							onEdit={() => onEditType(type)}
 							onSave={() => onSaveType(type.id)}
 							onCancel={onCancelEdit}
-							onMove={() => onMoveType(type.id)}
-							onCancelMove={onCancelMove}
 							onDelete={() => onDeleteType(type.id)}
-							onMoveToGroup={groupId => onMoveToGroup(type.id, groupId)}
 						/>
 					))}
 				</SortableContext>
@@ -300,7 +237,6 @@ export default function SettingsPage() {
 	const [editingUser, setEditingUser] = useState<number | null>(null)
 	const [editingReceiptType, setEditingReceiptType] = useState<number | null>(null)
 	const [editingGroup, setEditingGroup] = useState<number | null>(null)
-	const [movingType, setMovingType] = useState<number | null>(null)
 	const [newFlagName, setNewFlagName] = useState('')
 	const [newFlagColor, setNewFlagColor] = useState<string>(TAILWIND_COLORS[0].value)
 	const [editFlagName, setEditFlagName] = useState('')
@@ -309,12 +245,10 @@ export default function SettingsPage() {
 	const [editReceiptTypeName, setEditReceiptTypeName] = useState('')
 	const [editReceiptTypeGroupId, setEditReceiptTypeGroupId] = useState<number | null>(null)
 	const [editGroupName, setEditGroupName] = useState('')
-	const [editGroupDisplayOrder, setEditGroupDisplayOrder] = useState(0)
 	const [newUser, setNewUser] = useState('')
 	const [newReceiptType, setNewReceiptType] = useState('')
 	const [newReceiptTypeGroupId, setNewReceiptTypeGroupId] = useState<number | null>(null)
 	const [newGroupName, setNewGroupName] = useState('')
-	const [newGroupDisplayOrder, setNewGroupDisplayOrder] = useState(0)
 	const [activeId, setActiveId] = useState<string | null>(null)
 
 	const sensors = useSensors(
@@ -495,15 +429,14 @@ export default function SettingsPage() {
 		}
 
 		try {
-			const newGroup = await receiptTypeGroupsApi.create({ name: newGroupName.trim(), display_order: newGroupDisplayOrder })
-			setReceiptTypeGroups(
-				[...receiptTypeGroups, newGroup.data].sort((a, b) => {
-					if (a.display_order !== b.display_order) return a.display_order - b.display_order
-					return a.name.localeCompare(b.name)
-				})
-			)
+			// New groups go at the bottom (highest display_order + 1)
+			const maxDisplayOrder = receiptTypeGroups.length > 0 ? Math.max(...receiptTypeGroups.map(g => g.display_order)) : -1
+			const newGroup = await receiptTypeGroupsApi.create({
+				name: newGroupName.trim(),
+				display_order: maxDisplayOrder + 1,
+			})
+			setReceiptTypeGroups([...receiptTypeGroups, newGroup.data])
 			setNewGroupName('')
-			setNewGroupDisplayOrder(0)
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to create group')
 		}
@@ -516,18 +449,10 @@ export default function SettingsPage() {
 		}
 
 		try {
-			const updatedGroup = await receiptTypeGroupsApi.update(id, { name: editGroupName.trim(), display_order: editGroupDisplayOrder })
-			setReceiptTypeGroups(
-				receiptTypeGroups
-					.map(g => (g.id === id ? updatedGroup.data : g))
-					.sort((a, b) => {
-						if (a.display_order !== b.display_order) return a.display_order - b.display_order
-						return a.name.localeCompare(b.name)
-					})
-			)
+			const updatedGroup = await receiptTypeGroupsApi.update(id, { name: editGroupName.trim() })
+			setReceiptTypeGroups(receiptTypeGroups.map(g => (g.id === id ? updatedGroup.data : g)))
 			setEditingGroup(null)
 			setEditGroupName('')
-			setEditGroupDisplayOrder(0)
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to update group')
 		}
@@ -550,13 +475,11 @@ export default function SettingsPage() {
 	const startEditGroup = (group: ReceiptTypeGroup) => {
 		setEditingGroup(group.id)
 		setEditGroupName(group.name)
-		setEditGroupDisplayOrder(group.display_order)
 	}
 
 	const cancelEditGroup = () => {
 		setEditingGroup(null)
 		setEditGroupName('')
-		setEditGroupDisplayOrder(0)
 	}
 
 	// Receipt type management functions
@@ -607,11 +530,10 @@ export default function SettingsPage() {
 		}
 	}
 
-	const handleMoveReceiptType = async (typeId: number, groupId: number | null) => {
+	const handleMoveReceiptType = async (typeId: number, groupId: number | null, displayOrder?: number) => {
 		try {
-			const movedType = await receiptTypesApi.move(typeId, groupId)
+			const movedType = await receiptTypesApi.move(typeId, groupId, displayOrder)
 			setReceiptTypes(receiptTypes.map(t => (t.id === typeId ? movedType.data : t)))
-			setMovingType(null)
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to move receipt type')
 		}
@@ -696,34 +618,33 @@ export default function SettingsPage() {
 
 			if (activeGroupId === overGroupId) return
 
-			const activeIndex = typesByGroup.sortedGroups.findIndex(g => g.id === activeGroupId)
-			const overIndex = typesByGroup.sortedGroups.findIndex(g => g.id === overGroupId)
+			// Use the sorted groups from typesByGroup to get the current visual order
+			const currentGroups = [...typesByGroup.sortedGroups]
+			const activeIndex = currentGroups.findIndex(g => g.id === activeGroupId)
+			const overIndex = currentGroups.findIndex(g => g.id === overGroupId)
 
 			if (activeIndex === -1 || overIndex === -1) return
 
-			const newGroups = arrayMove(typesByGroup.sortedGroups, activeIndex, overIndex)
+			const newGroups = arrayMove(currentGroups, activeIndex, overIndex)
 
-			// Update display_order for all affected groups
-			const updatedGroups: ReceiptTypeGroup[] = []
-			for (let i = 0; i < newGroups.length; i++) {
-				if (newGroups[i].display_order !== i) {
-					try {
-						const updated = await receiptTypeGroupsApi.update(newGroups[i].id, { display_order: i })
-						updatedGroups.push(updated.data)
-					} catch (err) {
-						console.error(`Failed to update group ${newGroups[i].id}:`, err)
-						updatedGroups.push(newGroups[i])
-					}
-				} else {
-					updatedGroups.push(newGroups[i])
-				}
-			}
-			setReceiptTypeGroups(
-				updatedGroups.sort((a, b) => {
-					if (a.display_order !== b.display_order) return a.display_order - b.display_order
-					return a.name.localeCompare(b.name)
+			// Optimistically update the UI first with new display orders
+			const optimisticallyUpdated = newGroups.map((g, i) => ({ ...g, display_order: i }))
+			setReceiptTypeGroups(optimisticallyUpdated)
+
+			// Update display_order for all affected groups in the backend
+			const updatePromises = newGroups.map((g, i) =>
+				receiptTypeGroupsApi.update(g.id, { display_order: i }).catch(err => {
+					console.error(`Failed to update group ${g.id}:`, err)
+					throw err
 				})
 			)
+
+			try {
+				await Promise.all(updatePromises)
+			} catch (err) {
+				// On error, reload to get correct state
+				await loadData()
+			}
 		}
 		// Handle type reordering within same group
 		else if (activeId.startsWith('type-') && overId.startsWith('type-')) {
@@ -795,8 +716,7 @@ export default function SettingsPage() {
 				const newDisplayOrder = typesInTargetGroup.length
 
 				try {
-					const movedType = await receiptTypesApi.move(activeTypeId, targetGroupId, newDisplayOrder)
-					setReceiptTypes(receiptTypes.map(t => (t.id === activeTypeId ? movedType.data : t)))
+					await handleMoveReceiptType(activeTypeId, targetGroupId, newDisplayOrder)
 				} catch (err) {
 					console.error(`Failed to move type ${activeTypeId}:`, err)
 				}
@@ -1107,127 +1027,6 @@ export default function SettingsPage() {
 					<CardDescription>Organize receipt types into groups for better organization</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-6">
-					{/* Create New Group */}
-					<div className="p-4 space-y-3 border rounded-lg">
-						<Label>Create New Group</Label>
-						<div className="flex gap-2">
-							<Input
-								placeholder="Group name (e.g., Medical Expenses)"
-								value={newGroupName}
-								onChange={e => setNewGroupName(e.target.value)}
-								onKeyDown={e => {
-									if (e.key === 'Enter') {
-										e.preventDefault()
-										handleCreateGroup(e)
-									}
-								}}
-								className="flex-1"
-							/>
-							<Input
-								type="number"
-								placeholder="Order"
-								value={newGroupDisplayOrder}
-								onChange={e => setNewGroupDisplayOrder(parseInt(e.target.value) || 0)}
-								className="w-24"
-							/>
-							<Button type="button" onClick={handleCreateGroup}>
-								<Plus className="w-4 h-4 mr-2" />
-								Add Group
-							</Button>
-						</div>
-					</div>
-
-					{/* Groups List */}
-					<DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-						<div className="space-y-4">
-							{typesByGroup.sortedGroups.length === 0 && typesByGroup.grouped.ungrouped.length === 0 ? (
-								<p className="py-4 text-sm text-center text-muted-foreground">No groups or types configured yet</p>
-							) : (
-								<>
-									<SortableContext items={typesByGroup.sortedGroups.map(g => `group-${g.id}`)} strategy={verticalListSortingStrategy}>
-										{typesByGroup.sortedGroups.map(group => {
-											const typesInGroup = typesByGroup.grouped[group.id] || []
-											return (
-												<SortableGroup
-													key={group.id}
-													group={group}
-													editingGroup={editingGroup}
-													editGroupName={editGroupName}
-													editGroupDisplayOrder={editGroupDisplayOrder}
-													setEditGroupName={setEditGroupName}
-													setEditGroupDisplayOrder={setEditGroupDisplayOrder}
-													onEdit={() => startEditGroup(group)}
-													onSave={() => handleUpdateGroup(group.id)}
-													onCancel={cancelEditGroup}
-													onDelete={() => handleDeleteGroup(group.id)}
-												>
-													<div className="space-y-2 ">
-														{typesInGroup.length > 0 ? (
-															<SortableContext items={typesInGroup.map(t => `type-${t.id}`)} strategy={verticalListSortingStrategy}>
-																{typesInGroup.map(type => (
-																	<SortableType
-																		key={type.id}
-																		type={type}
-																		editingReceiptType={editingReceiptType}
-																		movingType={movingType}
-																		editReceiptTypeName={editReceiptTypeName}
-																		setEditReceiptTypeName={setEditReceiptTypeName}
-																		receiptTypeGroups={receiptTypeGroups}
-																		onEdit={() => startEditReceiptType(type)}
-																		onSave={() => handleUpdateReceiptType(type.id)}
-																		onCancel={cancelEditReceiptType}
-																		onMove={() => setMovingType(type.id)}
-																		onCancelMove={() => setMovingType(null)}
-																		onDelete={() => handleDeleteReceiptType(type.id)}
-																		onMoveToGroup={groupId => handleMoveReceiptType(type.id, groupId)}
-																	/>
-																))}
-															</SortableContext>
-														) : (
-															<div className="py-8 text-sm text-center border-2 border-dashed rounded text-muted-foreground">
-																Drop types here
-															</div>
-														)}
-													</div>
-												</SortableGroup>
-											)
-										})}
-									</SortableContext>
-
-									{/* Ungrouped Types */}
-									<UngroupedSection
-										types={typesByGroup.grouped.ungrouped}
-										editingReceiptType={editingReceiptType}
-										movingType={movingType}
-										editReceiptTypeName={editReceiptTypeName}
-										setEditReceiptTypeName={setEditReceiptTypeName}
-										receiptTypeGroups={receiptTypeGroups}
-										onEditType={type => startEditReceiptType(type)}
-										onSaveType={id => handleUpdateReceiptType(id)}
-										onCancelEdit={cancelEditReceiptType}
-										onMoveType={id => setMovingType(id)}
-										onCancelMove={() => setMovingType(null)}
-										onDeleteType={id => handleDeleteReceiptType(id)}
-										onMoveToGroup={(typeId, groupId) => handleMoveReceiptType(typeId, groupId)}
-									/>
-								</>
-							)}
-						</div>
-						<DragOverlay>
-							{activeId ? (
-								activeId.startsWith('group-') ? (
-									<div className="p-3 border rounded-lg shadow-lg bg-background">
-										<h3 className="font-semibold">{receiptTypeGroups.find(g => `group-${g.id}` === activeId)?.name}</h3>
-									</div>
-								) : activeId.startsWith('type-') ? (
-									<div className="flex items-center justify-between px-2 py-1 border rounded shadow-lg bg-background">
-										<span className="font-medium">{receiptTypes.find(t => `type-${t.id}` === activeId)?.name}</span>
-									</div>
-								) : null
-							) : null}
-						</DragOverlay>
-					</DndContext>
-
 					{/* Create New Type */}
 					<div className="p-4 space-y-3 border rounded-lg">
 						<Label>Create New Receipt Type</Label>
@@ -1266,6 +1065,108 @@ export default function SettingsPage() {
 							</Button>
 						</div>
 					</div>
+
+					{/* Create New Group */}
+					<div className="p-4 space-y-3 border rounded-lg">
+						<Label>Create New Group</Label>
+						<div className="flex gap-2">
+							<Input
+								placeholder="Group name (e.g., Medical Expenses)"
+								value={newGroupName}
+								onChange={e => setNewGroupName(e.target.value)}
+								onKeyDown={e => {
+									if (e.key === 'Enter') {
+										e.preventDefault()
+										handleCreateGroup(e)
+									}
+								}}
+								className="flex-1"
+							/>
+							<Button type="button" onClick={handleCreateGroup}>
+								<Plus className="w-4 h-4 mr-2" />
+								Add Group
+							</Button>
+						</div>
+					</div>
+
+					{/* Groups List */}
+					<DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+						<div className="space-y-4">
+							{typesByGroup.sortedGroups.length === 0 && typesByGroup.grouped.ungrouped.length === 0 ? (
+								<p className="py-4 text-sm text-center text-muted-foreground">No groups or types configured yet</p>
+							) : (
+								<>
+									<SortableContext items={typesByGroup.sortedGroups.map(g => `group-${g.id}`)} strategy={verticalListSortingStrategy}>
+										{typesByGroup.sortedGroups.map(group => {
+											const typesInGroup = typesByGroup.grouped[group.id] || []
+											return (
+												<SortableGroup
+													key={group.id}
+													group={group}
+													editingGroup={editingGroup}
+													editGroupName={editGroupName}
+													setEditGroupName={setEditGroupName}
+													onEdit={() => startEditGroup(group)}
+													onSave={() => handleUpdateGroup(group.id)}
+													onCancel={cancelEditGroup}
+													onDelete={() => handleDeleteGroup(group.id)}
+												>
+													<div className="space-y-2 ">
+														{typesInGroup.length > 0 ? (
+															<SortableContext items={typesInGroup.map(t => `type-${t.id}`)} strategy={verticalListSortingStrategy}>
+																{typesInGroup.map(type => (
+																	<SortableType
+																		key={type.id}
+																		type={type}
+																		editingReceiptType={editingReceiptType}
+																		editReceiptTypeName={editReceiptTypeName}
+																		setEditReceiptTypeName={setEditReceiptTypeName}
+																		onEdit={() => startEditReceiptType(type)}
+																		onSave={() => handleUpdateReceiptType(type.id)}
+																		onCancel={cancelEditReceiptType}
+																		onDelete={() => handleDeleteReceiptType(type.id)}
+																	/>
+																))}
+															</SortableContext>
+														) : (
+															<div className="py-8 text-sm text-center border-2 border-dashed rounded text-muted-foreground">
+																Drop types here
+															</div>
+														)}
+													</div>
+												</SortableGroup>
+											)
+										})}
+									</SortableContext>
+
+									{/* Ungrouped Types */}
+									<UngroupedSection
+										types={typesByGroup.grouped.ungrouped}
+										editingReceiptType={editingReceiptType}
+										editReceiptTypeName={editReceiptTypeName}
+										setEditReceiptTypeName={setEditReceiptTypeName}
+										onEditType={type => startEditReceiptType(type)}
+										onSaveType={id => handleUpdateReceiptType(id)}
+										onCancelEdit={cancelEditReceiptType}
+										onDeleteType={id => handleDeleteReceiptType(id)}
+									/>
+								</>
+							)}
+						</div>
+						<DragOverlay>
+							{activeId ? (
+								activeId.startsWith('group-') ? (
+									<div className="p-3 border rounded-lg shadow-lg bg-background">
+										<h3 className="font-semibold">{receiptTypeGroups.find(g => `group-${g.id}` === activeId)?.name}</h3>
+									</div>
+								) : activeId.startsWith('type-') ? (
+									<div className="flex items-center justify-between px-2 py-1 border rounded shadow-lg bg-background">
+										<span className="font-medium">{receiptTypes.find(t => `type-${t.id}` === activeId)?.name}</span>
+									</div>
+								) : null
+							) : null}
+						</DragOverlay>
+					</DndContext>
 				</CardContent>
 			</Card>
 
