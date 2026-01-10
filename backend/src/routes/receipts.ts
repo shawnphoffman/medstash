@@ -669,7 +669,6 @@ router.post('/bulk-update', async (req, res) => {
 		})
 
 		// Validate that all receipts exist
-		const { getReceiptById } = await import('../db')
 		const dbQueries = (await import('../db')).dbQueries
 		for (const id of parsedReceiptIds) {
 			const receipt = dbQueries.getReceiptById.get(id)
