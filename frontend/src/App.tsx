@@ -39,17 +39,13 @@ function Navigation() {
 		<nav className="border-b bg-background">
 			<div className="container px-4 py-4 mx-auto">
 				<div className="flex items-center justify-between">
-					<Link 
-						to="/" 
-						className="flex items-center gap-2 transition-opacity hover:opacity-80"
-						onClick={closeMobileMenu}
-					>
+					<Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80" onClick={closeMobileMenu}>
 						<ReceiptText className="w-6 h-6" />
 						<h1 className="text-2xl font-bold cursor-pointer">MedStash</h1>
 					</Link>
-					
+
 					{/* Desktop Navigation */}
-					<div className="hidden md:flex items-center gap-2">
+					<div className="items-center hidden gap-2 md:flex">
 						{navItems.map(item => {
 							const Icon = item.icon
 							const isActive = location.pathname === item.path
@@ -72,59 +68,38 @@ function Navigation() {
 								className={cn(location.pathname === '/about' && 'bg-primary text-primary-foreground')}
 								aria-label="About"
 							>
-								<HelpCircle className="h-5 w-5" />
+								<HelpCircle className="w-5 h-5" />
 							</Button>
 						</Link>
-						<a
-							href={REPOSITORY_URL.replace('.git', '')}
-							target="_blank"
-							rel="noopener noreferrer"
-							aria-label="GitHub Repository"
-						>
+						<a href={REPOSITORY_URL.replace('.git', '')} target="_blank" rel="noopener noreferrer" aria-label="GitHub Repository">
 							<Button variant="ghost" size="icon">
-								<Github className="h-5 w-5" />
+								<Github className="w-5 h-5" />
 							</Button>
 						</a>
 						<ThemeToggle />
 					</div>
 
 					{/* Mobile Menu Button */}
-					<div className="flex md:hidden items-center gap-2">
+					<div className="flex items-center gap-2 md:hidden">
 						<ThemeToggle />
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={toggleMobileMenu}
-							aria-label="Toggle menu"
-						>
-							{isMobileMenuOpen ? (
-								<X className="h-5 w-5" />
-							) : (
-								<Menu className="h-5 w-5" />
-							)}
+						<Button variant="ghost" size="icon" onClick={toggleMobileMenu} aria-label="Toggle menu">
+							{isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
 						</Button>
 					</div>
 				</div>
 
 				{/* Mobile Menu Dropdown */}
 				{isMobileMenuOpen && (
-					<div className="md:hidden mt-4 pb-4 border-t pt-4">
+					<div className="pt-4 pb-4 mt-4 border-t md:hidden">
 						<div className="flex flex-col gap-2">
 							{navItems.map(item => {
 								const Icon = item.icon
 								const isActive = location.pathname === item.path
 								return (
-									<Link 
-										key={item.path} 
-										to={item.path}
-										onClick={closeMobileMenu}
-									>
+									<Link key={item.path} to={item.path} onClick={closeMobileMenu}>
 										<Button
 											variant={isActive ? 'default' : 'ghost'}
-											className={cn(
-												'w-full justify-start gap-2',
-												isActive && 'bg-primary text-primary-foreground'
-											)}
+											className={cn('w-full justify-start gap-2', isActive && 'bg-primary text-primary-foreground')}
 										>
 											<Icon className="w-4 h-4" />
 											{item.label}
@@ -135,23 +110,15 @@ function Navigation() {
 							<Link to="/about" onClick={closeMobileMenu}>
 								<Button
 									variant="ghost"
-									className={cn(
-										'w-full justify-start gap-2',
-										location.pathname === '/about' && 'bg-primary text-primary-foreground'
-									)}
+									className={cn('w-full justify-start gap-2', location.pathname === '/about' && 'bg-primary text-primary-foreground')}
 								>
-									<HelpCircle className="h-4 w-4" />
+									<HelpCircle className="w-4 h-4" />
 									About
 								</Button>
 							</Link>
-							<a
-								href={REPOSITORY_URL.replace('.git', '')}
-								target="_blank"
-								rel="noopener noreferrer"
-								onClick={closeMobileMenu}
-							>
-								<Button variant="ghost" className="w-full justify-start gap-2">
-									<Github className="h-4 w-4" />
+							<a href={REPOSITORY_URL.replace('.git', '')} target="_blank" rel="noopener noreferrer" onClick={closeMobileMenu}>
+								<Button variant="ghost" className="justify-start w-full gap-2">
+									<Github className="w-4 h-4" />
 									GitHub
 								</Button>
 							</a>
@@ -195,16 +162,34 @@ function AppContent() {
 
 				// Reset to default groups and types structure
 				const defaultGroups = [
-					{ name: 'Medical Expenses', display_order: 0, types: ['Doctor Visits', 'Hospital Services', 'Prescription Medications', 'Medical Equipment'] },
+					{
+						name: 'Medical Expenses',
+						display_order: 0,
+						types: ['Doctor Visits', 'Hospital Services', 'Prescription Medications', 'Medical Equipment'],
+					},
 					{ name: 'Dental Expenses', display_order: 1, types: ['Routine Care', 'Major Procedures'] },
 					{ name: 'Vision Expenses', display_order: 2, types: ['Eye Exams', 'Eyewear', 'Surgical Procedures'] },
-					{ name: 'Other Eligible Expenses', display_order: 3, types: ['Vaccinations', 'Physical Exams', 'Family Planning', 'Mental Health Services', 'Over-the-Counter Medications', 'Health-Related Travel'] },
+					{
+						name: 'Other Eligible Expenses',
+						display_order: 3,
+						types: [
+							'Vaccinations',
+							'Physical Exams',
+							'Family Planning',
+							'Mental Health Services',
+							'Over-the-Counter Medications',
+							'Health-Related Travel',
+						],
+					},
 				]
+
+				
 
 				// Check if we need to reset (if groups/types don't match expected structure)
 				const expectedGroupNames = defaultGroups.map(g => g.name).sort()
 				const existingGroupNames = groups.map(g => g.name).sort()
-				const needsReset = groups.length === 0 || 
+				const needsReset =
+					groups.length === 0 ||
 					receiptTypes.length === 0 ||
 					expectedGroupNames.length !== existingGroupNames.length ||
 					!expectedGroupNames.every(name => existingGroupNames.includes(name))
@@ -231,16 +216,16 @@ function AppContent() {
 					// Create new groups and types
 					for (const groupData of defaultGroups) {
 						try {
-							const groupRes = await receiptTypeGroupsApi.create({ 
-								name: groupData.name, 
-								display_order: groupData.display_order 
+							const groupRes = await receiptTypeGroupsApi.create({
+								name: groupData.name,
+								display_order: groupData.display_order,
 							})
 							const groupId = groupRes.data.id
 
 							// Create types for this group
 							for (let i = 0; i < groupData.types.length; i++) {
 								try {
-									await receiptTypesApi.create({ 
+									await receiptTypesApi.create({
 										name: groupData.types[i],
 										group_id: groupId,
 										display_order: i,
@@ -252,6 +237,17 @@ function AppContent() {
 						} catch (err) {
 							console.warn(`Failed to create group ${groupData.name}:`, err)
 						}
+					}
+
+					// Create ungrouped types
+					try {
+						await receiptTypesApi.create({
+							name: 'Other',
+							group_id: null,
+							display_order: 0,
+						})
+					} catch (err) {
+						console.warn(`Failed to create ungrouped type "Other":`, err)
 					}
 				}
 			} catch (err) {

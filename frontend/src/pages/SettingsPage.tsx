@@ -47,6 +47,7 @@ function SortableGroup({
 	onCancel,
 	onDelete,
 	dragOverId,
+	hasChanged,
 	children,
 }: {
 	group: ReceiptTypeGroup
@@ -58,6 +59,7 @@ function SortableGroup({
 	onCancel: () => void
 	onDelete: () => void
 	dragOverId: string | null
+	hasChanged: boolean
 	children: React.ReactNode
 }) {
 	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `group-${group.id}` })
@@ -73,7 +75,11 @@ function SortableGroup({
 	}
 
 	return (
-		<div ref={setNodeRef} style={style} className="border rounded-lg">
+		<div
+			ref={setNodeRef}
+			style={style}
+			className={`rounded-lg ${hasChanged ? 'border-2 border-dashed border-amber-500/50' : 'border'}`}
+		>
 			<div className="flex items-center justify-between p-1.5 bg-muted/50 border-b">
 				{editingGroup === group.id ? (
 					<div className="flex items-center flex-1 gap-2">
@@ -189,6 +195,7 @@ function UngroupedSection({
 	onCancelEdit,
 	onDeleteType,
 	dragOverId,
+	hasChanged,
 }: {
 	types: ReceiptType[]
 	editingReceiptType: number | null
@@ -199,6 +206,7 @@ function UngroupedSection({
 	onCancelEdit: () => void
 	onDeleteType: (id: number) => void
 	dragOverId: string | null
+	hasChanged: boolean
 }) {
 	const { setNodeRef, isOver } = useDroppable({ id: 'ungrouped' })
 	const isDragOver = isOver || dragOverId === 'ungrouped'
@@ -207,7 +215,13 @@ function UngroupedSection({
 		return (
 			<div
 				ref={setNodeRef}
-				className={`border rounded-lg pointer-events-auto ${isDragOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}
+				className={`rounded-lg pointer-events-auto ${
+					isDragOver
+						? 'bg-primary/10 border-2 border-primary border-dashed'
+						: hasChanged
+							? 'border-2 border-dashed border-amber-500/50'
+							: 'border'
+				}`}
 			>
 				<div className="p-3 border-b bg-muted/50">
 					<h3 className="font-semibold">Ungrouped</h3>
@@ -220,7 +234,13 @@ function UngroupedSection({
 	return (
 		<div
 			ref={setNodeRef}
-			className={`border rounded-lg pointer-events-auto ${isDragOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}
+			className={`rounded-lg pointer-events-auto ${
+				isDragOver
+					? 'bg-primary/10 border-2 border-primary border-dashed'
+					: hasChanged
+						? 'border-2 border-dashed border-amber-500/50'
+						: 'border'
+			}`}
 		>
 			<div className="p-3 border-b bg-muted/50">
 				<h3 className="font-semibold">Ungrouped</h3>
@@ -251,6 +271,8 @@ export default function SettingsPage() {
 	const [users, setUsers] = useState<User[]>([])
 	const [receiptTypes, setReceiptTypes] = useState<ReceiptType[]>([])
 	const [receiptTypeGroups, setReceiptTypeGroups] = useState<ReceiptTypeGroup[]>([])
+	const [originalReceiptTypes, setOriginalReceiptTypes] = useState<ReceiptType[]>([])
+	const [originalReceiptTypeGroups, setOriginalReceiptTypeGroups] = useState<ReceiptTypeGroup[]>([])
 	const [loading, setLoading] = useState(true)
 	const [editingFlag, setEditingFlag] = useState<number | null>(null)
 	const [editingUser, setEditingUser] = useState<number | null>(null)
@@ -307,6 +329,9 @@ export default function SettingsPage() {
 			setUsers(usersRes.data)
 			setReceiptTypes(receiptTypesRes.data)
 			setReceiptTypeGroups(groupsRes.data)
+			// Store original state for comparison
+			setOriginalReceiptTypes(receiptTypesRes.data)
+			setOriginalReceiptTypeGroups(groupsRes.data)
 			// Load filename pattern
 			const pattern = settingsRes.data?.filenamePattern || DEFAULT_FILENAME_PATTERN
 			setFilenamePattern(pattern)
@@ -669,6 +694,17 @@ export default function SettingsPage() {
 				}
 			}
 
+			// Step 5: Create ungrouped types
+			try {
+				await receiptTypesApi.create({
+					name: 'Other',
+					group_id: null,
+					display_order: 0,
+				})
+			} catch (err) {
+				console.warn(`Failed to create ungrouped type "Other":`, err)
+			}
+
 			// Reload data to refresh the UI
 			await loadData()
 		} catch (err: any) {
@@ -677,6 +713,53 @@ export default function SettingsPage() {
 	}
 
 	// Organize types by group
+	// Determine which groups have been changed
+	const changedGroupIds = useMemo(() => {
+		const changed = new Set<number | 'ungrouped'>()
+
+		// Create maps for quick lookup
+		const originalGroupsMap = new Map(originalReceiptTypeGroups.map(g => [g.id, g]))
+		const originalTypesMap = new Map(originalReceiptTypes.map(t => [t.id, t]))
+		const currentTypesMap = new Map(receiptTypes.map(t => [t.id, t]))
+
+		// Check for changed groups (name or display_order)
+		receiptTypeGroups.forEach(group => {
+			const original = originalGroupsMap.get(group.id)
+			if (!original || original.name !== group.name || original.display_order !== group.display_order) {
+				changed.add(group.id)
+			}
+		})
+
+		// Check for changed types and track which groups they belong to
+		receiptTypes.forEach(type => {
+			const original = originalTypesMap.get(type.id)
+			if (!original) {
+				// New type - mark its group as changed
+				changed.add(type.group_id ?? 'ungrouped')
+			} else {
+				// Check if type changed
+				if (
+					original.name !== type.name ||
+					original.group_id !== type.group_id ||
+					original.display_order !== type.display_order
+				) {
+					// Mark both old and new groups as changed
+					changed.add(original.group_id ?? 'ungrouped')
+					changed.add(type.group_id ?? 'ungrouped')
+				}
+			}
+		})
+
+		// Check for deleted types
+		originalReceiptTypes.forEach(originalType => {
+			if (!currentTypesMap.has(originalType.id)) {
+				changed.add(originalType.group_id ?? 'ungrouped')
+			}
+		})
+
+		return changed
+	}, [receiptTypes, receiptTypeGroups, originalReceiptTypes, originalReceiptTypeGroups])
+
 	const typesByGroup = useMemo(() => {
 		const grouped: Record<number | 'ungrouped', ReceiptType[]> = { ungrouped: [] }
 		const sortedGroups = [...receiptTypeGroups].sort((a, b) => {
@@ -905,6 +988,14 @@ export default function SettingsPage() {
 	}
 
 	// Save all receipt type changes
+	const handleCancelReceiptTypes = () => {
+		// Revert to original state
+		setReceiptTypes([...originalReceiptTypes])
+		setReceiptTypeGroups([...originalReceiptTypeGroups])
+		setHasUnsavedChanges(false)
+		setError(null)
+	}
+
 	const handleSaveReceiptTypes = async () => {
 		try {
 			setIsSavingTypes(true)
@@ -1257,10 +1348,21 @@ export default function SettingsPage() {
 			</Card>
 
 			{/* Receipt Type Groups Management */}
-			<Card>
+			<Card className={hasUnsavedChanges ? 'border-2 border-dashed border-amber-500/50' : ''}>
 				<CardHeader>
-					<CardTitle>Receipt Type Groups</CardTitle>
-					<CardDescription>Organize receipt types into groups for better organization</CardDescription>
+					<div className="flex items-center justify-between">
+						<div>
+							<CardTitle className="flex items-center gap-2">
+								Receipt Type Groups
+								{hasUnsavedChanges && (
+									<span className="text-xs font-normal text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+										Unsaved Changes
+									</span>
+								)}
+							</CardTitle>
+							<CardDescription>Organize receipt types into groups for better organization</CardDescription>
+						</div>
+					</div>
 				</CardHeader>
 				<CardContent className="space-y-6">
 					{/* Create New Type */}
@@ -1346,13 +1448,19 @@ export default function SettingsPage() {
 								<div>
 									<Label>Unsaved Changes</Label>
 									<p className="mt-1 text-sm text-muted-foreground">
-										You have unsaved changes to receipt type organization. Click Save to apply all changes.
+										You have unsaved changes to receipt type organization. Click Save to apply all changes or Cancel to revert.
 									</p>
 								</div>
-								<Button type="button" onClick={handleSaveReceiptTypes} disabled={isSavingTypes}>
-									<Save className={`w-4 h-4 mr-2 ${isSavingTypes ? 'animate-spin' : ''}`} />
-									{isSavingTypes ? 'Saving...' : 'Save Changes'}
-								</Button>
+								<div className="flex gap-2">
+									<Button type="button" variant="outline" onClick={handleCancelReceiptTypes} disabled={isSavingTypes}>
+										<X className="w-4 h-4 mr-2" />
+										Cancel
+									</Button>
+									<Button type="button" onClick={handleSaveReceiptTypes} disabled={isSavingTypes}>
+										<Save className={`w-4 h-4 mr-2 ${isSavingTypes ? 'animate-spin' : ''}`} />
+										{isSavingTypes ? 'Saving...' : 'Save Changes'}
+									</Button>
+								</div>
 							</div>
 						</div>
 					)}
@@ -1386,6 +1494,7 @@ export default function SettingsPage() {
 													onCancel={cancelEditGroup}
 													onDelete={() => handleDeleteGroup(group.id)}
 													dragOverId={dragOverId}
+													hasChanged={changedGroupIds.has(group.id)}
 												>
 													<div className="space-y-2 ">
 														{typesInGroup.length > 0 ? (
@@ -1426,6 +1535,7 @@ export default function SettingsPage() {
 										onCancelEdit={cancelEditReceiptType}
 										onDeleteType={id => handleDeleteReceiptType(id)}
 										dragOverId={dragOverId}
+										hasChanged={changedGroupIds.has('ungrouped')}
 									/>
 								</>
 							)}
