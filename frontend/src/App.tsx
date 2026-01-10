@@ -6,7 +6,7 @@ import ReceiptDetailPage from './pages/ReceiptDetailPage'
 import SettingsPage from './pages/SettingsPage'
 import AboutPage from './pages/AboutPage'
 import ErrorPage from './pages/ErrorPage'
-import { Receipt, Upload, Settings, ReceiptText, HelpCircle } from 'lucide-react'
+import { Receipt, Upload, Settings, ReceiptText, HelpCircle, Github } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { ThemeToggle } from './components/ThemeToggle'
 import UserSetupDialog from './components/UserSetupDialog'
@@ -14,6 +14,7 @@ import { Toaster } from './components/ui/toaster'
 import { usersApi, receiptTypesApi, setApiErrorHandler } from './lib/api'
 import { cn } from './lib/utils'
 import { ErrorProvider, useErrorContext } from './contexts/ErrorContext'
+import { REPOSITORY_URL } from './lib/version'
 
 function Navigation() {
 	const location = useLocation()
@@ -58,6 +59,16 @@ function Navigation() {
 								<HelpCircle className="h-5 w-5" />
 							</Button>
 						</Link>
+						<a
+							href={REPOSITORY_URL.replace('.git', '')}
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label="GitHub Repository"
+						>
+							<Button variant="ghost" size="icon">
+								<Github className="h-5 w-5" />
+							</Button>
+						</a>
 						<ThemeToggle />
 					</div>
 				</div>
