@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import UploadPage from './pages/UploadPage'
+import BulkUploadPage from './pages/BulkUploadPage'
 import ReceiptsPage from './pages/ReceiptsPage'
 import ReceiptDetailPage from './pages/ReceiptDetailPage'
 import SettingsPage from './pages/SettingsPage'
@@ -301,6 +302,7 @@ function AppContent() {
 						<Route path="/" element={<ReceiptsPage />} />
 						<Route path="/receipts/:id" element={<ReceiptDetailPage />} />
 						<Route path="/upload" element={<UploadPage />} />
+						<Route path="/bulk-upload" element={<BulkUploadPage />} />
 						<Route path="/settings" element={<SettingsPage />} />
 						<Route path="/about" element={<AboutPage />} />
 						<Route path="/error" element={<ErrorPage />} />

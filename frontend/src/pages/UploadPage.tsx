@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { receiptsApi, flagsApi, usersApi, receiptTypesApi, receiptTypeGroupsApi, CreateReceiptInput, Flag, User, ReceiptType, ReceiptTypeGroup } from '../lib/api'
 import { useToast } from '../components/ui/use-toast'
@@ -271,7 +271,13 @@ export default function UploadPage() {
 					<Card>
 						<CardHeader>
 							<CardTitle>Upload Receipt</CardTitle>
-							<CardDescription>Upload medical receipts with HSA-compliant information</CardDescription>
+							<CardDescription>
+								Upload medical receipts with HSA-compliant information
+								<br />
+								<Link to="/bulk-upload" className="mt-2 text-sm text-primary hover:underline">
+									Or bulk upload multiple files →
+								</Link>
+							</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
