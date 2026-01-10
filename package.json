@@ -1,33 +1,52 @@
 {
-  "name": "medstash",
-  "version": "1.0.0",
-  "description": "Self-hostable medical receipt storage system for HSA recordkeeping",
-  "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
-  "scripts": {
-    "dev": "docker compose -f docker-compose.dev.yml up",
-    "build": "docker compose build",
-    "start": "docker compose up",
-    "test": "npm run test -w backend && npm run test -w frontend",
-    "test:backend": "npm run test -w backend",
-    "test:frontend": "npm run test -w frontend",
-    "test:watch": "npm run test:watch -w backend",
-    "test:watch:backend": "npm run test:watch -w backend",
-    "test:watch:frontend": "npm run test:watch -w frontend",
-    "test:coverage": "npm run test:coverage -w backend && npm run test:coverage -w frontend",
-    "test:coverage:backend": "npm run test:coverage -w backend",
-    "test:coverage:frontend": "npm run test:coverage -w frontend"
-  },
-  "keywords": [
-    "hsa",
-    "receipts",
-    "medical",
-    "storage"
-  ],
-  "author": "",
-  "license": "MIT"
+	"name": "medstash",
+	"version": "0.0.1",
+	"description": "Self-hostable medical receipt storage system for HSA recordkeeping",
+	"private": true,
+	"workspaces": [
+		"frontend",
+		"backend"
+	],
+	"engines": {
+		"node": ">=20.0.0",
+		"npm": ">=9.0.0"
+	},
+	"scripts": {
+		"dev": "docker compose -f docker-compose.dev.yml up",
+		"build": "docker compose build",
+		"start": "docker compose up",
+		"test": "npm run test -w backend && npm run test -w frontend",
+		"test:backend": "npm run test -w backend",
+		"test:frontend": "npm run test -w frontend",
+		"test:watch": "npm run test:watch -w backend",
+		"test:watch:backend": "npm run test:watch -w backend",
+		"test:watch:frontend": "npm run test:watch -w frontend",
+		"test:coverage": "npm run test:coverage -w backend && npm run test:coverage -w frontend",
+		"test:coverage:backend": "npm run test:coverage -w backend",
+		"test:coverage:frontend": "npm run test:coverage -w frontend",
+		"clean": "rm -rf frontend/dist backend/dist frontend/node_modules backend/node_modules node_modules",
+		"version:patch": "npm version patch -m \"chore: bump version to %s\"",
+		"version:minor": "npm version minor -m \"chore: bump version to %s\"",
+		"version:major": "npm version major -m \"chore: bump version to %s\"",
+		"version": "npm run version:patch"
+	},
+	"keywords": [
+		"hsa",
+		"receipts",
+		"medical",
+		"FIRE",
+		"healthcare",
+		"financial independence",
+		"self-hosted"
+	],
+	"author": "Shawn Hoffman",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/shawnhoffman/medstash.git"
+	},
+	"bugs": {
+		"url": "https://github.com/shawnhoffman/medstash/issues"
+	},
+	"homepage": "https://github.com/shawnhoffman/medstash#readme"
 }
-
