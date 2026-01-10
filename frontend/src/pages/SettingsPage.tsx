@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
 	flagsApi,
 	settingsApi,
@@ -106,7 +106,9 @@ function SortableGroup({
 			</div>
 			<div
 				ref={setDroppableRef}
-				className={`p-3 space-y-2 min-h-[60px] ${isDragOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}
+				className={`p-3 space-y-2 min-h-[60px] pointer-events-auto ${
+					isDragOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''
+				}`}
 			>
 				{children}
 			</div>
@@ -203,7 +205,10 @@ function UngroupedSection({
 
 	if (types.length === 0 && !isDragOver) {
 		return (
-			<div ref={setNodeRef} className={`border rounded-lg ${isDragOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}>
+			<div
+				ref={setNodeRef}
+				className={`border rounded-lg pointer-events-auto ${isDragOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}
+			>
 				<div className="p-3 border-b bg-muted/50">
 					<h3 className="font-semibold">Ungrouped</h3>
 				</div>
@@ -213,7 +218,10 @@ function UngroupedSection({
 	}
 
 	return (
-		<div ref={setNodeRef} className={`border rounded-lg ${isDragOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}>
+		<div
+			ref={setNodeRef}
+			className={`border rounded-lg pointer-events-auto ${isDragOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}
+		>
 			<div className="p-3 border-b bg-muted/50">
 				<h3 className="font-semibold">Ungrouped</h3>
 			</div>
@@ -266,7 +274,11 @@ export default function SettingsPage() {
 	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
 	const sensors = useSensors(
-		useSensor(PointerSensor),
+		useSensor(PointerSensor, {
+			activationConstraint: {
+				distance: 8,
+			},
+		}),
 		useSensor(KeyboardSensor, {
 			coordinateGetter: sortableKeyboardCoordinates,
 		})
@@ -571,19 +583,38 @@ export default function SettingsPage() {
 
 	// Reset receipt types and groups to defaults
 	const handleResetToDefaults = async () => {
-		if (!confirm('Are you sure you want to reset all receipt types and groups to defaults? This will delete all existing types and groups. Any receipts using custom types will be reassigned to default types.')) {
+		if (
+			!confirm(
+				'Are you sure you want to reset all receipt types and groups to defaults? This will delete all existing types and groups. Any receipts using custom types will be reassigned to default types.'
+			)
+		) {
 			return
 		}
 
 		try {
 			setError(null)
-			
+
 			// Default groups and types structure
 			const defaultGroups = [
-				{ name: 'Medical Expenses', display_order: 0, types: ['Doctor Visits', 'Hospital Services', 'Prescription Medications', 'Medical Equipment'] },
+				{
+					name: 'Medical Expenses',
+					display_order: 0,
+					types: ['Doctor Visits', 'Hospital Services', 'Prescription Medications', 'Medical Equipment'],
+				},
 				{ name: 'Dental Expenses', display_order: 1, types: ['Routine Care', 'Major Procedures'] },
 				{ name: 'Vision Expenses', display_order: 2, types: ['Eye Exams', 'Eyewear', 'Surgical Procedures'] },
-				{ name: 'Other Eligible Expenses', display_order: 3, types: ['Vaccinations', 'Physical Exams', 'Family Planning', 'Mental Health Services', 'Over-the-Counter Medications', 'Health-Related Travel'] },
+				{
+					name: 'Other Eligible Expenses',
+					display_order: 3,
+					types: [
+						'Vaccinations',
+						'Physical Exams',
+						'Family Planning',
+						'Mental Health Services',
+						'Over-the-Counter Medications',
+						'Health-Related Travel',
+					],
+				},
 			]
 
 			// Step 1: Delete all old types FIRST (before creating new ones to avoid name conflicts)
@@ -608,9 +639,9 @@ export default function SettingsPage() {
 			const newGroupsMap = new Map<string, number>()
 			for (const groupData of defaultGroups) {
 				try {
-					const groupRes = await receiptTypeGroupsApi.create({ 
-						name: groupData.name, 
-						display_order: groupData.display_order 
+					const groupRes = await receiptTypeGroupsApi.create({
+						name: groupData.name,
+						display_order: groupData.display_order,
 					})
 					newGroupsMap.set(groupData.name, groupRes.data.id)
 				} catch (err) {
@@ -627,7 +658,7 @@ export default function SettingsPage() {
 
 				for (let i = 0; i < groupData.types.length; i++) {
 					try {
-						await receiptTypesApi.create({ 
+						await receiptTypesApi.create({
 							name: groupData.types[i],
 							group_id: groupId,
 							display_order: i,
@@ -790,6 +821,35 @@ export default function SettingsPage() {
 				const typeMap = new Map(updatedTypes.map(t => [t.id, t]))
 				setReceiptTypes(receiptTypes.map(t => typeMap.get(t.id) || t))
 				setHasUnsavedChanges(true)
+			} else {
+				// Types are in different groups - move active type to over type's group
+				const targetGroupId = overType.group_id ?? null
+
+				// Only move if target group is different
+				if (targetGroupId !== activeType.group_id) {
+					// Get types that will be in the target group after the move
+					const typesInTargetGroup = receiptTypes
+						.filter(t => t.id !== activeTypeId && t.group_id === targetGroupId)
+						.sort((a, b) => {
+							if (a.display_order !== b.display_order) return a.display_order - b.display_order
+							return a.name.localeCompare(b.name)
+						})
+
+					// Update local state: move the type and recalculate display_order for all types in target group
+					const updatedTypes = receiptTypes.map(t => {
+						if (t.id === activeTypeId) {
+							// Move the active type to the target group
+							return { ...t, group_id: targetGroupId, display_order: typesInTargetGroup.length }
+						} else if (t.group_id === targetGroupId) {
+							// Keep existing types in target group as-is (display_order will be recalculated on save)
+							return t
+						}
+						return t
+					})
+
+					setReceiptTypes(updatedTypes)
+					setHasUnsavedChanges(true)
+				}
 			}
 		}
 		// Handle type moved to different group - only update local state
@@ -853,7 +913,7 @@ export default function SettingsPage() {
 			// Recalculate display_order for all types based on their current grouping
 			// Group types by group_id and assign sequential display_order within each group
 			const typesByGroupForSave: Record<number | 'ungrouped', ReceiptType[]> = { ungrouped: [] }
-			
+
 			receiptTypes.forEach(type => {
 				const key = type.group_id ?? 'ungrouped'
 				if (!typesByGroupForSave[key]) {
@@ -872,7 +932,7 @@ export default function SettingsPage() {
 
 			// Prepare bulk update with recalculated display_order
 			const updates: Array<{ id: number; group_id: number | null; display_order: number }> = []
-			
+
 			Object.keys(typesByGroupForSave).forEach(key => {
 				const types = typesByGroupForSave[key as number | 'ungrouped']
 				types.forEach((type, index) => {
@@ -888,9 +948,7 @@ export default function SettingsPage() {
 			await receiptTypesApi.bulkUpdate(updates)
 
 			// Update groups display_order
-			const groupUpdates = receiptTypeGroups.map((g, i) => 
-				receiptTypeGroupsApi.update(g.id, { display_order: i })
-			)
+			const groupUpdates = receiptTypeGroups.map((g, i) => receiptTypeGroupsApi.update(g.id, { display_order: i }))
 			await Promise.all(groupUpdates)
 
 			// Reload data to ensure consistency
@@ -1272,9 +1330,7 @@ export default function SettingsPage() {
 						<div className="flex items-center justify-between">
 							<div>
 								<Label>Reset to Default Types</Label>
-								<p className="text-sm text-muted-foreground mt-1">
-									Restore all receipt types and groups to their default values
-								</p>
+								<p className="mt-1 text-sm text-muted-foreground">Restore all receipt types and groups to their default values</p>
 							</div>
 							<Button type="button" variant="outline" onClick={handleResetToDefaults}>
 								<RotateCcw className="w-4 h-4 mr-2" />
@@ -1289,15 +1345,11 @@ export default function SettingsPage() {
 							<div className="flex items-center justify-between">
 								<div>
 									<Label>Unsaved Changes</Label>
-									<p className="text-sm text-muted-foreground mt-1">
+									<p className="mt-1 text-sm text-muted-foreground">
 										You have unsaved changes to receipt type organization. Click Save to apply all changes.
 									</p>
 								</div>
-								<Button 
-									type="button" 
-									onClick={handleSaveReceiptTypes}
-									disabled={isSavingTypes}
-								>
+								<Button type="button" onClick={handleSaveReceiptTypes} disabled={isSavingTypes}>
 									<Save className={`w-4 h-4 mr-2 ${isSavingTypes ? 'animate-spin' : ''}`} />
 									{isSavingTypes ? 'Saving...' : 'Save Changes'}
 								</Button>
@@ -1312,6 +1364,7 @@ export default function SettingsPage() {
 						onDragStart={handleDragStart}
 						onDragOver={handleDragOver}
 						onDragEnd={handleDragEnd}
+						autoScroll={{ threshold: { x: 0, y: 0.2 } }}
 					>
 						<div className="space-y-4">
 							{typesByGroup.sortedGroups.length === 0 && typesByGroup.grouped.ungrouped.length === 0 ? (
@@ -1377,7 +1430,7 @@ export default function SettingsPage() {
 								</>
 							)}
 						</div>
-						<DragOverlay>
+						<DragOverlay className="z-[60]">
 							{activeId ? (
 								activeId.startsWith('group-') ? (
 									<div className="p-3 border rounded-lg shadow-lg bg-background">
