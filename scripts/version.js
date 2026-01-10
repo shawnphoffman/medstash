@@ -37,12 +37,12 @@ if (gitAvailable) {
 		gitStatus = execSync('git status --porcelain', { encoding: 'utf-8' }).trim()
 		hasUncommittedChanges = gitStatus.length > 0
 
-		// Filter out package.json and package-lock.json changes
-		// These are expected to be modified by npm version
+		// Filter out package.json, package-lock.json, and version.ts changes
+		// These are expected to be modified by the version script
 		const lines = gitStatus.split('\n').filter(line => line.trim())
 		const otherLines = lines.filter(line => {
 			const file = line.substring(3).trim()
-			return file !== 'package.json' && file !== 'package-lock.json'
+			return file !== 'package.json' && file !== 'package-lock.json' && file !== 'frontend/src/lib/version.ts'
 		})
 		hasOtherUncommittedChanges = otherLines.length > 0
 		otherChanges = otherLines.join('\n')
@@ -85,14 +85,14 @@ if (hasOtherUncommittedChanges && !forceFlag && !noGitFlag) {
 	console.log(otherChanges)
 	console.log('\nOptions:')
 	console.log('1. Commit or stash your changes first, then run this script again')
-	console.log('2. Use --force flag to proceed anyway (will commit only package.json/package-lock.json)')
-	console.log('3. Use --no-git flag to update package.json only (no git commit/tag)')
+	console.log('2. Use --force flag to proceed anyway (will commit only package.json, package-lock.json, and version.ts)')
+	console.log('3. Use --no-git flag to update files only (no git commit/tag)')
 	console.error('\n❌ Aborting. Please commit or stash your changes first.')
 	process.exit(1)
 }
 
 if (hasOtherUncommittedChanges && forceFlag) {
-	console.log('\n⚠️  Proceeding with --force flag (will commit only package.json and package-lock.json)...')
+	console.log('\n⚠️  Proceeding with --force flag (will commit only package.json, package-lock.json, and version.ts)...')
 }
 
 if (noGitFlag) {
@@ -100,53 +100,74 @@ if (noGitFlag) {
 	gitAvailable = false
 }
 
-// Manually update package.json and package-lock.json
-// This avoids npm version's requirement for a clean working directory
-try {
-	const packageLockPath = path.join(__dirname, '..', 'package-lock.json')
+	// Manually update package.json, package-lock.json, and version.ts
+	// This avoids npm version's requirement for a clean working directory
+	try {
+		const packageLockPath = path.join(__dirname, '..', 'package-lock.json')
+		const versionTsPath = path.join(__dirname, '..', 'frontend', 'src', 'lib', 'version.ts')
 
-	// Update package.json
-	packageJson.version = newVersion
-	fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, '\t') + '\n')
-	console.log(`✅ Updated package.json to version ${newVersion}`)
+		// Update package.json
+		packageJson.version = newVersion
+		fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, '\t') + '\n')
+		console.log(`✅ Updated package.json to version ${newVersion}`)
 
-	// Update package-lock.json if it exists
-	if (fs.existsSync(packageLockPath)) {
-		try {
-			const packageLock = JSON.parse(fs.readFileSync(packageLockPath, 'utf-8'))
-			packageLock.version = newVersion
-			// Also update the root package version in the lock file
-			if (packageLock.packages && packageLock.packages['']) {
-				packageLock.packages[''].version = newVersion
+		// Update package-lock.json if it exists
+		if (fs.existsSync(packageLockPath)) {
+			try {
+				const packageLock = JSON.parse(fs.readFileSync(packageLockPath, 'utf-8'))
+				packageLock.version = newVersion
+				// Also update the root package version in the lock file
+				if (packageLock.packages && packageLock.packages['']) {
+					packageLock.packages[''].version = newVersion
+				}
+				fs.writeFileSync(packageLockPath, JSON.stringify(packageLock, null, 2) + '\n')
+				console.log(`✅ Updated package-lock.json to version ${newVersion}`)
+			} catch (lockError) {
+				console.warn('⚠️  Warning: Could not update package-lock.json:', lockError.message)
+				console.warn('   You may need to run "npm install" to update the lock file.')
 			}
-			fs.writeFileSync(packageLockPath, JSON.stringify(packageLock, null, 2) + '\n')
-			console.log(`✅ Updated package-lock.json to version ${newVersion}`)
-		} catch (lockError) {
-			console.warn('⚠️  Warning: Could not update package-lock.json:', lockError.message)
-			console.warn('   You may need to run "npm install" to update the lock file.')
 		}
-	}
 
-	// Handle git operations manually if needed
-	if (gitAvailable && !noGitFlag) {
-		try {
-			// Stage package.json and package-lock.json
-			execSync('git add package.json package-lock.json', { stdio: 'inherit' })
-
-			// Create commit
-			const commitMessage = `chore: bump version to ${newVersion}`
-			execSync(`git commit -m "${commitMessage}"`, { stdio: 'inherit' })
-			console.log(`✅ Created git commit: ${commitMessage}`)
-
-			// Create tag
-			execSync(`git tag -a v${newVersion} -m "Version ${newVersion}"`, { stdio: 'inherit' })
-			console.log(`✅ Created git tag: v${newVersion}`)
-		} catch (gitError) {
-			console.error('\n❌ Error during git operations:', gitError.message)
-			console.log('\nVersion was updated in package.json, but git operations failed.')
-			process.exit(1)
+		// Update version.ts if it exists
+		if (fs.existsSync(versionTsPath)) {
+			try {
+				let versionTsContent = fs.readFileSync(versionTsPath, 'utf-8')
+				// Replace the VERSION constant with the new version
+				versionTsContent = versionTsContent.replace(
+					/export const VERSION = ['"](.*?)['"]/,
+					`export const VERSION = '${newVersion}'`
+				)
+				fs.writeFileSync(versionTsPath, versionTsContent)
+				console.log(`✅ Updated frontend/src/lib/version.ts to version ${newVersion}`)
+			} catch (versionTsError) {
+				console.warn('⚠️  Warning: Could not update version.ts:', versionTsError.message)
+			}
 		}
-	}
+
+		// Handle git operations manually if needed
+		if (gitAvailable && !noGitFlag) {
+			try {
+				// Stage package.json, package-lock.json, and version.ts
+				const filesToStage = ['package.json', 'package-lock.json']
+				if (fs.existsSync(versionTsPath)) {
+					filesToStage.push('frontend/src/lib/version.ts')
+				}
+				execSync(`git add ${filesToStage.join(' ')}`, { stdio: 'inherit' })
+
+				// Create commit
+				const commitMessage = `chore: bump version to ${newVersion}`
+				execSync(`git commit -m "${commitMessage}"`, { stdio: 'inherit' })
+				console.log(`✅ Created git commit: ${commitMessage}`)
+
+				// Create tag
+				execSync(`git tag -a v${newVersion} -m "Version ${newVersion}"`, { stdio: 'inherit' })
+				console.log(`✅ Created git tag: v${newVersion}`)
+			} catch (gitError) {
+				console.error('\n❌ Error during git operations:', gitError.message)
+				console.log('\nVersion was updated in package.json, but git operations failed.')
+				process.exit(1)
+			}
+		}
 } catch (error) {
 	console.error('\n❌ Error updating version:', error.message)
 	process.exit(1)

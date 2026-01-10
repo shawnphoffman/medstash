@@ -4,6 +4,7 @@ import UploadPage from './pages/UploadPage'
 import ReceiptsPage from './pages/ReceiptsPage'
 import ReceiptDetailPage from './pages/ReceiptDetailPage'
 import SettingsPage from './pages/SettingsPage'
+import AboutPage from './pages/AboutPage'
 import ErrorPage from './pages/ErrorPage'
 import { Receipt, Upload, Settings, ReceiptText } from 'lucide-react'
 import { Button } from './components/ui/button'
@@ -156,6 +157,7 @@ function AppContent() {
 						<Route path="/receipts/:id" element={<ReceiptDetailPage />} />
 						<Route path="/upload" element={<UploadPage />} />
 						<Route path="/settings" element={<SettingsPage />} />
+						<Route path="/about" element={<AboutPage />} />
 						<Route path="/error" element={<ErrorPage />} />
 					</Routes>
 				</main>
