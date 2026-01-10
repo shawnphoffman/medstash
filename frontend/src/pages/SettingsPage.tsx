@@ -17,7 +17,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { ColorPicker, TAILWIND_COLORS } from '../components/ui/color-picker'
 import { FlagBadge } from '../components/FlagBadge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '../components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import {
 	Plus,
 	Trash2,
@@ -28,8 +28,6 @@ import {
 	Info,
 	Flag as FlagIcon,
 	RotateCcw,
-	ChevronDown,
-	ChevronUp,
 	Move,
 	GripVertical,
 } from 'lucide-react'
@@ -53,7 +51,6 @@ const DEFAULT_FILENAME_PATTERN = '{date}_{user}_{vendor}_{amount}_{type}_{index}
 // Sortable Group Component
 function SortableGroup({
 	group,
-	types,
 	editingGroup,
 	editGroupName,
 	editGroupDisplayOrder,
@@ -66,7 +63,6 @@ function SortableGroup({
 	children,
 }: {
 	group: ReceiptTypeGroup
-	types: ReceiptType[]
 	editingGroup: number | null
 	editGroupName: string
 	editGroupDisplayOrder: number
@@ -468,10 +464,10 @@ export default function SettingsPage() {
 		}
 
 		try {
-			await usersApi.update(id, { name: editUserName.trim() })
+			const updatedUser = await usersApi.update(id, { name: editUserName.trim() })
+			setUsers(users.map(u => u.id === id ? updatedUser.data : u))
 			setEditingUser(null)
 			setEditUserName('')
-			await loadData()
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to update user')
 		}
@@ -500,17 +496,24 @@ export default function SettingsPage() {
 	}
 
 	// Group management functions
-	const handleCreateGroup = async () => {
+	const handleCreateGroup = async (e?: React.MouseEvent | React.KeyboardEvent) => {
+		if (e) {
+			e.preventDefault()
+			e.stopPropagation()
+		}
 		if (!newGroupName.trim()) {
 			setError('Group name is required')
 			return
 		}
 
 		try {
-			await receiptTypeGroupsApi.create({ name: newGroupName.trim(), display_order: newGroupDisplayOrder })
+			const newGroup = await receiptTypeGroupsApi.create({ name: newGroupName.trim(), display_order: newGroupDisplayOrder })
+			setReceiptTypeGroups([...receiptTypeGroups, newGroup.data].sort((a, b) => {
+				if (a.display_order !== b.display_order) return a.display_order - b.display_order
+				return a.name.localeCompare(b.name)
+			}))
 			setNewGroupName('')
 			setNewGroupDisplayOrder(0)
-			await loadData()
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to create group')
 		}
@@ -523,11 +526,14 @@ export default function SettingsPage() {
 		}
 
 		try {
-			await receiptTypeGroupsApi.update(id, { name: editGroupName.trim(), display_order: editGroupDisplayOrder })
+			const updatedGroup = await receiptTypeGroupsApi.update(id, { name: editGroupName.trim(), display_order: editGroupDisplayOrder })
+			setReceiptTypeGroups(receiptTypeGroups.map(g => g.id === id ? updatedGroup.data : g).sort((a, b) => {
+				if (a.display_order !== b.display_order) return a.display_order - b.display_order
+				return a.name.localeCompare(b.name)
+			}))
 			setEditingGroup(null)
 			setEditGroupName('')
 			setEditGroupDisplayOrder(0)
-			await loadData()
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to update group')
 		}
@@ -539,7 +545,9 @@ export default function SettingsPage() {
 
 		try {
 			await receiptTypeGroupsApi.delete(id)
-			await loadData()
+			setReceiptTypeGroups(receiptTypeGroups.filter(g => g.id !== id))
+			// Update types that were in this group to have null group_id
+			setReceiptTypes(receiptTypes.map(t => t.group_id === id ? { ...t, group_id: null } : t))
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to delete group')
 		}
@@ -558,7 +566,11 @@ export default function SettingsPage() {
 	}
 
 	// Receipt type management functions
-	const handleAddReceiptType = async () => {
+	const handleAddReceiptType = async (e?: React.MouseEvent | React.KeyboardEvent) => {
+		if (e) {
+			e.preventDefault()
+			e.stopPropagation()
+		}
 		if (!newReceiptType.trim()) {
 			setError('Receipt type is required')
 			return
@@ -576,7 +588,6 @@ export default function SettingsPage() {
 			setReceiptTypes([...receiptTypes, newTypeData.data])
 			setNewReceiptType('')
 			setNewReceiptTypeGroupId(null)
-			await loadData()
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to add receipt type')
 		}
@@ -589,14 +600,14 @@ export default function SettingsPage() {
 		}
 
 		try {
-			await receiptTypesApi.update(id, {
+			const updatedType = await receiptTypesApi.update(id, {
 				name: editReceiptTypeName.trim(),
 				group_id: editReceiptTypeGroupId,
 			})
+			setReceiptTypes(receiptTypes.map(t => t.id === id ? updatedType.data : t))
 			setEditingReceiptType(null)
 			setEditReceiptTypeName('')
 			setEditReceiptTypeGroupId(null)
-			await loadData()
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to update receipt type')
 		}
@@ -604,9 +615,9 @@ export default function SettingsPage() {
 
 	const handleMoveReceiptType = async (typeId: number, groupId: number | null) => {
 		try {
-			await receiptTypesApi.move(typeId, groupId)
+			const movedType = await receiptTypesApi.move(typeId, groupId)
+			setReceiptTypes(receiptTypes.map(t => t.id === typeId ? movedType.data : t))
 			setMovingType(null)
-			await loadData()
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to move receipt type')
 		}
@@ -619,7 +630,6 @@ export default function SettingsPage() {
 		try {
 			await receiptTypesApi.delete(id)
 			setReceiptTypes(receiptTypes.filter(t => t.id !== id))
-			await loadData()
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to delete receipt type')
 		}
@@ -700,17 +710,24 @@ export default function SettingsPage() {
 			const newGroups = arrayMove(typesByGroup.sortedGroups, activeIndex, overIndex)
 
 			// Update display_order for all affected groups
+			const updatedGroups: ReceiptTypeGroup[] = []
 			for (let i = 0; i < newGroups.length; i++) {
 				if (newGroups[i].display_order !== i) {
 					try {
-						await receiptTypeGroupsApi.update(newGroups[i].id, { display_order: i })
+						const updated = await receiptTypeGroupsApi.update(newGroups[i].id, { display_order: i })
+						updatedGroups.push(updated.data)
 					} catch (err) {
 						console.error(`Failed to update group ${newGroups[i].id}:`, err)
+						updatedGroups.push(newGroups[i])
 					}
+				} else {
+					updatedGroups.push(newGroups[i])
 				}
 			}
-
-			await loadData()
+			setReceiptTypeGroups(updatedGroups.sort((a, b) => {
+				if (a.display_order !== b.display_order) return a.display_order - b.display_order
+				return a.name.localeCompare(b.name)
+			}))
 		}
 		// Handle type reordering within same group
 		else if (activeId.startsWith('type-') && overId.startsWith('type-')) {
@@ -736,17 +753,23 @@ export default function SettingsPage() {
 				const newTypes = arrayMove(typesInGroup, activeIndex, overIndex)
 
 				// Update display_order for all affected types
+				const updatedTypes: ReceiptType[] = []
 				for (let i = 0; i < newTypes.length; i++) {
 					if (newTypes[i].display_order !== i) {
 						try {
-							await receiptTypesApi.update(newTypes[i].id, { display_order: i })
+							const updated = await receiptTypesApi.update(newTypes[i].id, { display_order: i })
+							updatedTypes.push(updated.data)
 						} catch (err) {
 							console.error(`Failed to update type ${newTypes[i].id}:`, err)
+							updatedTypes.push(newTypes[i])
 						}
+					} else {
+						updatedTypes.push(newTypes[i])
 					}
 				}
-
-				await loadData()
+				// Update the types in state
+				const typeMap = new Map(updatedTypes.map(t => [t.id, t]))
+				setReceiptTypes(receiptTypes.map(t => typeMap.get(t.id) || t))
 			}
 		}
 		// Handle type moved to different group (dropped on group container or another type in that group)
@@ -776,8 +799,8 @@ export default function SettingsPage() {
 				const newDisplayOrder = typesInTargetGroup.length
 
 				try {
-					await receiptTypesApi.move(activeTypeId, targetGroupId, newDisplayOrder)
-					await loadData()
+					const movedType = await receiptTypesApi.move(activeTypeId, targetGroupId, newDisplayOrder)
+					setReceiptTypes(receiptTypes.map(t => t.id === activeTypeId ? movedType.data : t))
 				} catch (err) {
 					console.error(`Failed to move type ${activeTypeId}:`, err)
 				}
@@ -1096,7 +1119,12 @@ export default function SettingsPage() {
 								placeholder="Group name (e.g., Medical Expenses)"
 								value={newGroupName}
 								onChange={e => setNewGroupName(e.target.value)}
-								onKeyDown={e => e.key === 'Enter' && handleCreateGroup()}
+								onKeyDown={e => {
+									if (e.key === 'Enter') {
+										e.preventDefault()
+										handleCreateGroup(e)
+									}
+								}}
 								className="flex-1"
 							/>
 							<Input
@@ -1106,7 +1134,7 @@ export default function SettingsPage() {
 								onChange={e => setNewGroupDisplayOrder(parseInt(e.target.value) || 0)}
 								className="w-24"
 							/>
-							<Button onClick={handleCreateGroup}>
+							<Button type="button" onClick={handleCreateGroup}>
 								<Plus className="w-4 h-4 mr-2" />
 								Add Group
 							</Button>
@@ -1127,7 +1155,6 @@ export default function SettingsPage() {
 												<SortableGroup
 													key={group.id}
 													group={group}
-													types={typesInGroup}
 													editingGroup={editingGroup}
 													editGroupName={editGroupName}
 													editGroupDisplayOrder={editGroupDisplayOrder}
@@ -1213,7 +1240,12 @@ export default function SettingsPage() {
 								placeholder="Type name (e.g., Doctor Visit)"
 								value={newReceiptType}
 								onChange={e => setNewReceiptType(e.target.value)}
-								onKeyDown={e => e.key === 'Enter' && handleAddReceiptType()}
+								onKeyDown={e => {
+									if (e.key === 'Enter') {
+										e.preventDefault()
+										handleAddReceiptType(e)
+									}
+								}}
 								className="flex-1"
 							/>
 							<Select
@@ -1232,7 +1264,7 @@ export default function SettingsPage() {
 									))}
 								</SelectContent>
 							</Select>
-							<Button onClick={handleAddReceiptType}>
+							<Button type="button" onClick={handleAddReceiptType}>
 								<Plus className="w-4 h-4 mr-2" />
 								Add Type
 							</Button>
