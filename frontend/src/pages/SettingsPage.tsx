@@ -18,19 +18,7 @@ import { Label } from '../components/ui/label'
 import { ColorPicker, TAILWIND_COLORS } from '../components/ui/color-picker'
 import { FlagBadge } from '../components/FlagBadge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
-import {
-	Plus,
-	Trash2,
-	Edit2,
-	Save,
-	X,
-	RefreshCw,
-	Info,
-	Flag as FlagIcon,
-	RotateCcw,
-	Move,
-	GripVertical,
-} from 'lucide-react'
+import { Plus, Trash2, Edit2, Save, X, RefreshCw, Info, Flag as FlagIcon, RotateCcw, Move, GripVertical } from 'lucide-react'
 import {
 	DndContext,
 	closestCenter,
@@ -465,7 +453,7 @@ export default function SettingsPage() {
 
 		try {
 			const updatedUser = await usersApi.update(id, { name: editUserName.trim() })
-			setUsers(users.map(u => u.id === id ? updatedUser.data : u))
+			setUsers(users.map(u => (u.id === id ? updatedUser.data : u)))
 			setEditingUser(null)
 			setEditUserName('')
 		} catch (err: any) {
@@ -508,10 +496,12 @@ export default function SettingsPage() {
 
 		try {
 			const newGroup = await receiptTypeGroupsApi.create({ name: newGroupName.trim(), display_order: newGroupDisplayOrder })
-			setReceiptTypeGroups([...receiptTypeGroups, newGroup.data].sort((a, b) => {
-				if (a.display_order !== b.display_order) return a.display_order - b.display_order
-				return a.name.localeCompare(b.name)
-			}))
+			setReceiptTypeGroups(
+				[...receiptTypeGroups, newGroup.data].sort((a, b) => {
+					if (a.display_order !== b.display_order) return a.display_order - b.display_order
+					return a.name.localeCompare(b.name)
+				})
+			)
 			setNewGroupName('')
 			setNewGroupDisplayOrder(0)
 		} catch (err: any) {
@@ -527,10 +517,14 @@ export default function SettingsPage() {
 
 		try {
 			const updatedGroup = await receiptTypeGroupsApi.update(id, { name: editGroupName.trim(), display_order: editGroupDisplayOrder })
-			setReceiptTypeGroups(receiptTypeGroups.map(g => g.id === id ? updatedGroup.data : g).sort((a, b) => {
-				if (a.display_order !== b.display_order) return a.display_order - b.display_order
-				return a.name.localeCompare(b.name)
-			}))
+			setReceiptTypeGroups(
+				receiptTypeGroups
+					.map(g => (g.id === id ? updatedGroup.data : g))
+					.sort((a, b) => {
+						if (a.display_order !== b.display_order) return a.display_order - b.display_order
+						return a.name.localeCompare(b.name)
+					})
+			)
 			setEditingGroup(null)
 			setEditGroupName('')
 			setEditGroupDisplayOrder(0)
@@ -547,7 +541,7 @@ export default function SettingsPage() {
 			await receiptTypeGroupsApi.delete(id)
 			setReceiptTypeGroups(receiptTypeGroups.filter(g => g.id !== id))
 			// Update types that were in this group to have null group_id
-			setReceiptTypes(receiptTypes.map(t => t.group_id === id ? { ...t, group_id: null } : t))
+			setReceiptTypes(receiptTypes.map(t => (t.group_id === id ? { ...t, group_id: null } : t)))
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to delete group')
 		}
@@ -604,7 +598,7 @@ export default function SettingsPage() {
 				name: editReceiptTypeName.trim(),
 				group_id: editReceiptTypeGroupId,
 			})
-			setReceiptTypes(receiptTypes.map(t => t.id === id ? updatedType.data : t))
+			setReceiptTypes(receiptTypes.map(t => (t.id === id ? updatedType.data : t)))
 			setEditingReceiptType(null)
 			setEditReceiptTypeName('')
 			setEditReceiptTypeGroupId(null)
@@ -616,7 +610,7 @@ export default function SettingsPage() {
 	const handleMoveReceiptType = async (typeId: number, groupId: number | null) => {
 		try {
 			const movedType = await receiptTypesApi.move(typeId, groupId)
-			setReceiptTypes(receiptTypes.map(t => t.id === typeId ? movedType.data : t))
+			setReceiptTypes(receiptTypes.map(t => (t.id === typeId ? movedType.data : t)))
 			setMovingType(null)
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to move receipt type')
@@ -724,10 +718,12 @@ export default function SettingsPage() {
 					updatedGroups.push(newGroups[i])
 				}
 			}
-			setReceiptTypeGroups(updatedGroups.sort((a, b) => {
-				if (a.display_order !== b.display_order) return a.display_order - b.display_order
-				return a.name.localeCompare(b.name)
-			}))
+			setReceiptTypeGroups(
+				updatedGroups.sort((a, b) => {
+					if (a.display_order !== b.display_order) return a.display_order - b.display_order
+					return a.name.localeCompare(b.name)
+				})
+			)
 		}
 		// Handle type reordering within same group
 		else if (activeId.startsWith('type-') && overId.startsWith('type-')) {
@@ -800,7 +796,7 @@ export default function SettingsPage() {
 
 				try {
 					const movedType = await receiptTypesApi.move(activeTypeId, targetGroupId, newDisplayOrder)
-					setReceiptTypes(receiptTypes.map(t => t.id === activeTypeId ? movedType.data : t))
+					setReceiptTypes(receiptTypes.map(t => (t.id === activeTypeId ? movedType.data : t)))
 				} catch (err) {
 					console.error(`Failed to move type ${activeTypeId}:`, err)
 				}
@@ -967,6 +963,67 @@ export default function SettingsPage() {
 
 			{error && <div className="p-4 rounded-md bg-destructive/10 text-destructive">{error}</div>}
 
+			{/* Users Management */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Users</CardTitle>
+					<CardDescription>Manage users for categorizing receipts</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="flex gap-2">
+						<Input
+							placeholder="Enter user name"
+							value={newUser}
+							onChange={e => setNewUser(e.target.value)}
+							onKeyDown={e => e.key === 'Enter' && handleAddUser()}
+							className="flex-1"
+						/>
+						<Button onClick={handleAddUser}>
+							<Plus className="w-4 h-4 mr-2" />
+							Add User
+						</Button>
+					</div>
+					<div className="space-y-2">
+						{users.length === 0 ? (
+							<p className="py-4 text-sm text-center text-muted-foreground">No users configured yet</p>
+						) : (
+							users.map(user => (
+								<div key={user.id} className="flex items-center justify-between px-3 py-1 border rounded-lg">
+									{editingUser === user.id ? (
+										<div className="flex items-center flex-1 gap-2">
+											<Input value={editUserName} onChange={e => setEditUserName(e.target.value)} className="flex-1" />
+											<Button size="icon" variant="ghost" onClick={() => handleUpdateUser(user.id)}>
+												<Save className="size-4" />
+											</Button>
+											<Button size="icon" variant="ghost" onClick={cancelEditUser}>
+												<X className="size-4" />
+											</Button>
+										</div>
+									) : (
+										<>
+											<span className="font-medium">{user.name}</span>
+											<div className="flex gap-2">
+												<Button size="icon" variant="ghost" onClick={() => startEditUser(user)}>
+													<Edit2 className="size-4" />
+												</Button>
+												<Button
+													size="icon"
+													variant="ghost"
+													onClick={() => handleDeleteUser(user.id)}
+													className="text-destructive hover:text-destructive"
+												>
+													<Trash2 className="w-4 h-4" />
+												</Button>
+											</div>
+										</>
+									)}
+								</div>
+							))
+						)}
+					</div>
+				</CardContent>
+			</Card>
+
 			{/* Flags Management */}
 			<Card>
 				<CardHeader>
@@ -1032,67 +1089,6 @@ export default function SettingsPage() {
 													className="text-destructive hover:text-destructive"
 												>
 													<Trash2 className="size-4" />
-												</Button>
-											</div>
-										</>
-									)}
-								</div>
-							))
-						)}
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Users Management */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Users</CardTitle>
-					<CardDescription>Manage users for categorizing receipts</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="flex gap-2">
-						<Input
-							placeholder="Enter user name"
-							value={newUser}
-							onChange={e => setNewUser(e.target.value)}
-							onKeyDown={e => e.key === 'Enter' && handleAddUser()}
-							className="flex-1"
-						/>
-						<Button onClick={handleAddUser}>
-							<Plus className="w-4 h-4 mr-2" />
-							Add User
-						</Button>
-					</div>
-					<div className="space-y-2">
-						{users.length === 0 ? (
-							<p className="py-4 text-sm text-center text-muted-foreground">No users configured yet</p>
-						) : (
-							users.map(user => (
-								<div key={user.id} className="flex items-center justify-between px-3 py-1 border rounded-lg">
-									{editingUser === user.id ? (
-										<div className="flex items-center flex-1 gap-2">
-											<Input value={editUserName} onChange={e => setEditUserName(e.target.value)} className="flex-1" />
-											<Button size="icon" variant="ghost" onClick={() => handleUpdateUser(user.id)}>
-												<Save className="size-4" />
-											</Button>
-											<Button size="icon" variant="ghost" onClick={cancelEditUser}>
-												<X className="size-4" />
-											</Button>
-										</div>
-									) : (
-										<>
-											<span className="font-medium">{user.name}</span>
-											<div className="flex gap-2">
-												<Button size="icon" variant="ghost" onClick={() => startEditUser(user)}>
-													<Edit2 className="size-4" />
-												</Button>
-												<Button
-													size="icon"
-													variant="ghost"
-													onClick={() => handleDeleteUser(user.id)}
-													className="text-destructive hover:text-destructive"
-												>
-													<Trash2 className="w-4 h-4" />
 												</Button>
 											</div>
 										</>
