@@ -49,6 +49,12 @@ export default function UploadPage() {
 	} = useForm<UploadFormData>({
 		defaultValues: {
 			flag_ids: [],
+			amount: '',
+			vendor: '',
+			provider_address: '',
+			description: '',
+			date: '',
+			notes: '',
 		},
 	})
 
@@ -389,7 +395,7 @@ export default function UploadPage() {
 										) : users.length === 1 ? (
 											<Input id="user_id" value={users[0].name} readOnly className="cursor-not-allowed bg-muted" />
 										) : (
-											<Input id="user_id" placeholder="No users available" disabled />
+											<Input id="user_id" value="" placeholder="No users available" disabled />
 										)}
 									</div>
 									<div>
@@ -480,7 +486,7 @@ export default function UploadPage() {
 										) : receiptTypes.length === 1 ? (
 											<Input id="receipt_type_id" value={receiptTypes[0].name} readOnly className="cursor-not-allowed bg-muted" />
 										) : (
-											<Input id="receipt_type_id" placeholder="No types available" disabled />
+											<Input id="receipt_type_id" value="" placeholder="No types available" disabled />
 										)}
 									</div>
 								</div>
@@ -499,17 +505,18 @@ export default function UploadPage() {
 												type="text"
 												inputMode="decimal"
 												{...(() => {
-													const { onChange, ...rest } = register('amount', {
+													const { onChange, value, ...rest } = register('amount', {
 														validate: validateAmount,
 													})
 													return {
 														...rest,
+														value: value || '',
 														onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
 															// Allow only numbers, decimal point, commas, and spaces
-															const value = e.target.value.replace(/[^0-9.,\s]/g, '')
-															e.target.value = value
+															const newValue = e.target.value.replace(/[^0-9.,\s]/g, '')
+															e.target.value = newValue
 															onChange(e)
-															setValue('amount', value, { shouldValidate: true })
+															setValue('amount', newValue, { shouldValidate: true })
 														},
 													}
 												})()}
