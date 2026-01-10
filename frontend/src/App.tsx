@@ -6,7 +6,7 @@ import ReceiptDetailPage from './pages/ReceiptDetailPage'
 import SettingsPage from './pages/SettingsPage'
 import AboutPage from './pages/AboutPage'
 import ErrorPage from './pages/ErrorPage'
-import { Receipt, Upload, Settings, ReceiptText } from 'lucide-react'
+import { Receipt, Upload, Settings, ReceiptText, HelpCircle } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { ThemeToggle } from './components/ThemeToggle'
 import UserSetupDialog from './components/UserSetupDialog'
@@ -48,6 +48,16 @@ function Navigation() {
 								</Link>
 							)
 						})}
+						<Link to="/about">
+							<Button
+								variant="ghost"
+								size="icon"
+								className={cn(location.pathname === '/about' && 'bg-primary text-primary-foreground')}
+								aria-label="About"
+							>
+								<HelpCircle className="h-5 w-5" />
+							</Button>
+						</Link>
 						<ThemeToggle />
 					</div>
 				</div>
