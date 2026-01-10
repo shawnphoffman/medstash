@@ -575,6 +575,82 @@ export default function SettingsPage() {
 		setEditReceiptTypeGroupId(null)
 	}
 
+	// Reset receipt types and groups to defaults
+	const handleResetToDefaults = async () => {
+		if (!confirm('Are you sure you want to reset all receipt types and groups to defaults? This will delete all existing types and groups. Any receipts using custom types will be reassigned to default types.')) {
+			return
+		}
+
+		try {
+			setError(null)
+			
+			// Default groups and types structure
+			const defaultGroups = [
+				{ name: 'Medical Expenses', display_order: 0, types: ['Doctor Visits', 'Hospital Services', 'Prescription Medications', 'Medical Equipment'] },
+				{ name: 'Dental Expenses', display_order: 1, types: ['Routine Care', 'Major Procedures'] },
+				{ name: 'Vision Expenses', display_order: 2, types: ['Eye Exams', 'Eyewear', 'Surgical Procedures'] },
+				{ name: 'Other Eligible Expenses', display_order: 3, types: ['Vaccinations', 'Physical Exams', 'Family Planning', 'Mental Health Services', 'Over-the-Counter Medications', 'Health-Related Travel'] },
+			]
+
+			// Step 1: Delete all old types FIRST (before creating new ones to avoid name conflicts)
+			for (const type of receiptTypes) {
+				try {
+					await receiptTypesApi.delete(type.id)
+				} catch (err) {
+					console.warn(`Failed to delete receipt type ${type.id}:`, err)
+				}
+			}
+
+			// Step 2: Delete all old groups
+			for (const group of receiptTypeGroups) {
+				try {
+					await receiptTypeGroupsApi.delete(group.id)
+				} catch (err) {
+					console.warn(`Failed to delete group ${group.id}:`, err)
+				}
+			}
+
+			// Step 3: Create new default groups (sequentially to avoid race conditions)
+			const newGroupsMap = new Map<string, number>()
+			for (const groupData of defaultGroups) {
+				try {
+					const groupRes = await receiptTypeGroupsApi.create({ 
+						name: groupData.name, 
+						display_order: groupData.display_order 
+					})
+					newGroupsMap.set(groupData.name, groupRes.data.id)
+				} catch (err) {
+					console.warn(`Failed to create group ${groupData.name}:`, err)
+				}
+			}
+
+			// Step 4: Create all default types (sequentially, using name-based lookup)
+			for (const groupData of defaultGroups) {
+				const groupId = newGroupsMap.get(groupData.name)
+				if (!groupId) {
+					continue
+				}
+
+				for (let i = 0; i < groupData.types.length; i++) {
+					try {
+						await receiptTypesApi.create({ 
+							name: groupData.types[i],
+							group_id: groupId,
+							display_order: i,
+						})
+					} catch (err) {
+						console.warn(`Failed to create receipt type ${groupData.types[i]}:`, err)
+					}
+				}
+			}
+
+			// Reload data to refresh the UI
+			await loadData()
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to reset to defaults')
+		}
+	}
+
 	// Organize types by group
 	const typesByGroup = useMemo(() => {
 		const grouped: Record<number | 'ungrouped', ReceiptType[]> = { ungrouped: [] }
@@ -1148,6 +1224,22 @@ export default function SettingsPage() {
 							<Button type="button" onClick={handleCreateGroup}>
 								<Plus className="w-4 h-4 mr-2" />
 								Add Group
+							</Button>
+						</div>
+					</div>
+
+					{/* Reset to Defaults */}
+					<div className="p-4 border rounded-lg">
+						<div className="flex items-center justify-between">
+							<div>
+								<Label>Reset to Default Types</Label>
+								<p className="text-sm text-muted-foreground mt-1">
+									Restore all receipt types and groups to their default values
+								</p>
+							</div>
+							<Button type="button" variant="outline" onClick={handleResetToDefaults}>
+								<RotateCcw className="w-4 h-4 mr-2" />
+								Reset to Defaults
 							</Button>
 						</div>
 					</div>
