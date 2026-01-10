@@ -2,7 +2,7 @@
 
 /**
  * Version bumping script with git integration
- * Handles uncommitted changes gracefully
+ * Uses npm version but handles uncommitted changes gracefully
  */
 
 const { execSync } = require('child_process');
@@ -14,7 +14,7 @@ const versionType = process.argv[2] || 'patch'; // patch, minor, major
 
 if (!['patch', 'minor', 'major'].includes(versionType)) {
   console.error(`Invalid version type: ${versionType}`);
-  console.error('Usage: node scripts/version.js [patch|minor|major]');
+  console.error('Usage: node scripts/version.js [patch|minor|major] [--force|--no-git]');
   process.exit(1);
 }
 
@@ -63,56 +63,84 @@ switch (versionType) {
 console.log(`Current version: ${currentVersion}`);
 console.log(`New version: ${newVersion}`);
 
-if (hasUncommittedChanges) {
+const forceFlag = process.argv.includes('--force');
+const noGitFlag = process.argv.includes('--no-git');
+
+if (hasUncommittedChanges && !forceFlag && !noGitFlag) {
   console.log('\n⚠️  Warning: You have uncommitted changes:');
   console.log(gitStatus);
   console.log('\nOptions:');
   console.log('1. Commit or stash your changes first, then run this script again');
-  console.log('2. Use --force flag to proceed anyway (not recommended)');
+  console.log('2. Use --force flag to proceed anyway (stages package.json and commits)');
   console.log('3. Use --no-git flag to update package.json only (no git commit/tag)');
-  
-  const forceFlag = process.argv.includes('--force');
-  const noGitFlag = process.argv.includes('--no-git');
-  
-  if (forceFlag) {
-    console.log('\n⚠️  Proceeding with --force flag...');
-  } else if (noGitFlag) {
-    console.log('\n📝 Updating package.json only (no git operations)...');
-    gitAvailable = false;
-  } else {
-    console.error('\n❌ Aborting. Please commit or stash your changes first.');
-    process.exit(1);
-  }
+  console.error('\n❌ Aborting. Please commit or stash your changes first.');
+  process.exit(1);
 }
 
-// Update package.json
-packageJson.version = newVersion;
-fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, '\t') + '\n');
-console.log(`✅ Updated package.json to version ${newVersion}`);
+if (hasUncommittedChanges && forceFlag) {
+  console.log('\n⚠️  Proceeding with --force flag (will commit package.json only)...');
+}
 
-// Git operations
-if (gitAvailable) {
-  try {
-    // Stage package.json
-    execSync('git add package.json', { stdio: 'inherit' });
+if (noGitFlag) {
+  console.log('\n📝 Updating package.json only (no git operations)...');
+  gitAvailable = false;
+}
+
+// Use npm version to update package.json
+// Use --no-git-tag-version to skip git operations when needed, then handle git manually
+try {
+  if (noGitFlag) {
+    // Update package.json only, no git operations
+    execSync(`npm version ${versionType} --no-git-tag-version`, { 
+      stdio: 'inherit',
+      cwd: path.join(__dirname, '..')
+    });
+    console.log(`✅ Updated package.json to version ${newVersion}`);
+  } else if (hasUncommittedChanges && forceFlag) {
+    // Update package.json without git, then handle git manually
+    execSync(`npm version ${versionType} --no-git-tag-version`, { 
+      stdio: 'inherit',
+      cwd: path.join(__dirname, '..')
+    });
+    console.log(`✅ Updated package.json to version ${newVersion}`);
     
-    // Create commit
-    const commitMessage = `chore: bump version to ${newVersion}`;
-    execSync(`git commit -m "${commitMessage}"`, { stdio: 'inherit' });
-    console.log(`✅ Created git commit: ${commitMessage}`);
-    
-    // Create tag
-    execSync(`git tag -a v${newVersion} -m "Version ${newVersion}"`, { stdio: 'inherit' });
-    console.log(`✅ Created git tag: v${newVersion}`);
-    
-    console.log(`\n🎉 Version ${newVersion} released!`);
-    console.log(`\nTo push to remote:`);
-    console.log(`  git push && git push --tags`);
-  } catch (error) {
-    console.error('\n❌ Error during git operations:', error.message);
-    console.log('\nVersion was updated in package.json, but git operations failed.');
-    process.exit(1);
+    // Now handle git operations manually
+    if (gitAvailable) {
+      try {
+        // Stage only package.json
+        execSync('git add package.json', { stdio: 'inherit' });
+        
+        // Create commit
+        const commitMessage = `chore: bump version to ${newVersion}`;
+        execSync(`git commit -m "${commitMessage}"`, { stdio: 'inherit' });
+        console.log(`✅ Created git commit: ${commitMessage}`);
+        
+        // Create tag
+        execSync(`git tag -a v${newVersion} -m "Version ${newVersion}"`, { stdio: 'inherit' });
+        console.log(`✅ Created git tag: v${newVersion}`);
+      } catch (gitError) {
+        console.error('\n❌ Error during git operations:', gitError.message);
+        console.log('\nVersion was updated in package.json, but git operations failed.');
+        process.exit(1);
+      }
+    }
+  } else {
+    // Clean working directory - use npm version normally
+    execSync(`npm version ${versionType} -m "chore: bump version to %s"`, { 
+      stdio: 'inherit',
+      cwd: path.join(__dirname, '..')
+    });
+    console.log(`✅ Updated package.json, created commit and tag for version ${newVersion}`);
   }
-} else {
+} catch (error) {
+  console.error('\n❌ Error updating version:', error.message);
+  process.exit(1);
+}
+
+if (gitAvailable && !noGitFlag) {
+  console.log(`\n🎉 Version ${newVersion} released!`);
+  console.log(`\nTo push to remote:`);
+  console.log(`  git push && git push --tags`);
+} else if (noGitFlag) {
   console.log(`\n📝 Version updated in package.json. Git operations skipped.`);
 }
