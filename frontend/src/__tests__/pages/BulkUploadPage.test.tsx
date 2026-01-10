@@ -27,8 +27,8 @@ vi.mock('react-router-dom', async () => {
 })
 
 // Mock URL.createObjectURL and URL.revokeObjectURL
-global.URL.createObjectURL = vi.fn(() => 'blob:mock-url')
-global.URL.revokeObjectURL = vi.fn()
+;(globalThis as any).URL.createObjectURL = vi.fn(() => 'blob:mock-url')
+;(globalThis as any).URL.revokeObjectURL = vi.fn()
 
 describe('BulkUploadPage', () => {
 	beforeEach(() => {

@@ -505,12 +505,12 @@ export default function UploadPage() {
 												type="text"
 												inputMode="decimal"
 												{...(() => {
-													const { onChange, value, ...rest } = register('amount', {
+													const { onChange, ...rest } = register('amount', {
 														validate: validateAmount,
 													})
 													return {
 														...rest,
-														value: value || '',
+														value: watch('amount') || '',
 														onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
 															// Allow only numbers, decimal point, commas, and spaces
 															const newValue = e.target.value.replace(/[^0-9.,\s]/g, '')
