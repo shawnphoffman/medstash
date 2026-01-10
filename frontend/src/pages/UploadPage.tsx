@@ -295,7 +295,7 @@ export default function UploadPage() {
 										</label>
 									</div>
 									<div className="flex gap-2 mt-4">
-										<Button type="button" variant="outline" onClick={handleCameraCapture} className="flex-1">
+										<Button type="button" variant="outline" onClick={handleCameraCapture} className="flex-1 lg:hidden">
 											<Camera className="w-4 h-4 mr-2" />
 											Take Photo
 										</Button>
