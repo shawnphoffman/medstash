@@ -44,6 +44,19 @@ MEDSTASH_IMAGE_TAG=v1.0.0 docker compose up
 
 ## Configuration
 
+### Environment Variables
+
+See `env.example` for all available environment variables. Key variables:
+
+- `PORT` - Server port (default: `3000`)
+- `NODE_ENV` - Environment mode: `development`, `production`, or `test` (default: `development`)
+- `ALLOWED_ORIGINS` - CORS allowed origins, comma-separated (optional, if not set all origins are allowed)
+- `DB_DIR` - Database directory path (default: `/data`)
+- `RECEIPTS_DIR` - Receipts storage directory (default: `/data/receipts`)
+- `UPLOAD_DIR` - Temporary upload directory (default: `/tmp/medstash-uploads`)
+
+### Docker Compose Variables
+
 - `MEDSTASH_IMAGE_TAG` - Docker image tag (default: `latest`)
 - `MEDSTASH_DATA_DIR` - Data storage path (default: `./data`)
 

@@ -18,26 +18,34 @@ const app = express()
 const PORT = process.env.PORT || 3000
 
 // Middleware
-// Configure CORS - restrict origins for security
+// Configure CORS - ALLOWED_ORIGINS is optional
+// If set, validate against the list. If not set, allow all origins.
 const allowedOrigins = process.env.ALLOWED_ORIGINS
 	? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-	: process.env.NODE_ENV === 'production'
-	? [] // In production, must explicitly set ALLOWED_ORIGINS
-	: ['http://localhost:3010', 'http://localhost:3000', 'http://127.0.0.1:3010', 'http://127.0.0.1:3000']
+	: null // null means allow all origins
+
+if (allowedOrigins) {
+	console.log(`CORS: Restricting to allowed origins: ${allowedOrigins.join(', ')}`)
+} else {
+	console.log('CORS: Allowing all origins (ALLOWED_ORIGINS not set)')
+}
 
 app.use(
 	cors({
-		origin: (origin, callback) => {
-			// Allow requests with no origin (like mobile apps, Postman, or curl)
-			if (!origin) {
-				return callback(null, true)
-			}
-			if (allowedOrigins.includes(origin)) {
-				callback(null, true)
-			} else {
-				callback(new Error('Not allowed by CORS'))
-			}
-		},
+		origin: allowedOrigins
+			? (origin, callback) => {
+					// If ALLOWED_ORIGINS is set, validate against it
+					// Allow requests with no origin (like mobile apps, Postman, or curl)
+					if (!origin) {
+						return callback(null, true)
+					}
+					if (allowedOrigins.includes(origin)) {
+						callback(null, true)
+					} else {
+						callback(new Error('Not allowed by CORS'))
+					}
+			  }
+			: true, // If ALLOWED_ORIGINS is not set, allow all origins
 		credentials: true,
 	})
 )
@@ -94,14 +102,31 @@ if (existsSync(publicPath)) {
 // Initialize file storage
 ensureReceiptsDir().catch(error => {
 	console.error('Failed to initialize receipts directory:', error)
+	// Don't crash the server, but log the error
 })
 
 // Error handling middleware (must be last)
 app.use(errorHandler)
 
+// Verify database connection before starting server
+try {
+	db.prepare('SELECT 1').get()
+	console.log('Database connection verified')
+} catch (error: any) {
+	console.error('CRITICAL: Database connection failed:', error)
+	console.error('Server will not start. Please check:')
+	console.error('1. Database directory permissions')
+	console.error('2. Volume mount configuration')
+	console.error('3. Disk space availability')
+	process.exit(1)
+}
+
 // Start server
 app.listen(PORT, () => {
 	console.log(`MedStash server running on port ${PORT}`)
+	console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
+	console.log(`Database: ${process.env.DB_DIR || '/data'}/medstash.db`)
+	console.log(`Receipts: ${process.env.RECEIPTS_DIR || '/data/receipts'}`)
 })
 
 export default app
