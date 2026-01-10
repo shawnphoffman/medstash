@@ -1,4 +1,4 @@
-import { CreateReceiptInput, CreateFlagInput, CreateUserInput, CreateReceiptTypeInput } from '../../src/models/receipt';
+import { CreateReceiptInput, CreateFlagInput, CreateUserInput, CreateReceiptTypeInput, CreateReceiptTypeGroupInput } from '../../src/models/receipt';
 
 /**
  * Create a test receipt input with defaults
@@ -34,6 +34,16 @@ export function createUserFixture(overrides?: Partial<CreateUserInput>): CreateU
 export function createReceiptTypeFixture(overrides?: Partial<CreateReceiptTypeInput>): CreateReceiptTypeInput {
   return {
     name: 'doctor-visit',
+    ...overrides,
+  };
+}
+
+/**
+ * Create a test receipt type group input
+ */
+export function createReceiptTypeGroupFixture(overrides?: Partial<CreateReceiptTypeGroupInput>): CreateReceiptTypeGroupInput {
+  return {
+    name: 'Test Group',
     ...overrides,
   };
 }

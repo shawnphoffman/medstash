@@ -29,6 +29,7 @@ describe('ReceiptTypes API', () => {
       DELETE FROM receipt_files;
       DELETE FROM receipts;
       DELETE FROM receipt_types;
+      DELETE FROM receipt_type_groups;
       DELETE FROM users;
     `);
   });
@@ -99,6 +100,36 @@ describe('ReceiptTypes API', () => {
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('Receipt type name is required');
     });
+
+    it('should create a receipt type with a group', async () => {
+      const { createReceiptTypeGroup } = await import('../../src/services/dbService');
+      const group = createReceiptTypeGroup('Test Group');
+
+      const response = await request(app)
+        .post('/api/receipt-types')
+        .send({ name: 'Test Type', group_id: group.id });
+
+      expect(response.status).toBe(201);
+      expect(response.body.group_id).toBe(group.id);
+    });
+
+    it('should create a receipt type with display_order', async () => {
+      const response = await request(app)
+        .post('/api/receipt-types')
+        .send({ name: 'Test Type', display_order: 5 });
+
+      expect(response.status).toBe(201);
+      expect(response.body.display_order).toBe(5);
+    });
+
+    it('should create an ungrouped receipt type', async () => {
+      const response = await request(app)
+        .post('/api/receipt-types')
+        .send({ name: 'Ungrouped Type', group_id: null });
+
+      expect(response.status).toBe(201);
+      expect(response.body.group_id).toBeNull();
+    });
   });
 
   describe('PUT /api/receipt-types/:id', () => {
@@ -134,6 +165,108 @@ describe('ReceiptTypes API', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('Receipt type name must be a non-empty string');
+    });
+
+    it('should update a receipt type with a group', async () => {
+      const { createReceiptType, createReceiptTypeGroup } = await import('../../src/services/dbService');
+      const type = createReceiptType('Test Type');
+      const group = createReceiptTypeGroup('Test Group');
+
+      const response = await request(app)
+        .put(`/api/receipt-types/${type.id}`)
+        .send({ group_id: group.id });
+
+      expect(response.status).toBe(200);
+      expect(response.body.group_id).toBe(group.id);
+    });
+
+    it('should update display_order', async () => {
+      const { createReceiptType } = await import('../../src/services/dbService');
+      const type = createReceiptType('Test Type');
+
+      const response = await request(app)
+        .put(`/api/receipt-types/${type.id}`)
+        .send({ display_order: 10 });
+
+      expect(response.status).toBe(200);
+      expect(response.body.display_order).toBe(10);
+    });
+
+    it('should ungroup a receipt type', async () => {
+      const { createReceiptType, createReceiptTypeGroup } = await import('../../src/services/dbService');
+      const group = createReceiptTypeGroup('Test Group');
+      const type = createReceiptType('Test Type', group.id);
+
+      const response = await request(app)
+        .put(`/api/receipt-types/${type.id}`)
+        .send({ group_id: null });
+
+      expect(response.status).toBe(200);
+      expect(response.body.group_id).toBeNull();
+    });
+  });
+
+  describe('PUT /api/receipt-types/:id/move', () => {
+    it('should move a receipt type to a different group', async () => {
+      const { createReceiptType, createReceiptTypeGroup } = await import('../../src/services/dbService');
+      const group1 = createReceiptTypeGroup('Group 1');
+      const group2 = createReceiptTypeGroup('Group 2');
+      const type = createReceiptType('Test Type', group1.id);
+
+      const response = await request(app)
+        .put(`/api/receipt-types/${type.id}/move`)
+        .send({ group_id: group2.id });
+
+      expect(response.status).toBe(200);
+      expect(response.body.group_id).toBe(group2.id);
+    });
+
+    it('should move a receipt type with display_order', async () => {
+      const { createReceiptType, createReceiptTypeGroup } = await import('../../src/services/dbService');
+      const group = createReceiptTypeGroup('Test Group');
+      const type = createReceiptType('Test Type');
+
+      const response = await request(app)
+        .put(`/api/receipt-types/${type.id}/move`)
+        .send({ group_id: group.id, display_order: 5 });
+
+      expect(response.status).toBe(200);
+      expect(response.body.group_id).toBe(group.id);
+      expect(response.body.display_order).toBe(5);
+    });
+
+    it('should ungroup a receipt type via move', async () => {
+      const { createReceiptType, createReceiptTypeGroup } = await import('../../src/services/dbService');
+      const group = createReceiptTypeGroup('Test Group');
+      const type = createReceiptType('Test Type', group.id);
+
+      const response = await request(app)
+        .put(`/api/receipt-types/${type.id}/move`)
+        .send({ group_id: null });
+
+      expect(response.status).toBe(200);
+      expect(response.body.group_id).toBeNull();
+    });
+
+    it('should return 404 for non-existent receipt type', async () => {
+      const response = await request(app)
+        .put('/api/receipt-types/99999/move')
+        .send({ group_id: 1 });
+
+      expect(response.status).toBe(404);
+      expect(response.body.error).toBe('Receipt type not found');
+    });
+
+    it('should return 400 if group_id is invalid', async () => {
+      const { createReceiptType } = await import('../../src/services/dbService');
+      const type = createReceiptType('Test Type');
+
+      const response = await request(app)
+        .put(`/api/receipt-types/${type.id}/move`)
+        .send({ group_id: 'invalid' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Group ID must be a number or null');
     });
   });
 

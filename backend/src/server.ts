@@ -8,6 +8,7 @@ import receiptsRouter from './routes/receipts'
 import flagsRouter from './routes/flags'
 import usersRouter from './routes/users'
 import receiptTypesRouter from './routes/receiptTypes'
+import receiptTypeGroupsRouter from './routes/receiptTypeGroups'
 import settingsRouter from './routes/settings'
 import exportRouter from './routes/export'
 import filenamesRouter from './routes/filenames'
@@ -57,6 +58,7 @@ app.use('/api/receipts', receiptsRouter)
 app.use('/api/flags', flagsRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/receipt-types', receiptTypesRouter)
+app.use('/api/receipt-type-groups', receiptTypeGroupsRouter)
 app.use('/api/settings', settingsRouter)
 app.use('/api/export', exportRouter)
 app.use('/api/filenames', filenamesRouter)

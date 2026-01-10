@@ -1,4 +1,4 @@
-import { dbQueries } from '../db'
+import { dbQueries, db } from '../db'
 import {
 	Receipt,
 	ReceiptFile,
@@ -8,6 +8,7 @@ import {
 	CreateReceiptInput,
 	User,
 	ReceiptType,
+	ReceiptTypeGroup,
 } from '../models/receipt'
 
 /**
@@ -436,6 +437,57 @@ export function deleteUser(id: number): boolean {
 }
 
 /**
+ * Get all receipt type groups
+ */
+export function getAllReceiptTypeGroups(): ReceiptTypeGroup[] {
+	return dbQueries.getAllReceiptTypeGroups.all() as ReceiptTypeGroup[]
+}
+
+/**
+ * Get receipt type group by ID
+ */
+export function getReceiptTypeGroupById(id: number): ReceiptTypeGroup | null {
+	const group = dbQueries.getReceiptTypeGroupById.get(id) as ReceiptTypeGroup | undefined
+	return group || null
+}
+
+/**
+ * Create a receipt type group
+ */
+export function createReceiptTypeGroup(name: string, displayOrder?: number): ReceiptTypeGroup {
+	const order = displayOrder !== undefined ? displayOrder : 0
+	const result = dbQueries.insertReceiptTypeGroup.run(name, order)
+	return dbQueries.getReceiptTypeGroupById.get(result.lastInsertRowid as number) as ReceiptTypeGroup
+}
+
+/**
+ * Update a receipt type group
+ */
+export function updateReceiptTypeGroup(id: number, name?: string, displayOrder?: number): ReceiptTypeGroup | null {
+	const existing = dbQueries.getReceiptTypeGroupById.get(id) as ReceiptTypeGroup | null
+	if (!existing) return null
+
+	const updatedName = name !== undefined ? name : existing.name
+	const updatedOrder = displayOrder !== undefined ? displayOrder : existing.display_order
+	dbQueries.updateReceiptTypeGroup.run(updatedName, updatedOrder, id)
+	return dbQueries.getReceiptTypeGroupById.get(id) as ReceiptTypeGroup
+}
+
+/**
+ * Delete a receipt type group
+ * Moves all types in the group to ungrouped (sets group_id to NULL)
+ */
+export function deleteReceiptTypeGroup(id: number): boolean {
+	const group = dbQueries.getReceiptTypeGroupById.get(id) as ReceiptTypeGroup | null
+	if (!group) return false
+
+	// Ungroup all types in this group
+	dbQueries.ungroupReceiptTypes.run(id)
+	dbQueries.deleteReceiptTypeGroup.run(id)
+	return true
+}
+
+/**
  * Get all receipt types
  */
 export function getAllReceiptTypes(): ReceiptType[] {
@@ -451,31 +503,73 @@ export function getReceiptTypeById(id: number): ReceiptType | null {
 }
 
 /**
+ * Get receipt types by group ID
+ */
+export function getReceiptTypesByGroupId(groupId: number): ReceiptType[] {
+	return dbQueries.getReceiptTypesByGroupId.all(groupId) as ReceiptType[]
+}
+
+/**
  * Create a receipt type
  */
-export function createReceiptType(name: string): ReceiptType {
-	const result = dbQueries.insertReceiptType.run(name)
+export function createReceiptType(name: string, groupId?: number | null, displayOrder?: number): ReceiptType {
+	const gid = groupId !== undefined ? groupId : null
+	const order = displayOrder !== undefined ? displayOrder : 0
+	const result = dbQueries.insertReceiptType.run(name, gid, order)
 	return dbQueries.getReceiptTypeById.get(result.lastInsertRowid as number) as ReceiptType
 }
 
 /**
  * Update a receipt type
  */
-export function updateReceiptType(id: number, name?: string): ReceiptType | null {
+export function updateReceiptType(id: number, name?: string, groupId?: number | null, displayOrder?: number): ReceiptType | null {
 	const existing = dbQueries.getReceiptTypeById.get(id) as ReceiptType | null
 	if (!existing) return null
 
 	const updatedName = name !== undefined ? name : existing.name
-	dbQueries.updateReceiptType.run(updatedName, id)
+	const updatedGroupId = groupId !== undefined ? groupId : existing.group_id
+	const updatedOrder = displayOrder !== undefined ? displayOrder : existing.display_order
+	dbQueries.updateReceiptType.run(updatedName, updatedGroupId, updatedOrder, id)
 	return dbQueries.getReceiptTypeById.get(id) as ReceiptType
 }
 
 /**
+ * Move a receipt type to a different group
+ */
+export function moveReceiptTypeToGroup(typeId: number, groupId: number | null, displayOrder?: number): ReceiptType | null {
+	const existing = dbQueries.getReceiptTypeById.get(typeId) as ReceiptType | null
+	if (!existing) return null
+
+	const order = displayOrder !== undefined ? displayOrder : existing.display_order
+	dbQueries.updateReceiptTypeGroupId.run(groupId, order, typeId)
+	return dbQueries.getReceiptTypeById.get(typeId) as ReceiptType
+}
+
+/**
  * Delete a receipt type
+ * Updates all receipts using this type to use a default type before deletion
  */
 export function deleteReceiptType(id: number): boolean {
 	const type = dbQueries.getReceiptTypeById.get(id) as ReceiptType | null
 	if (!type) return false
+
+	// Check if any receipts are using this type
+	const receiptsUsingType = dbQueries.getReceiptsByReceiptType.all(id) as Receipt[]
+	
+	if (receiptsUsingType.length > 0) {
+		// Find a replacement type (prefer "Other", otherwise use the first available type)
+		const allTypes = dbQueries.getAllReceiptTypes.all() as ReceiptType[]
+		const otherType = allTypes.find(t => t.id !== id && t.name.toLowerCase() === 'other')
+		const replacementType = otherType || allTypes.find(t => t.id !== id)
+		
+		if (!replacementType) {
+			throw new Error('Cannot delete receipt type: it is the only type remaining')
+		}
+
+		// Update all receipts to use the replacement type
+		const updateReceiptType = db.prepare('UPDATE receipts SET receipt_type_id = ? WHERE receipt_type_id = ?')
+		updateReceiptType.run(replacementType.id, id)
+	}
 
 	dbQueries.deleteReceiptType.run(id)
 	return true

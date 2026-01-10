@@ -4,10 +4,22 @@ export interface User {
   created_at: string;
 }
 
+export interface ReceiptTypeGroup {
+  id: number;
+  name: string;
+  display_order: number;
+  created_at: string;
+}
+
 export interface ReceiptType {
   id: number;
   name: string;
+  group_id?: number | null;
+  display_order: number;
   created_at: string;
+  // Optional fields from join
+  group_name?: string;
+  group_display_order?: number;
 }
 
 export interface Receipt {
@@ -98,12 +110,26 @@ export interface UpdateUserInput {
   name?: string;
 }
 
+export interface CreateReceiptTypeGroupInput {
+  name: string;
+  display_order?: number;
+}
+
+export interface UpdateReceiptTypeGroupInput {
+  name?: string;
+  display_order?: number;
+}
+
 export interface CreateReceiptTypeInput {
   name: string;
+  group_id?: number | null;
+  display_order?: number;
 }
 
 export interface UpdateReceiptTypeInput {
   name?: string;
+  group_id?: number | null;
+  display_order?: number;
 }
 
 export interface CreateFlagInput {

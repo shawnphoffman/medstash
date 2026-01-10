@@ -77,10 +77,22 @@ export interface User {
   created_at: string;
 }
 
+export interface ReceiptTypeGroup {
+  id: number;
+  name: string;
+  display_order: number;
+  created_at: string;
+}
+
 export interface ReceiptType {
   id: number;
   name: string;
+  group_id?: number | null;
+  display_order: number;
   created_at: string;
+  // Optional fields from join
+  group_name?: string;
+  group_display_order?: number;
 }
 
 export interface Receipt {
@@ -154,12 +166,26 @@ export interface UpdateUserInput {
   name?: string;
 }
 
+export interface CreateReceiptTypeGroupInput {
+  name: string;
+  display_order?: number;
+}
+
+export interface UpdateReceiptTypeGroupInput {
+  name?: string;
+  display_order?: number;
+}
+
 export interface CreateReceiptTypeInput {
   name: string;
+  group_id?: number | null;
+  display_order?: number;
 }
 
 export interface UpdateReceiptTypeInput {
   name?: string;
+  group_id?: number | null;
+  display_order?: number;
 }
 
 // Receipts API
@@ -254,6 +280,16 @@ export const usersApi = {
   delete: (id: number) => api.delete(`/users/${id}`),
 };
 
+// Receipt Type Groups API
+export const receiptTypeGroupsApi = {
+  getAll: () => api.get<ReceiptTypeGroup[]>('/receipt-type-groups'),
+  getById: (id: number) => api.get<ReceiptTypeGroup>(`/receipt-type-groups/${id}`),
+  create: (data: CreateReceiptTypeGroupInput) => api.post<ReceiptTypeGroup>('/receipt-type-groups', data),
+  update: (id: number, data: UpdateReceiptTypeGroupInput) =>
+    api.put<ReceiptTypeGroup>(`/receipt-type-groups/${id}`, data),
+  delete: (id: number) => api.delete(`/receipt-type-groups/${id}`),
+};
+
 // Receipt Types API
 export const receiptTypesApi = {
   getAll: () => api.get<ReceiptType[]>('/receipt-types'),
@@ -261,6 +297,8 @@ export const receiptTypesApi = {
   create: (data: CreateReceiptTypeInput) => api.post<ReceiptType>('/receipt-types', data),
   update: (id: number, data: UpdateReceiptTypeInput) =>
     api.put<ReceiptType>(`/receipt-types/${id}`, data),
+  move: (id: number, groupId: number | null, displayOrder?: number) =>
+    api.put<ReceiptType>(`/receipt-types/${id}/move`, { group_id: groupId, display_order: displayOrder }),
   delete: (id: number) => api.delete(`/receipt-types/${id}`),
 };
 

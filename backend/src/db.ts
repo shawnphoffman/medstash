@@ -270,15 +270,113 @@ dbInstance.exec(`
     FOREIGN KEY (flag_id) REFERENCES flags(id) ON DELETE CASCADE
   );
 
+  CREATE TABLE IF NOT EXISTS receipt_type_groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
 `);
 
+// Check if groups migration is needed
+const checkGroupsMigrationNeeded = () => {
+  try {
+    const result = dbInstance.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='receipt_type_groups'"
+    ).get();
+    return !result;
+  } catch {
+    return true;
+  }
+};
+
+// Migration function to add receipt type groups
+const migrateToGroups = () => {
+  const transaction = dbInstance.transaction(() => {
+    // Create receipt_type_groups table
+    dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS receipt_type_groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        display_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+
+    // Check if receipt_types table has group_id column
+    const receiptTypesInfo = dbInstance.prepare("PRAGMA table_info(receipt_types)").all() as Array<{
+      cid: number;
+      name: string;
+      type: string;
+      notnull: number;
+      dflt_value: any;
+      pk: number;
+    }>;
+    const hasGroupId = receiptTypesInfo.some(col => col.name === 'group_id');
+    const hasDisplayOrder = receiptTypesInfo.some(col => col.name === 'display_order');
+
+    if (!hasGroupId) {
+      // Add group_id column (nullable)
+      dbInstance.exec(`
+        ALTER TABLE receipt_types ADD COLUMN group_id INTEGER;
+      `);
+    }
+
+    if (!hasDisplayOrder) {
+      // Add display_order column
+      dbInstance.exec(`
+        ALTER TABLE receipt_types ADD COLUMN display_order INTEGER NOT NULL DEFAULT 0;
+      `);
+    }
+
+    // Create default group "Other Eligible Expenses" and assign existing types to it
+    const existingTypes = dbInstance.prepare('SELECT * FROM receipt_types').all() as Array<{
+      id: number;
+      name: string;
+    }>;
+
+    if (existingTypes.length > 0) {
+      // Create default group
+      const insertGroup = dbInstance.prepare('INSERT OR IGNORE INTO receipt_type_groups (name, display_order) VALUES (?, ?)');
+      insertGroup.run('Other Eligible Expenses', 0);
+      
+      const defaultGroup = dbInstance.prepare('SELECT id FROM receipt_type_groups WHERE name = ?').get('Other Eligible Expenses') as { id: number } | undefined;
+      
+      if (defaultGroup) {
+        // Assign all existing types to default group with display order based on alphabetical order
+        const sortedTypes = [...existingTypes].sort((a, b) => a.name.localeCompare(b.name));
+        const updateType = dbInstance.prepare('UPDATE receipt_types SET group_id = ?, display_order = ? WHERE id = ?');
+        
+        sortedTypes.forEach((type, index) => {
+          updateType.run(defaultGroup.id, index, type.id);
+        });
+      }
+    }
+
+    // Add foreign key constraint (SQLite doesn't support adding foreign keys via ALTER TABLE, so we'll rely on application-level enforcement)
+    // Add index on group_id
+    dbInstance.exec(`
+      CREATE INDEX IF NOT EXISTS idx_receipt_types_group_id ON receipt_types(group_id);
+      CREATE INDEX IF NOT EXISTS idx_receipt_type_groups_display_order ON receipt_type_groups(display_order);
+    `);
+  });
+
+  transaction();
+};
+
 // Run migration if needed
 if (checkMigrationNeeded()) {
   migrateToLookupTables();
+}
+
+// Run groups migration if needed
+if (checkGroupsMigrationNeeded()) {
+  migrateToGroups();
 }
 
 // Prepared statements
@@ -287,6 +385,7 @@ const dbQueriesObj = {
   getReceiptById: dbInstance.prepare('SELECT * FROM receipts WHERE id = ?'),
   getAllReceipts: dbInstance.prepare('SELECT * FROM receipts ORDER BY date DESC, created_at DESC'),
   getReceiptsByUser: dbInstance.prepare('SELECT * FROM receipts WHERE user_id = ? ORDER BY date DESC, created_at DESC'),
+  getReceiptsByReceiptType: dbInstance.prepare('SELECT * FROM receipts WHERE receipt_type_id = ?'),
   getReceiptsByFlag: dbInstance.prepare(`
     SELECT DISTINCT r.* FROM receipts r
     INNER JOIN receipt_flags rf ON r.id = rf.receipt_id
@@ -313,12 +412,32 @@ const dbQueriesObj = {
   deleteUser: dbInstance.prepare('DELETE FROM users WHERE id = ?'),
 
   // Receipt Types
-  getAllReceiptTypes: dbInstance.prepare('SELECT * FROM receipt_types ORDER BY name'),
+  getAllReceiptTypes: dbInstance.prepare(`
+    SELECT rt.*, rtg.name as group_name, rtg.display_order as group_display_order
+    FROM receipt_types rt
+    LEFT JOIN receipt_type_groups rtg ON rt.group_id = rtg.id
+    ORDER BY rtg.display_order, rtg.name, rt.display_order, rt.name
+  `),
   getReceiptTypeById: dbInstance.prepare('SELECT * FROM receipt_types WHERE id = ?'),
   getReceiptTypeByName: dbInstance.prepare('SELECT * FROM receipt_types WHERE name = ?'),
-  insertReceiptType: dbInstance.prepare('INSERT INTO receipt_types (name) VALUES (?)'),
-  updateReceiptType: dbInstance.prepare('UPDATE receipt_types SET name = ? WHERE id = ?'),
+  getReceiptTypesByGroupId: dbInstance.prepare(`
+    SELECT * FROM receipt_types 
+    WHERE group_id = ? 
+    ORDER BY display_order, name
+  `),
+  insertReceiptType: dbInstance.prepare('INSERT INTO receipt_types (name, group_id, display_order) VALUES (?, ?, ?)'),
+  updateReceiptType: dbInstance.prepare('UPDATE receipt_types SET name = ?, group_id = ?, display_order = ? WHERE id = ?'),
+  updateReceiptTypeGroupId: dbInstance.prepare('UPDATE receipt_types SET group_id = ?, display_order = ? WHERE id = ?'),
   deleteReceiptType: dbInstance.prepare('DELETE FROM receipt_types WHERE id = ?'),
+
+  // Receipt Type Groups
+  getAllReceiptTypeGroups: dbInstance.prepare('SELECT * FROM receipt_type_groups ORDER BY display_order, name'),
+  getReceiptTypeGroupById: dbInstance.prepare('SELECT * FROM receipt_type_groups WHERE id = ?'),
+  getReceiptTypeGroupByName: dbInstance.prepare('SELECT * FROM receipt_type_groups WHERE name = ?'),
+  insertReceiptTypeGroup: dbInstance.prepare('INSERT INTO receipt_type_groups (name, display_order) VALUES (?, ?)'),
+  updateReceiptTypeGroup: dbInstance.prepare('UPDATE receipt_type_groups SET name = ?, display_order = ? WHERE id = ?'),
+  deleteReceiptTypeGroup: dbInstance.prepare('DELETE FROM receipt_type_groups WHERE id = ?'),
+  ungroupReceiptTypes: dbInstance.prepare('UPDATE receipt_types SET group_id = NULL WHERE group_id = ?'),
 
   // Receipt Files
   getFilesByReceiptId: dbInstance.prepare('SELECT * FROM receipt_files WHERE receipt_id = ? ORDER BY file_order'),

@@ -1,14 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { receiptsApi, flagsApi, usersApi, receiptTypesApi, CreateReceiptInput, Flag, User, ReceiptType } from '../lib/api'
+import { receiptsApi, flagsApi, usersApi, receiptTypesApi, receiptTypeGroupsApi, CreateReceiptInput, Flag, User, ReceiptType, ReceiptTypeGroup } from '../lib/api'
 import { useToast } from '../components/ui/use-toast'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '../components/ui/select'
 import { DatePicker } from '../components/DatePicker'
 import { getBadgeClassName, getBorderClassName } from '../components/ui/color-picker'
 import { Upload, X, File, Camera } from 'lucide-react'
@@ -34,6 +34,7 @@ export default function UploadPage() {
 	const [flags, setFlags] = useState<Flag[]>([])
 	const [users, setUsers] = useState<User[]>([])
 	const [receiptTypes, setReceiptTypes] = useState<ReceiptType[]>([])
+	const [receiptTypeGroups, setReceiptTypeGroups] = useState<ReceiptTypeGroup[]>([])
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -57,10 +58,16 @@ export default function UploadPage() {
 	useEffect(() => {
 		const loadData = async () => {
 			try {
-				const [flagsRes, usersRes, receiptTypesRes] = await Promise.all([flagsApi.getAll(), usersApi.getAll(), receiptTypesApi.getAll()])
+				const [flagsRes, usersRes, receiptTypesRes, groupsRes] = await Promise.all([
+					flagsApi.getAll(),
+					usersApi.getAll(),
+					receiptTypesApi.getAll(),
+					receiptTypeGroupsApi.getAll(),
+				])
 				setFlags(flagsRes.data)
 				setUsers(usersRes.data)
 				setReceiptTypes(receiptTypesRes.data)
+				setReceiptTypeGroups(groupsRes.data)
 
 				// Set default user to first user if users exist
 				if (usersRes.data.length > 0) {
@@ -390,11 +397,78 @@ export default function UploadPage() {
 													<SelectValue placeholder="Select a type..." />
 												</SelectTrigger>
 												<SelectContent>
-													{receiptTypes.map(type => (
-														<SelectItem key={type.id} value={type.id.toString()}>
-															{type.name}
-														</SelectItem>
-													))}
+													{(() => {
+														// Organize types by group
+														const grouped: Record<number | 'ungrouped', ReceiptType[]> = { ungrouped: [] }
+														const sortedGroups = [...receiptTypeGroups].sort((a, b) => {
+															if (a.display_order !== b.display_order) return a.display_order - b.display_order
+															return a.name.localeCompare(b.name)
+														})
+
+														sortedGroups.forEach(group => {
+															grouped[group.id] = []
+														})
+
+														receiptTypes.forEach(type => {
+															if (type.group_id) {
+																if (!grouped[type.group_id]) {
+																	grouped[type.group_id] = []
+																}
+																grouped[type.group_id].push(type)
+															} else {
+																grouped.ungrouped.push(type)
+															}
+														})
+
+														// Sort types within each group
+														Object.keys(grouped).forEach(key => {
+															grouped[key as number | 'ungrouped'].sort((a, b) => {
+																if (a.display_order !== b.display_order) return a.display_order - b.display_order
+																return a.name.localeCompare(b.name)
+															})
+														})
+
+														// Render grouped options
+														const hasGroups = sortedGroups.length > 0 && sortedGroups.some(g => grouped[g.id]?.length > 0)
+														const hasUngrouped = grouped.ungrouped.length > 0
+
+														if (!hasGroups && !hasUngrouped) {
+															return receiptTypes.map(type => (
+																<SelectItem key={type.id} value={type.id.toString()}>
+																	{type.name}
+																</SelectItem>
+															))
+														}
+
+														return (
+															<>
+																{sortedGroups.map(group => {
+																	const typesInGroup = grouped[group.id] || []
+																	if (typesInGroup.length === 0) return null
+																	return (
+																		<SelectGroup key={group.id}>
+																			<SelectLabel>{group.name}</SelectLabel>
+																			{typesInGroup.map(type => (
+																				<SelectItem key={type.id} value={type.id.toString()}>
+																					{type.name}
+																				</SelectItem>
+																			))}
+																		</SelectGroup>
+																	)
+																})}
+																{hasUngrouped && (
+																	<SelectGroup>
+																		<SelectLabel>Ungrouped</SelectLabel>
+																		{grouped.ungrouped.map(type => (
+																			<SelectItem key={type.id} value={type.id.toString()}>
+																				{type.name}
+																			</SelectItem>
+																		))}
+																	</SelectGroup>
+																)}
+															</>
+														)
+													})()}
 												</SelectContent>
 											</Select>
 										) : receiptTypes.length === 1 ? (

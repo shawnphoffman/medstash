@@ -11,7 +11,7 @@ import { Button } from './components/ui/button'
 import { ThemeToggle } from './components/ThemeToggle'
 import UserSetupDialog from './components/UserSetupDialog'
 import { Toaster } from './components/ui/toaster'
-import { usersApi, receiptTypesApi, setApiErrorHandler } from './lib/api'
+import { usersApi, receiptTypesApi, receiptTypeGroupsApi, setApiErrorHandler } from './lib/api'
 import { cn } from './lib/utils'
 import { ErrorProvider, useErrorContext } from './contexts/ErrorContext'
 import { REPOSITORY_URL } from './lib/version'
@@ -177,40 +177,79 @@ function AppContent() {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
-				const [usersRes, receiptTypesRes] = await Promise.all([
+				const [usersRes, receiptTypesRes, groupsRes] = await Promise.all([
 					usersApi.getAll().catch(() => ({ data: [] })),
 					receiptTypesApi.getAll().catch(() => ({ data: [] })),
+					receiptTypeGroupsApi.getAll().catch(() => ({ data: [] })),
 				])
 
 				const users = usersRes.data || []
 				const receiptTypes = receiptTypesRes.data || []
+				const groups = groupsRes.data || []
 
 				// Show user setup if no users configured
 				if (users.length === 0) {
 					setShowUserSetup(true)
 				}
 
-				// Initialize receipt types with standard HSA types if none exist
-				if (receiptTypes.length === 0) {
-					const standardTypes = [
-						'Prescription',
-						'Doctor Visit',
-						'Dental',
-						'Vision',
-						'Lab Test',
-						'Medical Equipment',
-						'Mental Health',
-						'Physical Therapy',
-						'Chiropractic',
-						'Other',
-					]
-					// Create all standard types
-					for (const typeName of standardTypes) {
+				// Reset to default groups and types structure
+				const defaultGroups = [
+					{ name: 'Medical Expenses', display_order: 0, types: ['Doctor Visits', 'Hospital Services', 'Prescription Medications', 'Medical Equipment'] },
+					{ name: 'Dental Expenses', display_order: 1, types: ['Routine Care', 'Major Procedures'] },
+					{ name: 'Vision Expenses', display_order: 2, types: ['Eye Exams', 'Eyewear', 'Surgical Procedures'] },
+					{ name: 'Other Eligible Expenses', display_order: 3, types: ['Vaccinations', 'Physical Exams', 'Family Planning', 'Mental Health Services', 'Over-the-Counter Medications', 'Health-Related Travel'] },
+				]
+
+				// Check if we need to reset (if groups/types don't match expected structure)
+				const expectedGroupNames = defaultGroups.map(g => g.name).sort()
+				const existingGroupNames = groups.map(g => g.name).sort()
+				const needsReset = groups.length === 0 || 
+					receiptTypes.length === 0 ||
+					expectedGroupNames.length !== existingGroupNames.length ||
+					!expectedGroupNames.every(name => existingGroupNames.includes(name))
+
+				if (needsReset) {
+					// Delete all existing types first (to handle foreign key constraints)
+					for (const type of receiptTypes) {
 						try {
-							await receiptTypesApi.create({ name: typeName })
+							await receiptTypesApi.delete(type.id)
 						} catch (err) {
-							// Ignore errors (type might already exist)
-							console.warn(`Failed to create receipt type ${typeName}:`, err)
+							console.warn(`Failed to delete receipt type ${type.id}:`, err)
+						}
+					}
+
+					// Delete all existing groups
+					for (const group of groups) {
+						try {
+							await receiptTypeGroupsApi.delete(group.id)
+						} catch (err) {
+							console.warn(`Failed to delete group ${group.id}:`, err)
+						}
+					}
+
+					// Create new groups and types
+					for (const groupData of defaultGroups) {
+						try {
+							const groupRes = await receiptTypeGroupsApi.create({ 
+								name: groupData.name, 
+								display_order: groupData.display_order 
+							})
+							const groupId = groupRes.data.id
+
+							// Create types for this group
+							for (let i = 0; i < groupData.types.length; i++) {
+								try {
+									await receiptTypesApi.create({ 
+										name: groupData.types[i],
+										group_id: groupId,
+										display_order: i,
+									})
+								} catch (err) {
+									console.warn(`Failed to create receipt type ${groupData.types[i]}:`, err)
+								}
+							}
+						} catch (err) {
+							console.warn(`Failed to create group ${groupData.name}:`, err)
 						}
 					}
 				}

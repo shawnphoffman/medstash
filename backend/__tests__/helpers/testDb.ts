@@ -19,9 +19,18 @@ export function setupTestDb(): DatabaseType {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS receipt_type_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS receipt_types (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
+      group_id INTEGER,
+      display_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -79,6 +88,8 @@ export function setupTestDb(): DatabaseType {
     CREATE INDEX IF NOT EXISTS idx_receipt_flags_flag_id ON receipt_flags(flag_id);
     CREATE INDEX IF NOT EXISTS idx_users_name ON users(name);
     CREATE INDEX IF NOT EXISTS idx_receipt_types_name ON receipt_types(name);
+    CREATE INDEX IF NOT EXISTS idx_receipt_types_group_id ON receipt_types(group_id);
+    CREATE INDEX IF NOT EXISTS idx_receipt_type_groups_display_order ON receipt_type_groups(display_order);
   `);
 
   return testDb;
@@ -106,6 +117,7 @@ export function clearTestDb(): void {
     DELETE FROM receipts;
     DELETE FROM flags;
     DELETE FROM receipt_types;
+    DELETE FROM receipt_type_groups;
     DELETE FROM users;
     DELETE FROM settings;
   `);
@@ -129,6 +141,7 @@ export function createTestDbQueries(db: DatabaseType) {
     getReceiptById: db.prepare('SELECT * FROM receipts WHERE id = ?'),
     getAllReceipts: db.prepare('SELECT * FROM receipts ORDER BY date DESC, created_at DESC'),
     getReceiptsByUser: db.prepare('SELECT * FROM receipts WHERE user_id = ? ORDER BY date DESC, created_at DESC'),
+    getReceiptsByReceiptType: db.prepare('SELECT * FROM receipts WHERE receipt_type_id = ?'),
     getReceiptsByFlag: db.prepare(`
       SELECT DISTINCT r.* FROM receipts r
       INNER JOIN receipt_flags rf ON r.id = rf.receipt_id
@@ -172,12 +185,30 @@ export function createTestDbQueries(db: DatabaseType) {
     insertUser: db.prepare('INSERT INTO users (name) VALUES (?)'),
     updateUser: db.prepare('UPDATE users SET name = ? WHERE id = ?'),
     deleteUser: db.prepare('DELETE FROM users WHERE id = ?'),
-    getAllReceiptTypes: db.prepare('SELECT * FROM receipt_types ORDER BY name'),
+    getAllReceiptTypes: db.prepare(`
+      SELECT rt.*, rtg.name as group_name, rtg.display_order as group_display_order
+      FROM receipt_types rt
+      LEFT JOIN receipt_type_groups rtg ON rt.group_id = rtg.id
+      ORDER BY rtg.display_order, rtg.name, rt.display_order, rt.name
+    `),
     getReceiptTypeById: db.prepare('SELECT * FROM receipt_types WHERE id = ?'),
     getReceiptTypeByName: db.prepare('SELECT * FROM receipt_types WHERE name = ?'),
-    insertReceiptType: db.prepare('INSERT INTO receipt_types (name) VALUES (?)'),
-    updateReceiptType: db.prepare('UPDATE receipt_types SET name = ? WHERE id = ?'),
+    getReceiptTypesByGroupId: db.prepare(`
+      SELECT * FROM receipt_types 
+      WHERE group_id = ? 
+      ORDER BY display_order, name
+    `),
+    insertReceiptType: db.prepare('INSERT INTO receipt_types (name, group_id, display_order) VALUES (?, ?, ?)'),
+    updateReceiptType: db.prepare('UPDATE receipt_types SET name = ?, group_id = ?, display_order = ? WHERE id = ?'),
+    updateReceiptTypeGroupId: db.prepare('UPDATE receipt_types SET group_id = ?, display_order = ? WHERE id = ?'),
     deleteReceiptType: db.prepare('DELETE FROM receipt_types WHERE id = ?'),
+    getAllReceiptTypeGroups: db.prepare('SELECT * FROM receipt_type_groups ORDER BY display_order, name'),
+    getReceiptTypeGroupById: db.prepare('SELECT * FROM receipt_type_groups WHERE id = ?'),
+    getReceiptTypeGroupByName: db.prepare('SELECT * FROM receipt_type_groups WHERE name = ?'),
+    insertReceiptTypeGroup: db.prepare('INSERT INTO receipt_type_groups (name, display_order) VALUES (?, ?)'),
+    updateReceiptTypeGroup: db.prepare('UPDATE receipt_type_groups SET name = ?, display_order = ? WHERE id = ?'),
+    deleteReceiptTypeGroup: db.prepare('DELETE FROM receipt_type_groups WHERE id = ?'),
+    ungroupReceiptTypes: db.prepare('UPDATE receipt_types SET group_id = NULL WHERE group_id = ?'),
     getSetting: db.prepare('SELECT value FROM settings WHERE key = ?'),
     setSetting: db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)'),
     getAllSettings: db.prepare('SELECT * FROM settings'),
