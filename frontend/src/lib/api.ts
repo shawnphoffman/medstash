@@ -153,6 +153,15 @@ export interface UpdateReceiptInput {
   flag_ids?: number[];
 }
 
+export interface BulkUpdateReceiptInput {
+  vendor?: string;
+  date?: string;
+  user_id?: number;
+  receipt_type_id?: number;
+  flag_ids?: number[];
+  flag_operation?: 'append' | 'replace';
+}
+
 export interface CreateFlagInput {
   name: string;
   color?: string;
@@ -257,6 +266,12 @@ export const receiptsApi = {
   },
   updateFlags: (id: number, flagIds: number[]) => {
     return api.put<Receipt>(`/receipts/${id}/flags`, { flag_ids: flagIds });
+  },
+  bulkUpdate: (ids: number[], data: BulkUpdateReceiptInput) => {
+    return api.post<{ updated: number; errors: Array<{ id: number; error: string }> }>('/receipts/bulk-update', {
+      receipt_ids: ids,
+      ...data
+    });
   },
 };
 

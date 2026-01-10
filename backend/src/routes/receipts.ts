@@ -649,6 +649,119 @@ router.put('/:id/flags', async (req, res) => {
 	}
 })
 
+// POST /api/receipts/bulk-update - Bulk update multiple receipts
+router.post('/bulk-update', async (req, res) => {
+	try {
+		const { receipt_ids, vendor, date, user_id, receipt_type_id, flag_ids, flag_operation } = req.body
+
+		// Validate receipt_ids
+		if (!Array.isArray(receipt_ids) || receipt_ids.length === 0) {
+			return res.status(400).json({ error: 'receipt_ids must be a non-empty array' })
+		}
+
+		// Validate all receipt IDs are numbers
+		const parsedReceiptIds = receipt_ids.map((id: any) => {
+			const parsed = typeof id === 'string' ? parseInt(id, 10) : id
+			if (isNaN(parsed)) {
+				throw new Error(`Invalid receipt ID: ${id}`)
+			}
+			return parsed
+		})
+
+		// Validate that all receipts exist
+		const { getReceiptById } = await import('../db')
+		const dbQueries = (await import('../db')).dbQueries
+		for (const id of parsedReceiptIds) {
+			const receipt = dbQueries.getReceiptById.get(id)
+			if (!receipt) {
+				return res.status(400).json({ error: `Receipt with ID ${id} not found` })
+			}
+		}
+
+		// Build update data
+		const updateData: UpdateReceiptInput = {}
+
+		if (vendor !== undefined && vendor !== null && vendor !== '') {
+			const vendorValidation = validateVendor(vendor)
+			if (!vendorValidation.valid) {
+				return res.status(400).json({ error: vendorValidation.error })
+			}
+			updateData.vendor = sanitizeString(vendor)
+		}
+
+		if (date !== undefined && date !== null && date !== '') {
+			const dateValidation = validateDate(date)
+			if (!dateValidation.valid) {
+				return res.status(400).json({ error: dateValidation.error })
+			}
+			updateData.date = date
+		}
+
+		if (user_id !== undefined && user_id !== null && user_id !== '') {
+			const parsedUserId = parseInt(user_id as string, 10)
+			if (isNaN(parsedUserId)) {
+				return res.status(400).json({ error: 'Invalid user_id: must be a number' })
+			}
+			updateData.user_id = parsedUserId
+		}
+
+		if (receipt_type_id !== undefined && receipt_type_id !== null && receipt_type_id !== '') {
+			const parsedReceiptTypeId = parseInt(receipt_type_id as string, 10)
+			if (isNaN(parsedReceiptTypeId)) {
+				return res.status(400).json({ error: 'Invalid receipt_type_id: must be a number' })
+			}
+			updateData.receipt_type_id = parsedReceiptTypeId
+		}
+
+		// Process flags - parse flag IDs if provided
+		const parsedFlagIds = flag_ids !== undefined && flag_ids !== null && Array.isArray(flag_ids) && flag_ids.length > 0
+			? flag_ids.filter((id: any) => typeof id === 'number' && !isNaN(id))
+			: undefined
+
+		// Update each receipt
+		const errors: Array<{ id: number; error: string }> = []
+		let updatedCount = 0
+
+		for (const receiptId of parsedReceiptIds) {
+			try {
+				// Determine flag IDs for this receipt
+				let receiptFlagIds: number[] | undefined = undefined
+				
+				if (parsedFlagIds && parsedFlagIds.length > 0) {
+					if (flag_operation === 'append') {
+						// For append: merge existing flags with new flags for this specific receipt
+						const existingFlags = dbQueries.getFlagsByReceiptId.all(receiptId) as Array<{ id: number }>
+						const existingFlagIds = existingFlags.map(f => f.id)
+						// Merge and deduplicate
+						const merged = new Set([...existingFlagIds, ...parsedFlagIds])
+						receiptFlagIds = Array.from(merged)
+					} else {
+						// For replace (default): use only the new flags
+						receiptFlagIds = parsedFlagIds
+					}
+				}
+
+				const result = await updateReceipt(receiptId, updateData, receiptFlagIds)
+				if (result) {
+					updatedCount++
+				} else {
+					errors.push({ id: receiptId, error: 'Receipt not found' })
+				}
+			} catch (err: any) {
+				errors.push({ id: receiptId, error: err.message || 'Failed to update receipt' })
+			}
+		}
+
+		res.json({
+			updated: updatedCount,
+			errors: errors.length > 0 ? errors : undefined,
+		})
+	} catch (error: any) {
+		console.error('Error in bulk update:', error)
+		res.status(500).json({ error: error.message || 'Failed to update receipts' })
+	}
+})
+
 // POST /api/receipts/restore-files - Restore file associations from filesystem
 router.post('/restore-files', async (req, res) => {
 	try {

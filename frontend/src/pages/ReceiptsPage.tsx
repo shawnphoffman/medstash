@@ -5,9 +5,11 @@ import { Card, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
-import { Download, Search, File, ArrowUp, ArrowDown, ArrowUpDown, Flag as FlagIcon } from 'lucide-react'
+import { Checkbox } from '../components/ui/checkbox'
+import { Download, Search, File, ArrowUp, ArrowDown, ArrowUpDown, Flag as FlagIcon, Edit } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip'
+import BulkEditDialog from '../components/BulkEditDialog'
 
 type SortField = 'date' | 'vendor' | 'type' | 'user' | 'amount' | 'created_at' | 'updated_at'
 type SortDirection = 'asc' | 'desc'
@@ -22,6 +24,8 @@ export default function ReceiptsPage() {
 	const [error, setError] = useState<string | null>(null)
 	const [sortField, setSortField] = useState<SortField>('date')
 	const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+	const [selectedReceiptIds, setSelectedReceiptIds] = useState<Set<number>>(new Set())
+	const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
 
 	useEffect(() => {
 		loadData()
@@ -143,6 +147,39 @@ export default function ReceiptsPage() {
 		return 0
 	})
 
+	const handleSelectReceipt = (receiptId: number, checked: boolean) => {
+		setSelectedReceiptIds(prev => {
+			const newSet = new Set(prev)
+			if (checked) {
+				newSet.add(receiptId)
+			} else {
+				newSet.delete(receiptId)
+			}
+			return newSet
+		})
+	}
+
+	const handleSelectAll = (checked: boolean | 'indeterminate') => {
+		if (checked === true) {
+			setSelectedReceiptIds(new Set(sortedReceipts.map(r => r.id)))
+		} else {
+			setSelectedReceiptIds(new Set())
+		}
+	}
+
+	const allSelected = sortedReceipts.length > 0 && sortedReceipts.every(r => selectedReceiptIds.has(r.id))
+	const someSelected = sortedReceipts.some(r => selectedReceiptIds.has(r.id))
+	
+	// Determine checked state for select all checkbox (supports indeterminate)
+	const selectAllChecked = someSelected && !allSelected ? 'indeterminate' : allSelected
+
+	const handleBulkEditSuccess = () => {
+		// Refresh receipts list
+		loadData()
+		// Clear selections
+		setSelectedReceiptIds(new Set())
+	}
+
 	if (loading) {
 		return <div className="py-8 text-center">Loading receipts...</div>
 	}
@@ -154,10 +191,18 @@ export default function ReceiptsPage() {
 					<h2 className="text-3xl font-bold">Receipts</h2>
 					<p className="text-muted-foreground">Manage your medical receipts ({receipts.length} total)</p>
 				</div>
-				<Button onClick={handleExport}>
-					<Download className="mr-2 size-4" />
-					Export All
-				</Button>
+				<div className="flex gap-2">
+					{selectedReceiptIds.size > 0 && (
+						<Button onClick={() => setShowBulkEditDialog(true)} variant="default">
+							<Edit className="mr-2 size-4" />
+							Bulk Edit ({selectedReceiptIds.size})
+						</Button>
+					)}
+					<Button onClick={handleExport}>
+						<Download className="mr-2 size-4" />
+						Export All
+					</Button>
+				</div>
 			</div>
 
 			{/* Filters */}
@@ -219,6 +264,13 @@ export default function ReceiptsPage() {
 							<table className="w-full">
 								<thead>
 									<tr className="border-b bg-muted/50">
+										<th className="px-4 py-3 text-sm font-medium text-left w-12">
+											<Checkbox
+												checked={selectAllChecked}
+												onCheckedChange={handleSelectAll}
+												onClick={e => e.stopPropagation()}
+											/>
+										</th>
 										<th
 											className="px-4 py-3 text-sm font-medium text-left transition-colors cursor-pointer hover:bg-muted"
 											onClick={e => {
@@ -312,8 +364,23 @@ export default function ReceiptsPage() {
 										<tr
 											key={receipt.id}
 											onClick={() => navigate(`/receipts/${receipt.id}`)}
-											className={cn('border-b cursor-pointer hover:bg-muted/50 transition-colors')}
+											className={cn(
+												'border-b cursor-pointer hover:bg-muted/50 transition-colors',
+												selectedReceiptIds.has(receipt.id) && 'bg-muted'
+											)}
 										>
+											<td
+												className="px-4 py-3"
+												onClick={e => {
+													e.stopPropagation()
+												}}
+											>
+												<Checkbox
+													checked={selectedReceiptIds.has(receipt.id)}
+													onCheckedChange={checked => handleSelectReceipt(receipt.id, checked === true)}
+													onClick={e => e.stopPropagation()}
+												/>
+											</td>
 											<td className="px-4 py-3 text-sm">{formatDate(receipt.date)}</td>
 											<td className="px-4 py-3 text-sm font-medium">{receipt.vendor}</td>
 											<td className="px-4 py-3 text-sm">{receipt.type}</td>
@@ -351,6 +418,14 @@ export default function ReceiptsPage() {
 					</CardContent>
 				</Card>
 			)}
+
+			{/* Bulk Edit Dialog */}
+			<BulkEditDialog
+				open={showBulkEditDialog}
+				onOpenChange={setShowBulkEditDialog}
+				selectedReceiptIds={Array.from(selectedReceiptIds)}
+				onSuccess={handleBulkEditSuccess}
+			/>
 		</div>
 	)
 }
