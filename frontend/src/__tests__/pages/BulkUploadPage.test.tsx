@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '../helpers/testUtils'
+import { render, screen, waitFor, act } from '../helpers/testUtils'
 import userEvent from '@testing-library/user-event'
 import BulkUploadPage from '../../pages/BulkUploadPage'
-import { createUserFixture } from '../helpers/fixtures'
 
 // Mock the API module
 vi.mock('../../lib/api', () => {
@@ -104,7 +103,6 @@ describe('BulkUploadPage', () => {
 	})
 
 	it('should show create receipts button when files are selected', async () => {
-		const user = userEvent.setup()
 		render(<BulkUploadPage />)
 
 		await waitFor(() => {
@@ -115,13 +113,32 @@ describe('BulkUploadPage', () => {
 		const file = new File(['test content'], 'test.pdf', { type: 'application/pdf' })
 		const fileInput = document.getElementById('file-input') as HTMLInputElement
 
-		// Simulate file selection
+		// Create a mock FileList object
+		const fileList = {
+			0: file,
+			length: 1,
+			item: (index: number) => (index === 0 ? file : null),
+			[Symbol.iterator]: function* () {
+				yield file
+			},
+		} as FileList
+
+		// Simulate file selection by directly setting files and triggering change event
 		Object.defineProperty(fileInput, 'files', {
-			value: [file],
+			value: fileList,
 			writable: false,
+			configurable: true,
 		})
 
-		await userEvent.upload(fileInput, file)
+		// Create and dispatch a change event
+		const changeEvent = new Event('change', { bubbles: true })
+		Object.defineProperty(changeEvent, 'target', {
+			value: fileInput,
+			writable: false,
+		})
+		await act(async () => {
+			fileInput.dispatchEvent(changeEvent)
+		})
 
 		await waitFor(() => {
 			expect(screen.getByText(/selected files \(1\)/i)).toBeInTheDocument()

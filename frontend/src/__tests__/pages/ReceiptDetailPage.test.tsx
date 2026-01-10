@@ -1,8 +1,9 @@
+import * as React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '../helpers/testUtils'
 import userEvent from '@testing-library/user-event'
 import ReceiptDetailPage from '../../pages/ReceiptDetailPage'
-import { createReceiptFixture, createUserFixture, createFlagFixture, createReceiptTypeFixture } from '../helpers/fixtures'
+import { createReceiptFixture } from '../helpers/fixtures'
 
 // Mock the API module
 vi.mock('../../lib/api', () => {
@@ -26,6 +27,7 @@ vi.mock('../../lib/api', () => {
 	const createUserFixture = () => ({ id: 1, name: 'Test User', created_at: '2024-01-15T10:00:00Z' })
 	const createFlagFixture = () => ({ id: 1, name: 'Test Flag', color: '#FF0000', created_at: '2024-01-15T10:00:00Z' })
 	const createReceiptTypeFixture = () => ({ id: 1, name: 'doctor-visit', created_at: '2024-01-15T10:00:00Z' })
+	const createReceiptTypeGroupFixture = () => ({ id: 1, name: 'Test Group', display_order: 0, created_at: '2024-01-15T10:00:00Z' })
 
 	return {
 		receiptsApi: {
@@ -43,6 +45,9 @@ vi.mock('../../lib/api', () => {
 		},
 		receiptTypesApi: {
 			getAll: vi.fn().mockResolvedValue({ data: [createReceiptTypeFixture()] }),
+		},
+		receiptTypeGroupsApi: {
+			getAll: vi.fn().mockResolvedValue({ data: [createReceiptTypeGroupFixture()] }),
 		},
 	}
 })
