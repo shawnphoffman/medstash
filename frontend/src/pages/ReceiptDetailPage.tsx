@@ -499,21 +499,6 @@ export default function ReceiptDetailPage() {
 									</div>
 								</div>
 
-								<div>
-									<Label htmlFor="vendor">Service Provider Name</Label>
-									<Input id="vendor" {...register('vendor')} placeholder="CVS Pharmacy" />
-								</div>
-
-								<div>
-									<Label htmlFor="provider_address">Service Provider Address</Label>
-									<Textarea id="provider_address" {...register('provider_address')} placeholder="123 Main St, City, State ZIP" rows={2} />
-								</div>
-
-								<div>
-									<Label htmlFor="description">Detailed Description</Label>
-									<Textarea id="description" {...register('description')} placeholder="Description of service or item purchased" rows={3} />
-								</div>
-
 								<div className="grid grid-cols-2 gap-4">
 									<div>
 										<Label htmlFor="date">Date of Service</Label>
@@ -547,6 +532,21 @@ export default function ReceiptDetailPage() {
 										</div>
 										{errors.amount && <p className="mt-1 text-sm text-destructive">{errors.amount.message as string}</p>}
 									</div>
+								</div>
+
+								<div>
+									<Label htmlFor="description">Description</Label>
+									<Textarea id="description" {...register('description')} placeholder="Description of service or item purchased" rows={3} />
+								</div>
+
+								<div>
+									<Label htmlFor="vendor">Provider Name</Label>
+									<Input id="vendor" {...register('vendor')} placeholder="CVS Pharmacy" />
+								</div>
+
+								<div>
+									<Label htmlFor="provider_address">Provider Address</Label>
+									<Textarea id="provider_address" {...register('provider_address')} placeholder="123 Main St, City, State ZIP" rows={2} />
 								</div>
 
 								<div>
