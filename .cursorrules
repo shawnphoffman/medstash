@@ -1,0 +1,34 @@
+# MedStash Development Workflow
+
+## Required Steps for All Code Changes
+
+Whenever making any code changes, you MUST complete the following steps:
+
+1. **Fix Lint and TypeScript Issues**
+   - Run `read_lints` to check for linting errors
+   - Fix any TypeScript compilation errors (`tsc` should pass)
+   - Ensure code follows project style guidelines
+
+2. **Update Tests**
+   - Create new tests for new functionality
+   - Update existing tests when modifying behavior
+   - Remove obsolete tests when removing functionality
+   - Ensure all tests pass (`npm run test` in both backend and frontend)
+
+3. **Verify Builds**
+   - Backend: `cd backend && npm run build` (TypeScript compilation)
+   - Frontend: `cd frontend && npm run build` (TypeScript + Vite build)
+   - Both builds must complete successfully before considering work complete
+
+## Project Structure
+
+- **Backend**: Express.js API with SQLite database, TypeScript
+- **Frontend**: React + Vite, TypeScript
+- **Testing**: Vitest for both backend and frontend
+- **Build**: TypeScript compilation for backend, TypeScript + Vite for frontend
+
+## Testing Commands
+
+- Root: `npm run test` (runs both backend and frontend tests)
+- Backend only: `npm run test:backend` or `cd backend && npm run test`
+- Frontend only: `npm run test:frontend` or `cd frontend && npm run test`
