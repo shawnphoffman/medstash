@@ -1,8 +1,8 @@
+import * as React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '../helpers/testUtils'
 import userEvent from '@testing-library/user-event'
 import UploadPage from '../../pages/UploadPage'
-import { createUserFixture, createFlagFixture, createReceiptTypeFixture } from '../helpers/fixtures'
 
 // Mock the API module
 vi.mock('../../lib/api', () => {

@@ -155,7 +155,7 @@ describe('ReceiptDetailPage', () => {
 		})
 
 		const { receiptsApi } = await import('../../lib/api')
-		vi.mocked(receiptsApi.getById).mockResolvedValue({ data: receipt })
+		vi.mocked(receiptsApi.getById).mockResolvedValue({ data: receipt } as any)
 
 		render(<ReceiptDetailPage />)
 
