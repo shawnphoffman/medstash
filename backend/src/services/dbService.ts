@@ -103,13 +103,15 @@ function resolveReceiptTypeId(typeId?: number, typeName?: string): number {
 		const type = dbQueries.getReceiptTypeByName.get(typeName) as ReceiptType | undefined
 		if (type) return type.id
 		// Create receipt type with provided name if it doesn't exist
-		const result = dbQueries.insertReceiptType.run(typeName)
+		// insertReceiptType requires (name, group_id, display_order)
+		const result = dbQueries.insertReceiptType.run(typeName, null, 0)
 		return result.lastInsertRowid as number
 	}
 	// Default to "Other"
 	const defaultType = dbQueries.getReceiptTypeByName.get('Other') as ReceiptType | undefined
 	if (defaultType) return defaultType.id
-	const result = dbQueries.insertReceiptType.run('Other')
+	// insertReceiptType requires (name, group_id, display_order)
+	const result = dbQueries.insertReceiptType.run('Other', null, 0)
 	return result.lastInsertRowid as number
 }
 

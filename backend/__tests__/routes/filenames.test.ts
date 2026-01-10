@@ -59,7 +59,7 @@ describe('Filenames API', () => {
 
     let type = dbQueries.getReceiptTypeByName.get(typeName) as { id: number } | undefined;
     if (!type) {
-      const typeResult = dbQueries.insertReceiptType.run(typeName);
+      const typeResult = dbQueries.insertReceiptType.run(typeName, null, 0);
       type = dbQueries.getReceiptTypeById.get(Number(typeResult.lastInsertRowid)) as { id: number };
     }
 

@@ -81,7 +81,7 @@ describe('Export API', () => {
       }
       let type = dbQueries.getReceiptTypeByName.get(receiptData.type!) as { id: number } | undefined;
       if (!type) {
-        const typeResult = dbQueries.insertReceiptType.run(receiptData.type!);
+        const typeResult = dbQueries.insertReceiptType.run(receiptData.type!, null, 0);
         type = dbQueries.getReceiptTypeById.get(Number(typeResult.lastInsertRowid)) as { id: number };
       }
       const receiptResult = dbQueries.insertReceipt.run(
@@ -128,7 +128,7 @@ describe('Export API', () => {
       }
       let type = dbQueries.getReceiptTypeByName.get(receiptData.type!) as { id: number } | undefined;
       if (!type) {
-        const typeResult = dbQueries.insertReceiptType.run(receiptData.type!);
+        const typeResult = dbQueries.insertReceiptType.run(receiptData.type!, null, 0);
         type = dbQueries.getReceiptTypeById.get(Number(typeResult.lastInsertRowid)) as { id: number };
       }
       const receiptResult = dbQueries.insertReceipt.run(
@@ -166,7 +166,7 @@ describe('Export API', () => {
       }
       let type = dbQueries.getReceiptTypeByName.get(receiptData.type!) as { id: number } | undefined;
       if (!type) {
-        const typeResult = dbQueries.insertReceiptType.run(receiptData.type!);
+        const typeResult = dbQueries.insertReceiptType.run(receiptData.type!, null, 0);
         type = dbQueries.getReceiptTypeById.get(Number(typeResult.lastInsertRowid)) as { id: number };
       }
       const receiptResult = dbQueries.insertReceipt.run(
@@ -222,7 +222,7 @@ describe('Export API', () => {
       }
       let type = dbQueries.getReceiptTypeByName.get(receiptData.type!) as { id: number } | undefined;
       if (!type) {
-        const typeResult = dbQueries.insertReceiptType.run(receiptData.type!);
+        const typeResult = dbQueries.insertReceiptType.run(receiptData.type!, null, 0);
         type = dbQueries.getReceiptTypeById.get(Number(typeResult.lastInsertRowid)) as { id: number };
       }
       const receiptResult = dbQueries.insertReceipt.run(
