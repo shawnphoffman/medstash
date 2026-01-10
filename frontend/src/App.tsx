@@ -183,8 +183,6 @@ function AppContent() {
 					},
 				]
 
-				
-
 				// Check if we need to reset (if groups/types don't match expected structure)
 				const expectedGroupNames = defaultGroups.map(g => g.name).sort()
 				const existingGroupNames = groups.map(g => g.name).sort()

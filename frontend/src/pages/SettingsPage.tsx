@@ -75,11 +75,7 @@ function SortableGroup({
 	}
 
 	return (
-		<div
-			ref={setNodeRef}
-			style={style}
-			className={`rounded-lg ${hasChanged ? 'border-2 border-dashed border-amber-500/50' : 'border'}`}
-		>
+		<div ref={setNodeRef} style={style} className={`rounded-lg ${hasChanged ? 'border-2 border-dashed border-amber-500/50' : 'border'}`}>
 			<div className="flex items-center justify-between p-1.5 bg-muted/50 border-b">
 				{editingGroup === group.id ? (
 					<div className="flex items-center flex-1 gap-2">
@@ -219,8 +215,8 @@ function UngroupedSection({
 					isDragOver
 						? 'bg-primary/10 border-2 border-primary border-dashed'
 						: hasChanged
-							? 'border-2 border-dashed border-amber-500/50'
-							: 'border'
+						? 'border-2 border-dashed border-amber-500/50'
+						: 'border'
 				}`}
 			>
 				<div className="p-3 border-b bg-muted/50">
@@ -238,8 +234,8 @@ function UngroupedSection({
 				isDragOver
 					? 'bg-primary/10 border-2 border-primary border-dashed'
 					: hasChanged
-						? 'border-2 border-dashed border-amber-500/50'
-						: 'border'
+					? 'border-2 border-dashed border-amber-500/50'
+					: 'border'
 			}`}
 		>
 			<div className="p-3 border-b bg-muted/50">
@@ -738,11 +734,7 @@ export default function SettingsPage() {
 				changed.add(type.group_id ?? 'ungrouped')
 			} else {
 				// Check if type changed
-				if (
-					original.name !== type.name ||
-					original.group_id !== type.group_id ||
-					original.display_order !== type.display_order
-				) {
+				if (original.name !== type.name || original.group_id !== type.group_id || original.display_order !== type.display_order) {
 					// Mark both old and new groups as changed
 					changed.add(original.group_id ?? 'ungrouped')
 					changed.add(type.group_id ?? 'ungrouped')
