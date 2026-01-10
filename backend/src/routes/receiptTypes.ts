@@ -9,6 +9,7 @@ import {
 } from '../services/dbService';
 import { CreateReceiptTypeInput, UpdateReceiptTypeInput } from '../models/receipt';
 import { sanitizeString } from '../utils/sanitization';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ router.get('/', (req, res) => {
     const types = getAllReceiptTypes();
     res.json(types);
   } catch (error) {
-    console.error('Error fetching receipt types:', error);
+    logger.error('Error fetching receipt types:', error);
     res.status(500).json({ error: 'Failed to fetch receipt types' });
   }
 });
@@ -36,7 +37,7 @@ router.get('/:id', (req, res) => {
     }
     res.json(type);
   } catch (error) {
-    console.error('Error fetching receipt type:', error);
+    logger.error('Error fetching receipt type:', error);
     res.status(500).json({ error: 'Failed to fetch receipt type' });
   }
 });
@@ -66,7 +67,7 @@ router.post('/', (req, res) => {
     const type = createReceiptType(sanitizedName, group_id, display_order);
     res.status(201).json(type);
   } catch (error) {
-    console.error('Error creating receipt type:', error);
+    logger.error('Error creating receipt type:', error);
     res.status(500).json({ error: 'Failed to create receipt type' });
   }
 });
@@ -104,7 +105,7 @@ router.put('/:id', (req, res) => {
 
     res.json(type);
   } catch (error) {
-    console.error('Error updating receipt type:', error);
+    logger.error('Error updating receipt type:', error);
     res.status(500).json({ error: 'Failed to update receipt type' });
   }
 });
@@ -133,7 +134,7 @@ router.put('/:id/move', (req, res) => {
 
     res.json(type);
   } catch (error) {
-    console.error('Error moving receipt type:', error);
+    logger.error('Error moving receipt type:', error);
     res.status(500).json({ error: 'Failed to move receipt type' });
   }
 });
@@ -152,7 +153,7 @@ router.delete('/:id', (req, res) => {
 
     res.status(204).send();
   } catch (error: any) {
-    console.error('Error deleting receipt type:', error);
+    logger.error('Error deleting receipt type:', error);
     // Check if it's the only type remaining
     if (error.message && error.message.includes('only type remaining')) {
       return res.status(400).json({ error: error.message });

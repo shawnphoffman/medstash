@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import type { Database as DatabaseType } from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
+import { logger } from './utils/logger'
 
 const DB_DIR = process.env.DB_DIR || '/data'
 const DB_PATH = path.join(DB_DIR, 'medstash.db')
@@ -12,28 +13,28 @@ const DB_PATH = path.join(DB_DIR, 'medstash.db')
 if (!fs.existsSync(DB_DIR)) {
 	try {
 		fs.mkdirSync(DB_DIR, { recursive: true })
-		console.log(`Created database directory: ${DB_DIR}`)
+		logger.debug(`Created database directory: ${DB_DIR}`)
 	} catch (error: any) {
 		// If we're using an in-memory database (indicated by DB_PATH being ':memory:'),
 		// we don't need to create the directory
 		// This allows tests to work without setting up file system directories
 		if (DB_PATH !== ':memory:' && !process.env.VITEST) {
-			console.error(`Failed to create database directory ${DB_DIR}:`, error)
+			logger.error(`Failed to create database directory ${DB_DIR}:`, error)
 			throw error
 		}
 		// In test environment, continue without creating directory
 		// The actual database will be in-memory anyway
 	}
 } else {
-	console.log(`Database directory exists: ${DB_DIR}`)
+	logger.debug(`Database directory exists: ${DB_DIR}`)
 }
 
 // Check if directory is writable
 try {
 	fs.accessSync(DB_DIR, fs.constants.W_OK)
-	console.log(`Database directory is writable: ${DB_DIR}`)
+	logger.debug(`Database directory is writable: ${DB_DIR}`)
 } catch (error: any) {
-	console.error(`Database directory is not writable: ${DB_DIR}`, error)
+	logger.error(`Database directory is not writable: ${DB_DIR}`, error)
 	if (DB_PATH !== ':memory:' && !process.env.VITEST) {
 		throw new Error(`Database directory ${DB_DIR} is not writable: ${error.message}`)
 	}
@@ -43,9 +44,9 @@ try {
 let dbInstance: DatabaseType
 try {
 	dbInstance = new Database(DB_PATH)
-	console.log(`Database initialized at: ${DB_PATH}`)
+	logger.debug(`Database initialized at: ${DB_PATH}`)
 } catch (error: any) {
-	console.error(`Failed to initialize database at ${DB_PATH}:`, error)
+	logger.error(`Failed to initialize database at ${DB_PATH}:`, error)
 	throw new Error(`Database initialization failed: ${error.message}`)
 }
 

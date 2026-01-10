@@ -18,6 +18,11 @@ services:
       # Example: - ALLOWED_ORIGINS=http://your-ip:3020,http://medstash.local
       # If not set, all origins will be allowed
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+      # Logging: Set LOG_LEVEL to ERROR, WARN, or DEBUG (default: DEBUG)
+      # ERROR: Only error messages
+      # WARN: Error and warning messages
+      # DEBUG: All messages (errors, warnings, and debug info)
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 60s

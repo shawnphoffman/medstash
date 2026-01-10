@@ -8,6 +8,7 @@ import {
 } from '../services/dbService';
 import { CreateFlagInput, UpdateFlagInput } from '../models/receipt';
 import { sanitizeString } from '../utils/sanitization';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ router.get('/', (req, res) => {
     const flags = getAllFlags();
     res.json(flags);
   } catch (error) {
-    console.error('Error fetching flags:', error);
+    logger.error('Error fetching flags:', error);
     res.status(500).json({ error: 'Failed to fetch flags' });
   }
 });
@@ -35,7 +36,7 @@ router.get('/:id', (req, res) => {
     }
     res.json(flag);
   } catch (error) {
-    console.error('Error fetching flag:', error);
+    logger.error('Error fetching flag:', error);
     res.status(500).json({ error: 'Failed to fetch flag' });
   }
 });
@@ -57,7 +58,7 @@ router.post('/', (req, res) => {
     const flag = createFlag(sanitizedName, color);
     res.status(201).json(flag);
   } catch (error) {
-    console.error('Error creating flag:', error);
+    logger.error('Error creating flag:', error);
     res.status(500).json({ error: 'Failed to create flag' });
   }
 });
@@ -87,7 +88,7 @@ router.put('/:id', (req, res) => {
 
     res.json(flag);
   } catch (error) {
-    console.error('Error updating flag:', error);
+    logger.error('Error updating flag:', error);
     res.status(500).json({ error: 'Failed to update flag' });
   }
 });
@@ -106,7 +107,7 @@ router.delete('/:id', (req, res) => {
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting flag:', error);
+    logger.error('Error deleting flag:', error);
     res.status(500).json({ error: 'Failed to delete flag' });
   }
 });

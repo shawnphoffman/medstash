@@ -16,12 +16,15 @@ import { dbQueries } from '../db'
 import fs from 'fs/promises'
 import { validateDate, validateAmount, validateVendor, validateDescription, validateProviderAddress } from '../utils/validation'
 import { sanitizeString, sanitizeOptionalString } from '../utils/sanitization'
+import { logger } from '../utils/logger'
 
 const router = express.Router()
 
 // Configure multer for file uploads
+// Use /data/uploads in Docker (persistent) or /tmp/medstash-uploads in development
+const uploadDir = process.env.UPLOAD_DIR || (process.env.NODE_ENV === 'production' ? '/data/uploads' : '/tmp/medstash-uploads')
 const upload = multer({
-	dest: process.env.UPLOAD_DIR || '/tmp/medstash-uploads',
+	dest: uploadDir,
 	limits: {
 		fileSize: 50 * 1024 * 1024, // 50MB
 	},
@@ -39,10 +42,11 @@ const upload = multer({
 // Ensure upload directory exists
 ;(async () => {
 	try {
-		const uploadDir = process.env.UPLOAD_DIR || '/tmp/medstash-uploads'
 		await fs.mkdir(uploadDir, { recursive: true })
+		logger.debug(`Upload directory initialized: ${uploadDir}`)
 	} catch (error) {
-		console.error('Failed to create upload directory:', error)
+		logger.error('Failed to create upload directory:', error)
+		// Don't throw - multer will handle errors when trying to write
 	}
 })()
 
@@ -59,7 +63,7 @@ router.get('/', (req, res) => {
 		const receipts = getAllReceipts(flagId)
 		res.json(receipts)
 	} catch (error) {
-		console.error('Error fetching receipts:', error)
+		logger.error('Error fetching receipts:', error)
 		res.status(500).json({ error: 'Failed to fetch receipts' })
 	}
 })
@@ -77,7 +81,7 @@ router.get('/:id', (req, res) => {
 		}
 		res.json(receipt)
 	} catch (error) {
-		console.error('Error fetching receipt:', error)
+		logger.error('Error fetching receipt:', error)
 		res.status(500).json({ error: 'Failed to fetch receipt' })
 	}
 })
@@ -247,7 +251,7 @@ router.post('/', upload.array('files', 10), handleMulterError, async (req: expre
 		const updatedReceipt = getReceiptById(receipt.id)
 		res.status(201).json(updatedReceipt)
 	} catch (error) {
-		console.error('Error creating receipt:', error)
+		logger.error('Error creating receipt:', error)
 		res.status(500).json({ error: 'Failed to create receipt' })
 	}
 })
@@ -380,7 +384,7 @@ router.put('/:id', async (req, res) => {
 
 		res.json(receipt)
 	} catch (error) {
-		console.error('Error updating receipt:', error)
+		logger.error('Error updating receipt:', error)
 		res.status(500).json({ error: 'Failed to update receipt' })
 	}
 })
@@ -402,7 +406,7 @@ router.delete('/:id', async (req, res) => {
 
 		res.status(204).send()
 	} catch (error) {
-		console.error('Error deleting receipt:', error)
+		logger.error('Error deleting receipt:', error)
 		res.status(500).json({ error: 'Failed to delete receipt' })
 	}
 })
@@ -465,7 +469,7 @@ router.post('/:id/files', upload.array('files', 10), handleMulterError, async (r
 		const updatedReceipt = getReceiptById(id)
 		res.json(updatedReceipt)
 	} catch (error) {
-		console.error('Error adding files to receipt:', error)
+		logger.error('Error adding files to receipt:', error)
 		res.status(500).json({ error: 'Failed to add files to receipt' })
 	}
 })
@@ -515,7 +519,7 @@ router.get('/:id/files/:fileId', async (req, res) => {
 				res.sendFile(path.resolve(filePath), err => {
 					if (err) {
 						if (!res.headersSent) {
-							console.error('Error sending file:', err)
+							logger.error('Error sending file:', err)
 							res.status(500).json({
 								error: 'Failed to retrieve file. The file may be corrupted or inaccessible.',
 							})
@@ -526,7 +530,7 @@ router.get('/:id/files/:fileId', async (req, res) => {
 				res.download(filePath, file.original_filename, err => {
 					if (err) {
 						if (!res.headersSent) {
-							console.error('Error downloading file:', err)
+							logger.error('Error downloading file:', err)
 							res.status(500).json({
 								error: 'Failed to download file. The file may be corrupted or inaccessible.',
 							})
@@ -537,14 +541,14 @@ router.get('/:id/files/:fileId', async (req, res) => {
 		} catch (sendError: any) {
 			// Handle errors from sendFile/download that occur synchronously
 			if (!res.headersSent) {
-				console.error('Error sending file:', sendError)
+				logger.error('Error sending file:', sendError)
 				res.status(500).json({
 					error: 'Failed to retrieve file. The file may be corrupted or inaccessible.',
 				})
 			}
 		}
 	} catch (error) {
-		console.error('Error downloading file:', error)
+		logger.error('Error downloading file:', error)
 		if (!res.headersSent) {
 			res.status(500).json({ error: 'Failed to download file' })
 		}
@@ -579,7 +583,7 @@ router.delete('/:id/files/:fileId', async (req, res) => {
 		const updatedReceipt = getReceiptById(receiptId)
 		res.json(updatedReceipt)
 	} catch (error) {
-		console.error('Error deleting file:', error)
+		logger.error('Error deleting file:', error)
 		res.status(500).json({ error: 'Failed to delete file' })
 	}
 })
@@ -619,7 +623,7 @@ router.put('/:id/files/:fileId', upload.single('file'), handleMulterError, async
 		const updatedReceipt = getReceiptById(receiptId)
 		res.json(updatedReceipt)
 	} catch (error) {
-		console.error('Error replacing file:', error)
+		logger.error('Error replacing file:', error)
 		res.status(500).json({ error: 'Failed to replace file' })
 	}
 })
@@ -644,7 +648,7 @@ router.put('/:id/flags', async (req, res) => {
 
 		res.json(receipt)
 	} catch (error) {
-		console.error('Error updating receipt flags:', error)
+		logger.error('Error updating receipt flags:', error)
 		res.status(500).json({ error: 'Failed to update receipt flags' })
 	}
 })
@@ -756,7 +760,7 @@ router.post('/bulk-update', async (req, res) => {
 			errors: errors.length > 0 ? errors : undefined,
 		})
 	} catch (error: any) {
-		console.error('Error in bulk update:', error)
+		logger.error('Error in bulk update:', error)
 		res.status(500).json({ error: error.message || 'Failed to update receipts' })
 	}
 })
@@ -770,7 +774,7 @@ router.post('/restore-files', async (req, res) => {
 			...results,
 		})
 	} catch (error) {
-		console.error('Error restoring file associations:', error)
+		logger.error('Error restoring file associations:', error)
 		res.status(500).json({ error: 'Failed to restore file associations' })
 	}
 })

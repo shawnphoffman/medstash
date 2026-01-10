@@ -4,6 +4,7 @@ import { getAllReceipts } from '../services/dbService';
 import { getReceiptFilePath } from '../services/fileService';
 import fs from 'fs';
 import path from 'path';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ router.get('/', async (req, res) => {
     });
 
     archive.on('error', (err) => {
-      console.error('Archive error:', err);
+      logger.error('Archive error:', err);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Failed to create archive' });
       }
@@ -68,7 +69,7 @@ router.get('/', async (req, res) => {
     // Finalize the archive
     await archive.finalize();
   } catch (error) {
-    console.error('Error exporting receipts:', error);
+    logger.error('Error exporting receipts:', error);
     if (!res.headersSent) {
       res.status(500).json({ error: 'Failed to export receipts' });
     }

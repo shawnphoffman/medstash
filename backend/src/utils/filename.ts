@@ -1,5 +1,6 @@
 import { Flag } from '../models/receipt'
 import { getSetting } from '../services/dbService'
+import { logger } from './logger'
 
 const DEFAULT_PATTERN = '{date}_{user}_{vendor}_{amount}_{type}_{index}'
 
@@ -123,7 +124,7 @@ export function generateReceiptFilename(
 				usedPattern = JSON.parse(setting)
 			} catch (parseError) {
 				// If JSON parsing fails, use default pattern
-				console.warn('Failed to parse filenamePattern setting, using default:', parseError)
+				logger.warn('Failed to parse filenamePattern setting, using default:', parseError)
 				usedPattern = DEFAULT_PATTERN
 			}
 		}

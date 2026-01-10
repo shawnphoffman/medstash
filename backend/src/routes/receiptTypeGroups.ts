@@ -8,6 +8,7 @@ import {
 } from '../services/dbService';
 import { CreateReceiptTypeGroupInput, UpdateReceiptTypeGroupInput } from '../models/receipt';
 import { sanitizeString } from '../utils/sanitization';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ router.get('/', (req, res) => {
     const groups = getAllReceiptTypeGroups();
     res.json(groups);
   } catch (error) {
-    console.error('Error fetching receipt type groups:', error);
+    logger.error('Error fetching receipt type groups:', error);
     res.status(500).json({ error: 'Failed to fetch receipt type groups' });
   }
 });
@@ -35,7 +36,7 @@ router.get('/:id', (req, res) => {
     }
     res.json(group);
   } catch (error) {
-    console.error('Error fetching receipt type group:', error);
+    logger.error('Error fetching receipt type group:', error);
     res.status(500).json({ error: 'Failed to fetch receipt type group' });
   }
 });
@@ -61,7 +62,7 @@ router.post('/', (req, res) => {
     const group = createReceiptTypeGroup(sanitizedName, display_order);
     res.status(201).json(group);
   } catch (error) {
-    console.error('Error creating receipt type group:', error);
+    logger.error('Error creating receipt type group:', error);
     res.status(500).json({ error: 'Failed to create receipt type group' });
   }
 });
@@ -95,7 +96,7 @@ router.put('/:id', (req, res) => {
 
     res.json(group);
   } catch (error) {
-    console.error('Error updating receipt type group:', error);
+    logger.error('Error updating receipt type group:', error);
     res.status(500).json({ error: 'Failed to update receipt type group' });
   }
 });
@@ -114,7 +115,7 @@ router.delete('/:id', (req, res) => {
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting receipt type group:', error);
+    logger.error('Error deleting receipt type group:', error);
     res.status(500).json({ error: 'Failed to delete receipt type group' });
   }
 });

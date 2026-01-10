@@ -1,4 +1,5 @@
 import { dbQueries, db } from '../db'
+import { logger } from '../utils/logger'
 import {
 	Receipt,
 	ReceiptFile,
@@ -260,7 +261,7 @@ export async function updateReceipt(
 				dbQueries.updateReceiptFilename.run(result.newFilename, result.fileId)
 			}
 		} catch (error) {
-			console.error('Error renaming receipt files:', error)
+			logger.error('Error renaming receipt files:', error)
 			// Continue even if renaming fails - receipt is still updated
 		}
 	}

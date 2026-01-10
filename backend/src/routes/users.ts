@@ -8,6 +8,7 @@ import {
 } from '../services/dbService';
 import { CreateUserInput, UpdateUserInput } from '../models/receipt';
 import { sanitizeString } from '../utils/sanitization';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ router.get('/', (req, res) => {
     const users = getAllUsers();
     res.json(users);
   } catch (error) {
-    console.error('Error fetching users:', error);
+    logger.error('Error fetching users:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
@@ -35,7 +36,7 @@ router.get('/:id', (req, res) => {
     }
     res.json(user);
   } catch (error) {
-    console.error('Error fetching user:', error);
+    logger.error('Error fetching user:', error);
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
@@ -57,7 +58,7 @@ router.post('/', (req, res) => {
     const user = createUser(sanitizedName);
     res.status(201).json(user);
   } catch (error) {
-    console.error('Error creating user:', error);
+    logger.error('Error creating user:', error);
     res.status(500).json({ error: 'Failed to create user' });
   }
 });
@@ -87,7 +88,7 @@ router.put('/:id', (req, res) => {
 
     res.json(user);
   } catch (error) {
-    console.error('Error updating user:', error);
+    logger.error('Error updating user:', error);
     res.status(500).json({ error: 'Failed to update user' });
   }
 });
@@ -106,7 +107,7 @@ router.delete('/:id', (req, res) => {
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting user:', error);
+    logger.error('Error deleting user:', error);
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });

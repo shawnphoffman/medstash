@@ -3,6 +3,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { generateReceiptFilename } from '../utils/filename'
 import { ReceiptFile, Flag } from '../models/receipt'
+import { logger } from '../utils/logger'
 
 // Get receipts directory dynamically to support test environments
 function getReceiptsDir(): string {
@@ -167,7 +168,7 @@ export async function deleteReceiptFile(receiptId: number, filename: string): Pr
 	} catch (error: any) {
 		// File might not exist, that's okay - only log unexpected errors
 		if (error?.code !== 'ENOENT') {
-			console.warn(`Failed to delete file ${filePath}:`, error)
+			logger.warn(`Failed to delete file ${filePath}:`, error)
 		}
 	}
 }
@@ -180,7 +181,7 @@ export async function deleteReceiptFiles(receiptId: number): Promise<void> {
 	try {
 		await fs.rm(receiptDir, { recursive: true, force: true })
 	} catch (error) {
-		console.warn(`Failed to delete receipt directory ${receiptDir}:`, error)
+		logger.warn(`Failed to delete receipt directory ${receiptDir}:`, error)
 	}
 }
 
@@ -241,7 +242,7 @@ export async function renameReceiptFiles(
 					// Check if new filename already exists (shouldn't happen, but be safe)
 					const newFileExists = await fileExists(receiptId, newFilename)
 					if (newFileExists && oldFilePath !== newFilePath) {
-						console.warn(`New filename ${newFilename} already exists, skipping rename for file ${file.id}`)
+						logger.warn(`New filename ${newFilename} already exists, skipping rename for file ${file.id}`)
 						continue
 					}
 
@@ -253,10 +254,10 @@ export async function renameReceiptFiles(
 						newFilename: newFilename,
 					})
 				} else {
-					console.warn(`File ${file.filename} does not exist, skipping rename`)
+					logger.warn(`File ${file.filename} does not exist, skipping rename`)
 				}
 			} catch (error) {
-				console.error(`Failed to rename file ${file.filename} to ${newFilename}:`, error)
+				logger.error(`Failed to rename file ${file.filename} to ${newFilename}:`, error)
 				// Continue with other files even if one fails
 			}
 		}
@@ -353,7 +354,7 @@ export async function restoreFileAssociations(): Promise<{
 		const entries = await fs.readdir(receiptsDir, { withFileTypes: true })
 		receiptDirs = entries.filter(entry => entry.isDirectory()).map(entry => entry.name)
 	} catch (error) {
-		console.error('Error reading receipts directory:', error)
+		logger.error('Error reading receipts directory:', error)
 		return results
 	}
 

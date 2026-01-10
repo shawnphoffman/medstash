@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
+import { logger } from '../utils/logger'
 
 /**
  * Centralized error handling middleware
@@ -9,7 +10,7 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
 	const isProduction = process.env.NODE_ENV === 'production'
 
 	// Log error details server-side (never expose to client)
-	console.error('Error:', {
+	logger.error('Error:', {
 		message: err.message,
 		stack: err.stack,
 		path: req.path,

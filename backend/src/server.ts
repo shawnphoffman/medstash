@@ -14,6 +14,7 @@ import exportRouter from './routes/export'
 import filenamesRouter from './routes/filenames'
 import { ensureReceiptsDir } from './services/fileService'
 import { errorHandler } from './middleware/errorHandler'
+import { logger } from './utils/logger'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -26,9 +27,9 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 	: null // null means allow all origins
 
 if (allowedOrigins) {
-	console.log(`CORS: Restricting to allowed origins: ${allowedOrigins.join(', ')}`)
+	logger.debug(`CORS: Restricting to allowed origins: ${allowedOrigins.join(', ')}`)
 } else {
-	console.log('CORS: Allowing all origins (ALLOWED_ORIGINS not set)')
+	logger.debug('CORS: Allowing all origins (ALLOWED_ORIGINS not set)')
 }
 
 app.use(
@@ -103,7 +104,7 @@ if (existsSync(publicPath)) {
 
 // Initialize file storage
 ensureReceiptsDir().catch(error => {
-	console.error('Failed to initialize receipts directory:', error)
+	logger.error('Failed to initialize receipts directory:', error)
 	// Don't crash the server, but log the error
 })
 
@@ -113,22 +114,22 @@ app.use(errorHandler)
 // Verify database connection before starting server
 try {
 	db.prepare('SELECT 1').get()
-	console.log('Database connection verified')
+	logger.debug('Database connection verified')
 } catch (error: any) {
-	console.error('CRITICAL: Database connection failed:', error)
-	console.error('Server will not start. Please check:')
-	console.error('1. Database directory permissions')
-	console.error('2. Volume mount configuration')
-	console.error('3. Disk space availability')
+	logger.error('CRITICAL: Database connection failed:', error)
+	logger.error('Server will not start. Please check:')
+	logger.error('1. Database directory permissions')
+	logger.error('2. Volume mount configuration')
+	logger.error('3. Disk space availability')
 	process.exit(1)
 }
 
 // Start server
 app.listen(PORT, () => {
-	console.log(`MedStash server running on port ${PORT}`)
-	console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
-	console.log(`Database: ${process.env.DB_DIR || '/data'}/medstash.db`)
-	console.log(`Receipts: ${process.env.RECEIPTS_DIR || '/data/receipts'}`)
+	logger.debug(`MedStash server running on port ${PORT}`)
+	logger.debug(`Environment: ${process.env.NODE_ENV || 'development'}`)
+	logger.debug(`Database: ${process.env.DB_DIR || '/data'}/medstash.db`)
+	logger.debug(`Receipts: ${process.env.RECEIPTS_DIR || '/data/receipts'}`)
 })
 
 export default app

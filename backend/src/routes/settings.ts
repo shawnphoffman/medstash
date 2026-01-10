@@ -1,6 +1,7 @@
 import express from 'express'
 import { getSetting, setSetting, getAllSettings } from '../services/dbService'
 import { validatePattern } from '../utils/filename'
+import { logger } from '../utils/logger'
 
 const router = express.Router()
 
@@ -35,7 +36,7 @@ router.get('/', (req, res) => {
 		}
 		res.json(parsedSettings)
 	} catch (error) {
-		console.error('Error fetching settings:', error)
+		logger.error('Error fetching settings:', error)
 		res.status(500).json({ error: 'Failed to fetch settings' })
 	}
 })
@@ -64,7 +65,7 @@ router.get('/:key', (req, res) => {
 			res.json({ key, value })
 		}
 	} catch (error) {
-		console.error('Error fetching setting:', error)
+		logger.error('Error fetching setting:', error)
 		res.status(500).json({ error: 'Failed to fetch setting' })
 	}
 })
@@ -100,7 +101,7 @@ router.put('/:key', (req, res) => {
 		setSetting(key, JSON.stringify(value))
 		res.json({ key, value })
 	} catch (error) {
-		console.error('Error updating setting:', error)
+		logger.error('Error updating setting:', error)
 		res.status(500).json({ error: 'Failed to update setting' })
 	}
 })

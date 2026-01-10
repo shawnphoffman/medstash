@@ -1,5 +1,6 @@
 import express from 'express';
 import { renameAllReceiptFiles } from '../services/fileService';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ router.post('/rename-all', async (req, res) => {
       ...results,
     });
   } catch (error) {
-    console.error('Error renaming all files:', error);
+    logger.error('Error renaming all files:', error);
     const isProduction = process.env.NODE_ENV === 'production';
     res.status(500).json({
       error: 'Failed to rename all files',
