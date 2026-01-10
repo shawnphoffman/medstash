@@ -4,13 +4,15 @@ import UploadPage from './pages/UploadPage'
 import ReceiptsPage from './pages/ReceiptsPage'
 import ReceiptDetailPage from './pages/ReceiptDetailPage'
 import SettingsPage from './pages/SettingsPage'
+import ErrorPage from './pages/ErrorPage'
 import { Receipt, Upload, Settings, ReceiptText } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { ThemeToggle } from './components/ThemeToggle'
 import UserSetupDialog from './components/UserSetupDialog'
 import { Toaster } from './components/ui/toaster'
-import { usersApi, receiptTypesApi } from './lib/api'
+import { usersApi, receiptTypesApi, setApiErrorHandler } from './lib/api'
 import { cn } from './lib/utils'
+import { ErrorProvider, useErrorContext } from './contexts/ErrorContext'
 
 function Navigation() {
 	const location = useLocation()
@@ -53,9 +55,17 @@ function Navigation() {
 	)
 }
 
-function App() {
+function AppContent() {
 	const [showUserSetup, setShowUserSetup] = useState(false)
 	const [isChecking, setIsChecking] = useState(true)
+	const { error, setError } = useErrorContext()
+
+	// Set up API error handler
+	useEffect(() => {
+		setApiErrorHandler((type, message) => {
+			setError({ type, message })
+		})
+	}, [setError])
 
 	useEffect(() => {
 		const initializeApp = async () => {
@@ -99,6 +109,7 @@ function App() {
 				}
 			} catch (err) {
 				console.error('Failed to initialize app:', err)
+				// Error interceptor will handle CORS/network errors
 			} finally {
 				setIsChecking(false)
 			}
@@ -109,6 +120,15 @@ function App() {
 
 	const handleUserSetupComplete = () => {
 		setShowUserSetup(false)
+	}
+
+	// Show error page if there's a critical error
+	if (error && (error.type === 'cors' || error.type === 'network')) {
+		return (
+			<div className="min-h-screen bg-background">
+				<ErrorPage />
+			</div>
+		)
 	}
 
 	if (isChecking) {
@@ -136,12 +156,21 @@ function App() {
 						<Route path="/receipts/:id" element={<ReceiptDetailPage />} />
 						<Route path="/upload" element={<UploadPage />} />
 						<Route path="/settings" element={<SettingsPage />} />
+						<Route path="/error" element={<ErrorPage />} />
 					</Routes>
 				</main>
 				<UserSetupDialog open={showUserSetup} onComplete={handleUserSetupComplete} />
 				<Toaster />
 			</div>
 		</BrowserRouter>
+	)
+}
+
+function App() {
+	return (
+		<ErrorProvider>
+			<AppContent />
+		</ErrorProvider>
 	)
 }
 

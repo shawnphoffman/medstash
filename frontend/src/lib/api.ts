@@ -1,10 +1,75 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+import type { ErrorType } from '../pages/ErrorPage';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
 });
+
+// Error handler that can be set from outside
+let errorHandler: ((type: ErrorType, message?: string) => void) | null = null;
+
+export function setApiErrorHandler(handler: (type: ErrorType, message?: string) => void) {
+  errorHandler = handler;
+}
+
+// Helper to detect error type
+function detectErrorType(error: AxiosError): ErrorType {
+  // CORS errors typically have no response and network error
+  if (!error.response && error.message) {
+    if (
+      error.message.includes('CORS') ||
+      error.message.includes('cors') ||
+      error.message.includes('Network Error') ||
+      error.code === 'ERR_NETWORK'
+    ) {
+      // Check if it's specifically a CORS issue
+      if (error.message.includes('CORS') || error.message.includes('cors')) {
+        return 'cors';
+      }
+      return 'network';
+    }
+  }
+
+  // Server errors (5xx)
+  if (error.response && error.response.status >= 500) {
+    return 'server';
+  }
+
+  // Network errors
+  if (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
+    return 'network';
+  }
+
+  return 'unknown';
+}
+
+// Response interceptor to handle errors
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    // Only handle critical errors that should show the error page
+    const errorType = detectErrorType(error);
+    
+    // CORS and network errors are critical and should show error page
+    if (errorType === 'cors' || errorType === 'network') {
+      const message = error.response?.data 
+        ? (error.response.data as any)?.error || error.message
+        : error.message || 'Unable to connect to the server';
+      
+      if (errorHandler) {
+        errorHandler(errorType, message);
+      }
+    }
+    
+    // For server errors, we might want to show error page on critical endpoints
+    // For now, let individual components handle 5xx errors
+    // But we can trigger error page for repeated server errors
+    
+    return Promise.reject(error);
+  }
+);
 
 export interface User {
   id: number;
