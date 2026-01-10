@@ -113,7 +113,7 @@ const handleMulterError = (err: any, req: express.Request, res: express.Response
 }
 
 // POST /api/receipts - Create receipt with files
-router.post('/', upload.array('files', 10), handleMulterError, async (req, res) => {
+router.post('/', upload.array('files', 10), handleMulterError, async (req: express.Request, res: express.Response) => {
 	try {
 		const files = req.files as Express.Multer.File[]
 		const {
@@ -216,7 +216,7 @@ router.post('/', upload.array('files', 10), handleMulterError, async (req, res) 
 			provider_address: sanitizeString(provider_address),
 			description: sanitizeString(description),
 			date: dateToValidate,
-			notes: sanitizeOptionalString(notes),
+			notes: sanitizeOptionalString(notes) ?? undefined,
 			flag_ids: parsedFlagIds,
 		}
 
@@ -343,7 +343,7 @@ router.put('/:id', async (req, res) => {
 			updateData.description = sanitizeString(description)
 		}
 		if (notes !== undefined) {
-			updateData.notes = sanitizeOptionalString(notes)
+			updateData.notes = sanitizeOptionalString(notes) ?? undefined
 		}
 		if (user !== undefined) {
 			updateData.user = sanitizeString(user) // Legacy support
@@ -408,7 +408,7 @@ router.delete('/:id', async (req, res) => {
 })
 
 // POST /api/receipts/:id/files - Add files to existing receipt
-router.post('/:id/files', upload.array('files', 10), handleMulterError, async (req, res) => {
+router.post('/:id/files', upload.array('files', 10), handleMulterError, async (req: express.Request, res: express.Response) => {
 	try {
 		const id = parseInt(req.params.id, 10)
 		if (isNaN(id)) {
@@ -585,7 +585,7 @@ router.delete('/:id/files/:fileId', async (req, res) => {
 })
 
 // PUT /api/receipts/:id/files/:fileId - Replace a file
-router.put('/:id/files/:fileId', upload.single('file'), handleMulterError, async (req, res) => {
+router.put('/:id/files/:fileId', upload.single('file'), handleMulterError, async (req: express.Request, res: express.Response) => {
 	try {
 		const receiptId = parseInt(req.params.id, 10)
 		const fileId = parseInt(req.params.fileId, 10)
