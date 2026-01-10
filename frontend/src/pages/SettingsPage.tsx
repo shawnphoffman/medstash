@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Plus, Trash2, Edit2, Save, X, RefreshCw, Info, Flag as FlagIcon, RotateCcw, GripVertical } from 'lucide-react'
 import {
 	DndContext,
-	closestCenter,
+	rectIntersection,
 	KeyboardSensor,
 	PointerSensor,
 	useSensor,
@@ -46,6 +46,7 @@ function SortableGroup({
 	onSave,
 	onCancel,
 	onDelete,
+	dragOverId,
 	children,
 }: {
 	group: ReceiptTypeGroup
@@ -56,10 +57,14 @@ function SortableGroup({
 	onSave: () => void
 	onCancel: () => void
 	onDelete: () => void
+	dragOverId: string | null
 	children: React.ReactNode
 }) {
 	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `group-${group.id}` })
-	const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id: `group-${group.id}` })
+	const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id: `group-drop-${group.id}` })
+
+	// Use dragOverId from parent to show dropzone when hovering over types in this group
+	const isDragOver = isOver || dragOverId === `group-drop-${group.id}`
 
 	const style = {
 		transform: CSS.Transform.toString(transform),
@@ -99,7 +104,10 @@ function SortableGroup({
 					</>
 				)}
 			</div>
-			<div ref={setDroppableRef} className={`p-3 space-y-2 ${isOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}>
+			<div
+				ref={setDroppableRef}
+				className={`p-3 space-y-2 min-h-[60px] ${isDragOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}
+			>
 				{children}
 			</div>
 		</div>
@@ -178,6 +186,7 @@ function UngroupedSection({
 	onSaveType,
 	onCancelEdit,
 	onDeleteType,
+	dragOverId,
 }: {
 	types: ReceiptType[]
 	editingReceiptType: number | null
@@ -187,12 +196,14 @@ function UngroupedSection({
 	onSaveType: (id: number) => void
 	onCancelEdit: () => void
 	onDeleteType: (id: number) => void
+	dragOverId: string | null
 }) {
 	const { setNodeRef, isOver } = useDroppable({ id: 'ungrouped' })
+	const isDragOver = isOver || dragOverId === 'ungrouped'
 
-	if (types.length === 0 && !isOver) {
+	if (types.length === 0 && !isDragOver) {
 		return (
-			<div ref={setNodeRef} className={`border rounded-lg ${isOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}>
+			<div ref={setNodeRef} className={`border rounded-lg ${isDragOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}>
 				<div className="p-3 border-b bg-muted/50">
 					<h3 className="font-semibold">Ungrouped</h3>
 				</div>
@@ -202,7 +213,7 @@ function UngroupedSection({
 	}
 
 	return (
-		<div ref={setNodeRef} className={`border rounded-lg ${isOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}>
+		<div ref={setNodeRef} className={`border rounded-lg ${isDragOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}>
 			<div className="p-3 border-b bg-muted/50">
 				<h3 className="font-semibold">Ungrouped</h3>
 			</div>
@@ -250,6 +261,7 @@ export default function SettingsPage() {
 	const [newReceiptTypeGroupId, setNewReceiptTypeGroupId] = useState<number | null>(null)
 	const [newGroupName, setNewGroupName] = useState('')
 	const [activeId, setActiveId] = useState<string | null>(null)
+	const [dragOverId, setDragOverId] = useState<string | null>(null)
 
 	const sensors = useSensors(
 		useSensor(PointerSensor),
@@ -600,11 +612,59 @@ export default function SettingsPage() {
 	// Drag and drop handlers
 	const handleDragStart = (event: DragStartEvent) => {
 		setActiveId(event.active.id as string)
+		setDragOverId(null)
+	}
+
+	const handleDragOver = (event: any) => {
+		const { active, over } = event
+		if (!over) {
+			setDragOverId(null)
+			return
+		}
+		const activeIdStr = active.id as string
+		const overId = over.id as string
+
+		// Don't set dragOverId when dragging groups (only needed for type drags)
+		if (activeIdStr.startsWith('group-')) {
+			setDragOverId(null)
+			return
+		}
+
+		// If dragging a type and hovering over another type, find the parent group
+		if (activeIdStr.startsWith('type-') && overId.startsWith('type-')) {
+			const overTypeId = parseInt(overId.replace('type-', ''))
+			const overType = receiptTypes.find(t => t.id === overTypeId)
+			if (overType && overType.group_id) {
+				// Set dragOverId to the group's droppable zone
+				setDragOverId(`group-drop-${overType.group_id}`)
+				return
+			} else if (overType && !overType.group_id) {
+				setDragOverId('ungrouped')
+				return
+			}
+		}
+		// If hovering over a group dropzone or the group itself
+		if (overId.startsWith('group-drop-') || overId.startsWith('group-')) {
+			if (overId.startsWith('group-drop-')) {
+				setDragOverId(overId)
+			} else {
+				// Convert group sortable ID to dropzone ID
+				const groupId = overId.replace('group-', '')
+				setDragOverId(`group-drop-${groupId}`)
+			}
+			return
+		}
+		if (overId === 'ungrouped') {
+			setDragOverId('ungrouped')
+			return
+		}
+		setDragOverId(overId)
 	}
 
 	const handleDragEnd = async (event: DragEndEvent) => {
 		const { active, over } = event
 		setActiveId(null)
+		setDragOverId(null)
 
 		if (!over) return
 
@@ -695,10 +755,13 @@ export default function SettingsPage() {
 			const activeType = receiptTypes.find(t => t.id === activeTypeId)
 			if (!activeType) return
 
-			// Check if dropped on a group (either group header or type in that group)
+			// Check if dropped on a group (either group dropzone or type in that group)
 			let targetGroupId: number | null = null
 
-			if (overId.startsWith('group-')) {
+			if (overId.startsWith('group-drop-')) {
+				targetGroupId = parseInt(overId.replace('group-drop-', ''))
+			} else if (overId.startsWith('group-')) {
+				// Also handle if dropped directly on group sortable (for backwards compatibility)
 				targetGroupId = parseInt(overId.replace('group-', ''))
 			} else if (overId.startsWith('type-')) {
 				const overTypeId = parseInt(overId.replace('type-', ''))
@@ -1090,7 +1153,13 @@ export default function SettingsPage() {
 					</div>
 
 					{/* Groups List */}
-					<DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+					<DndContext
+						sensors={sensors}
+						collisionDetection={rectIntersection}
+						onDragStart={handleDragStart}
+						onDragOver={handleDragOver}
+						onDragEnd={handleDragEnd}
+					>
 						<div className="space-y-4">
 							{typesByGroup.sortedGroups.length === 0 && typesByGroup.grouped.ungrouped.length === 0 ? (
 								<p className="py-4 text-sm text-center text-muted-foreground">No groups or types configured yet</p>
@@ -1110,6 +1179,7 @@ export default function SettingsPage() {
 													onSave={() => handleUpdateGroup(group.id)}
 													onCancel={cancelEditGroup}
 													onDelete={() => handleDeleteGroup(group.id)}
+													dragOverId={dragOverId}
 												>
 													<div className="space-y-2 ">
 														{typesInGroup.length > 0 ? (
@@ -1149,6 +1219,7 @@ export default function SettingsPage() {
 										onSaveType={id => handleUpdateReceiptType(id)}
 										onCancelEdit={cancelEditReceiptType}
 										onDeleteType={id => handleDeleteReceiptType(id)}
+										dragOverId={dragOverId}
 									/>
 								</>
 							)}
