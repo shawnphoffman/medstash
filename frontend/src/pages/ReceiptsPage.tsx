@@ -27,7 +27,7 @@ export default function ReceiptsPage() {
 	const [selectedReceiptIds, setSelectedReceiptIds] = useState<Set<number>>(new Set())
 	const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
 	const [isRefreshing, setIsRefreshing] = useState(false)
-	const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null)
+	const [_lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null)
 	const [autoRefreshEnabled] = useState(true)
 
 	const loadData = useCallback(
@@ -223,22 +223,22 @@ export default function ReceiptsPage() {
 					<h2 className="text-3xl font-bold">Receipts</h2>
 					<p className="text-muted-foreground">
 						Manage your medical receipts ({receipts.length} total)
-						{lastRefreshTime && <span className="ml-2 text-xs">Last refreshed: {lastRefreshTime.toLocaleTimeString()}</span>}
+						{/* {lastRefreshTime && <span className="ml-2 text-xs">Last refreshed: {lastRefreshTime.toLocaleTimeString()}</span>} */}
 					</p>
 				</div>
 				<div className="flex gap-2">
-					<Button onClick={() => handleRefresh(true)} variant="outline" disabled={isRefreshing} className="relative">
-						<RefreshCw className={cn('mr-2 size-4', isRefreshing && 'animate-spin')} />
-						Refresh
-					</Button>
 					{selectedReceiptIds.size > 0 && (
-						<Button onClick={() => setShowBulkEditDialog(true)} variant="default">
-							<Edit className="mr-2 size-4" />
+						<Button onClick={() => setShowBulkEditDialog(true)} variant="secondary">
+							<Edit className="mr-1 size-4" />
 							Bulk Edit ({selectedReceiptIds.size})
 						</Button>
 					)}
-					<Button onClick={handleExport}>
-						<Download className="mr-2 size-4" />
+					<Button onClick={() => handleRefresh(true)} variant="outline" disabled={isRefreshing} className="relative">
+						<RefreshCw className={cn('mr-1 size-4', isRefreshing && 'animate-spin')} />
+						Refresh
+					</Button>
+					<Button onClick={handleExport} variant="outline">
+						<Download className="mr-1 size-4" />
 						Export All
 					</Button>
 				</div>
