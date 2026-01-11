@@ -3,6 +3,7 @@ import request from 'supertest';
 import { createTestApp } from '../helpers/testServer';
 import { setupTestDb, createTestDbQueries } from '../helpers/testDb';
 import { setupTestFiles, cleanupTestFiles, createTestPdfFile } from '../helpers/testFiles';
+import { sanitizeFilename } from '../../src/utils/filename';
 import path from 'path';
 import fs from 'fs/promises';
 
@@ -87,8 +88,9 @@ describe('Filenames API', () => {
       const receiptId = receiptResult.lastInsertRowid as number;
       dbQueries.insertReceiptFlag.run(receiptId, flagId);
 
-      // Create receipt directory and file with old pattern
-      const receiptDir = path.join(testDirs.receiptsDir, receiptId.toString());
+      // Create receipt directory and file with old pattern (using new structure)
+      const sanitizedUser = sanitizeFilename('John Doe');
+      const receiptDir = path.join(testDirs.receiptsDir, sanitizedUser, '2024', '01', '15');
       await fs.mkdir(receiptDir, { recursive: true });
       const oldFilename = '2024-01-15_john-doe_test-clinic_100-50_doctor-visit_0.pdf';
       const oldFilePath = path.join(receiptDir, oldFilename);
@@ -154,9 +156,9 @@ describe('Filenames API', () => {
       );
       const receipt2Id = receipt2Result.lastInsertRowid as number;
 
-      // Create files for both receipts
-      const receipt1Dir = path.join(testDirs.receiptsDir, receipt1Id.toString());
-      const receipt2Dir = path.join(testDirs.receiptsDir, receipt2Id.toString());
+      // Create files for both receipts using new structure
+      const receipt1Dir = path.join(testDirs.receiptsDir, sanitizeFilename('John Doe'), '2024', '01', '15');
+      const receipt2Dir = path.join(testDirs.receiptsDir, sanitizeFilename('Jane Smith'), '2024', '01', '16');
       await fs.mkdir(receipt1Dir, { recursive: true });
       await fs.mkdir(receipt2Dir, { recursive: true });
 
@@ -206,8 +208,8 @@ describe('Filenames API', () => {
       dbQueries.insertReceiptFlag.run(receiptId, flag1Id);
       dbQueries.insertReceiptFlag.run(receiptId, flag2Id);
 
-      // Create file
-      const receiptDir = path.join(testDirs.receiptsDir, receiptId.toString());
+      // Create file using new structure
+      const receiptDir = path.join(testDirs.receiptsDir, sanitizeFilename('John Doe'), '2024', '01', '15');
       await fs.mkdir(receiptDir, { recursive: true });
       const oldFilename = '2024-01-15_john-doe_clinic_100-50_doctor-visit_0.pdf';
       await createTestPdfFile(receiptDir, oldFilename);
@@ -242,7 +244,7 @@ describe('Filenames API', () => {
       );
       const receiptId = receiptResult.lastInsertRowid as number;
 
-      const receiptDir = path.join(testDirs.receiptsDir, receiptId.toString());
+      const receiptDir = path.join(testDirs.receiptsDir, sanitizeFilename('John Doe'), '2024', '01', '15');
       await fs.mkdir(receiptDir, { recursive: true });
       const oldFilename = '2024-01-15_john-doe_clinic_100-50_doctor-visit_0.pdf';
       await createTestPdfFile(receiptDir, oldFilename);
@@ -325,7 +327,7 @@ describe('Filenames API', () => {
       );
       const receiptId = receiptResult.lastInsertRowid as number;
 
-      const receiptDir = path.join(testDirs.receiptsDir, receiptId.toString());
+      const receiptDir = path.join(testDirs.receiptsDir, sanitizeFilename('John Doe'), '2024', '01', '15');
       await fs.mkdir(receiptDir, { recursive: true });
       const oldFilename = '2024-01-15_john-doe_test-clinic_100-50_doctor-visit_0.pdf';
       await createTestPdfFile(receiptDir, oldFilename);

@@ -4,6 +4,7 @@ import { createTestApp } from '../helpers/testServer';
 import { setupTestDb, clearTestDb, createTestDbQueries } from '../helpers/testDb';
 import { setupTestFiles, cleanupTestFiles, createTestPdfFile } from '../helpers/testFiles';
 import { createReceiptFixture } from '../helpers/fixtures';
+import { sanitizeFilename } from '../../src/utils/filename';
 import path from 'path';
 import fs from 'fs/promises';
 
@@ -23,13 +24,36 @@ vi.mock('../../src/db', async () => {
 vi.mock('../../src/services/fileService', async () => {
   const actual = await vi.importActual('../../src/services/fileService') as any;
   const path = await import('path');
+  const { sanitizeFilename } = await import('../../src/utils/filename');
 
   // Get test receipts dir from env (set in beforeEach)
   const getTestReceiptsDir = () => {
     return process.env.RECEIPTS_DIR || '/tmp/test-receipts';
   };
 
+  // Helper to get receipt directory by user and date
+  const getReceiptDirByDate = (user: string, date: string) => {
+    const sanitizedUser = sanitizeFilename(user || 'unknown');
+    const dateStr = date.split('T')[0];
+    const parts = dateStr.split('-');
+    const year = parts[0] || '2024';
+    const month = (parts[1] || '01').padStart(2, '0');
+    const day = (parts[2] || '01').padStart(2, '0');
+    return path.join(getTestReceiptsDir(), sanitizedUser, year, month, day);
+  };
+
+  // Helper to get receipt directory by receiptId (fetches from DB)
   const getReceiptDir = (receiptId: number) => {
+    try {
+      const { dbQueries } = require('../../src/db');
+      const receipt = dbQueries.getReceiptById.get(receiptId) as any;
+      if (receipt) {
+        const user = dbQueries.getUserById.get(receipt.user_id) as any;
+        return getReceiptDirByDate(user?.name || 'unknown', receipt.date);
+      }
+    } catch {
+      // Fallback to old structure if DB lookup fails
+    }
     return path.join(getTestReceiptsDir(), receiptId.toString());
   };
 
@@ -96,8 +120,14 @@ describe('Export API', () => {
       );
       const receiptId = Number(receiptResult.lastInsertRowid);
 
-      // Create receipt directory and file
-      const receiptDir = path.join(testDirs.receiptsDir, receiptId.toString());
+      // Create receipt directory and file using new structure
+      const sanitizedUser = sanitizeFilename(receiptData.user!);
+      const dateStr = receiptData.date!.split('T')[0];
+      const parts = dateStr.split('-');
+      const year = parts[0] || '2024';
+      const month = (parts[1] || '01').padStart(2, '0');
+      const day = (parts[2] || '01').padStart(2, '0');
+      const receiptDir = path.join(testDirs.receiptsDir, sanitizedUser, year, month, day);
       await fs.mkdir(receiptDir, { recursive: true });
       await createTestPdfFile(receiptDir, 'test.pdf');
 
@@ -143,7 +173,14 @@ describe('Export API', () => {
       );
       const receiptId = Number(receiptResult.lastInsertRowid);
 
-      const receiptDir = path.join(testDirs.receiptsDir, receiptId.toString());
+      // Create receipt directory using new structure
+      const sanitizedUser = sanitizeFilename(receiptData.user!);
+      const dateStr = receiptData.date!.split('T')[0];
+      const parts = dateStr.split('-');
+      const year = parts[0] || '2024';
+      const month = (parts[1] || '01').padStart(2, '0');
+      const day = (parts[2] || '01').padStart(2, '0');
+      const receiptDir = path.join(testDirs.receiptsDir, sanitizedUser, year, month, day);
       await fs.mkdir(receiptDir, { recursive: true });
 
       const response = await request(app).get('/api/export');

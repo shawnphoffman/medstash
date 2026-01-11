@@ -32,12 +32,48 @@ vi.mock('../../src/services/fileService', async () => {
 		return process.env.RECEIPTS_DIR || '/tmp/test-receipts'
 	}
 
-	const getReceiptDir = (receiptId: number) => {
+	const { sanitizeFilename } = await import('../../src/utils/filename')
+	
+	// Helper to get receipt directory by user and date
+	const getReceiptDirByDate = (user: string, date: string) => {
+		const sanitizedUser = sanitizeFilename(user || 'unknown')
+		const dateStr = date.split('T')[0]
+		const parts = dateStr.split('-')
+		const year = parts[0] || '2024'
+		const month = (parts[1] || '01').padStart(2, '0')
+		const day = (parts[2] || '01').padStart(2, '0')
+		return pathMod.join(getTestReceiptsDir(), sanitizedUser, year, month, day)
+	}
+	
+	// Helper to get receipt directory by receiptId (fetches from DB)
+	const getReceiptDir = async (receiptId: number) => {
+		// Try to get receipt from database
+		try {
+			const dbModule = await import('../../src/db')
+			const dbQueries = dbModule.dbQueries
+			const receipt = dbQueries.getReceiptById.get(receiptId) as any
+			if (receipt) {
+				const user = dbQueries.getUserById.get(receipt.user_id) as any
+				return getReceiptDirByDate(user?.name || 'unknown', receipt.date)
+			}
+		} catch {
+			// Fallback to old structure if DB lookup fails
+		}
 		return pathMod.join(getTestReceiptsDir(), receiptId.toString())
 	}
 
 	const ensureReceiptDir = async (receiptId: number) => {
 		const receiptDir = getReceiptDir(receiptId)
+		try {
+			await fsMod.access(receiptDir)
+		} catch {
+			await fsMod.mkdir(receiptDir, { recursive: true })
+		}
+		return receiptDir
+	}
+	
+	const ensureReceiptDirByDate = async (user: string, date: string) => {
+		const receiptDir = getReceiptDirByDate(user, date)
 		try {
 			await fsMod.access(receiptDir)
 		} catch {
@@ -56,10 +92,22 @@ vi.mock('../../src/services/fileService', async () => {
 				await fsMod.mkdir(dir, { recursive: true })
 			}
 		},
-		getReceiptDir,
-		ensureReceiptDir,
-		getReceiptFilePath: (receiptId: number, filename: string) => {
-			return pathMod.join(getReceiptDir(receiptId), filename)
+		getReceiptDir: async (receiptId: number) => {
+			return await getReceiptDir(receiptId)
+		},
+		ensureReceiptDir: async (receiptId: number) => {
+			const receiptDir = await getReceiptDir(receiptId)
+			try {
+				await fsMod.access(receiptDir)
+			} catch {
+				await fsMod.mkdir(receiptDir, { recursive: true })
+			}
+			return receiptDir
+		},
+		ensureReceiptDirByDate,
+		getReceiptFilePath: async (receiptId: number, filename: string) => {
+			const receiptDir = await getReceiptDir(receiptId)
+			return pathMod.join(receiptDir, filename)
 		},
 		saveReceiptFile: async (
 			file: Express.Multer.File,
@@ -71,8 +119,8 @@ vi.mock('../../src/services/fileService', async () => {
 			type: string,
 			fileOrder: number
 		) => {
-			await ensureReceiptDir(receiptId)
-			const receiptDir = getReceiptDir(receiptId)
+			await ensureReceiptDirByDate(user, date)
+			const receiptDir = getReceiptDirByDate(user, date)
 
 			const originalExt = pathMod.extname(file.originalname)
 			const originalFilename = file.originalname
@@ -99,7 +147,8 @@ vi.mock('../../src/services/fileService', async () => {
 			return { filename, originalFilename, optimized }
 		},
 		fileExists: async (receiptId: number, filename: string) => {
-			const filePath = pathMod.join(getReceiptDir(receiptId), filename)
+			const receiptDir = await getReceiptDir(receiptId)
+			const filePath = pathMod.join(receiptDir, filename)
 			try {
 				await fsMod.access(filePath)
 				return true
@@ -108,7 +157,8 @@ vi.mock('../../src/services/fileService', async () => {
 			}
 		},
 		deleteReceiptFile: async (receiptId: number, filename: string) => {
-			const filePath = pathMod.join(getReceiptDir(receiptId), filename)
+			const receiptDir = await getReceiptDir(receiptId)
+			const filePath = pathMod.join(receiptDir, filename)
 			try {
 				await fsMod.unlink(filePath)
 			} catch (error) {
@@ -116,12 +166,53 @@ vi.mock('../../src/services/fileService', async () => {
 			}
 		},
 		deleteReceiptFiles: async (receiptId: number) => {
-			const receiptDir = getReceiptDir(receiptId)
+			// Get receipt files from database and delete them individually
 			try {
-				await fsMod.rm(receiptDir, { recursive: true, force: true })
+				// Use dynamic import to get the mocked db module
+				const dbModule = await import('../../src/db')
+				const dbQueries = dbModule.dbQueries
+				const receipt = dbQueries.getReceiptById.get(receiptId) as any
+				if (receipt) {
+					const user = dbQueries.getUserById.get(receipt.user_id) as any
+					const files = dbQueries.getFilesByReceiptId.all(receiptId) as any[]
+					const receiptDir = getReceiptDirByDate(user?.name || 'unknown', receipt.date)
+					
+					for (const file of files) {
+						const filePath = pathMod.join(receiptDir, file.filename)
+						try {
+							await fsMod.unlink(filePath)
+						} catch (error) {
+							// File might not exist, that's okay
+						}
+					}
+				}
 			} catch (error) {
-				console.warn(`Failed to delete receipt directory ${receiptDir}:`, error)
+				console.warn(`Failed to delete receipt files:`, error)
 			}
+		},
+		replaceReceiptFile: async (
+			file: Express.Multer.File,
+			receiptId: number,
+			existingFilename: string
+		) => {
+			try {
+				// Use dynamic import to get the mocked db module
+				const dbModule = await import('../../src/db')
+				const dbQueries = dbModule.dbQueries
+				const receipt = dbQueries.getReceiptById.get(receiptId) as any
+				if (receipt) {
+					const user = dbQueries.getUserById.get(receipt.user_id) as any
+					await ensureReceiptDirByDate(user?.name || 'unknown', receipt.date)
+					const receiptDir = getReceiptDirByDate(user?.name || 'unknown', receipt.date)
+					const filePath = pathMod.join(receiptDir, existingFilename)
+					await fsMod.copyFile(file.path, filePath)
+					await fsMod.unlink(file.path)
+					return { originalFilename: file.originalname, optimized: false }
+				}
+			} catch (error) {
+				console.warn(`Failed to replace file:`, error)
+			}
+			return { originalFilename: file.originalname, optimized: false }
 		},
 		// Include other functions that might be needed
 		isImageFile: (filename: string) => {

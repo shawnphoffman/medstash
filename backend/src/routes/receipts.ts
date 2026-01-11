@@ -10,6 +10,7 @@ import {
 	deleteReceiptFile as deleteFile,
 	restoreFileAssociations,
 	replaceReceiptFile,
+	migrateFilesToDateStructure,
 } from '../services/fileService'
 import { CreateReceiptInput, UpdateReceiptInput } from '../models/receipt'
 import { dbQueries } from '../db'
@@ -776,6 +777,20 @@ router.post('/restore-files', async (req, res) => {
 	} catch (error) {
 		logger.error('Error restoring file associations:', error)
 		res.status(500).json({ error: 'Failed to restore file associations' })
+	}
+})
+
+// POST /api/receipts/migrate-files - Migrate files from old structure to new user/date structure
+router.post('/migrate-files', async (req, res) => {
+	try {
+		const results = await migrateFilesToDateStructure()
+		res.json({
+			message: 'File migration completed',
+			...results,
+		})
+	} catch (error) {
+		logger.error('Error migrating files:', error)
+		res.status(500).json({ error: 'Failed to migrate files' })
 	}
 })
 

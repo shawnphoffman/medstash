@@ -2,7 +2,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { logger } from '../utils/logger'
 import { createReceipt, addReceiptFile, createFlag, getAllFlags } from './dbService'
-import { saveReceiptFile, ensureReceiptDir, isImageFile, isPdfFile } from './fileService'
+import { saveReceiptFile, ensureReceiptDirByDate, isImageFile, isPdfFile } from './fileService'
 import { dbQueries } from '../db'
 import { Flag } from '../models/receipt'
 
@@ -113,8 +113,8 @@ async function processReceipt(files: Array<{ path: string; name: string }>, sour
 			return
 		}
 
-		// Ensure receipt directory exists
-		await ensureReceiptDir(receipt.id)
+		// Ensure receipt directory exists (using new structure)
+		await ensureReceiptDirByDate(receipt.user || 'unknown', receipt.date)
 
 		// Get flags for filename generation
 		const flags = getAllFlags().filter(f => receipt.flags.some(rf => rf.id === f.id))

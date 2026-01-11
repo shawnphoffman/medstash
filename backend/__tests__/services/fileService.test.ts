@@ -7,6 +7,44 @@ import fs from 'fs/promises';
 describe('fileService', () => {
   let testDirs: { receiptsDir: string; uploadDir: string };
   let fileService: typeof import('../../src/services/fileService');
+  let dbQueries: any;
+
+  // Helper function to create a receipt in the database
+  async function createTestReceipt(receiptId: number, user: string = 'Test User', date: string = '2024-01-15') {
+    const { dbQueries: queries } = await import('../../src/db');
+    
+    // Create user if it doesn't exist
+    let userRecord = queries.getUserByName.get(user) as { id: number } | undefined;
+    if (!userRecord) {
+      queries.insertUser.run(user);
+      userRecord = queries.getUserByName.get(user) as { id: number };
+    }
+    
+    // Create receipt type if it doesn't exist
+    let typeRecord = queries.getReceiptTypeByName.get('doctor-visit') as { id: number } | undefined;
+    if (!typeRecord) {
+      queries.insertReceiptType.run('doctor-visit', null, 0);
+      typeRecord = queries.getReceiptTypeByName.get('doctor-visit') as { id: number };
+    }
+    
+    // Create receipt (if it doesn't already exist)
+    const existingReceipt = queries.getReceiptById.get(receiptId) as any;
+    if (!existingReceipt) {
+      const receiptResult = queries.insertReceipt.run(userRecord.id, typeRecord.id, 100, 'Test Vendor', '', 'Test Description', date, null);
+      const insertedId = Number(receiptResult.lastInsertRowid);
+      // If the inserted ID doesn't match the requested ID, we need to handle it
+      // For now, we'll just ensure the receipt exists
+      if (insertedId !== receiptId) {
+        // Update the receipt ID if needed (this is a test helper, so we can be flexible)
+        const actualReceipt = queries.getReceiptById.get(insertedId) as any;
+        if (actualReceipt) {
+          return insertedId; // Return the actual ID
+        }
+      }
+      return receiptId;
+    }
+    return receiptId;
+  }
 
   beforeEach(async () => {
     // Set DB_DIR to a temp directory to avoid trying to create /data
@@ -17,6 +55,22 @@ describe('fileService', () => {
     // This ensures RECEIPTS_DIR is set correctly
     vi.resetModules();
     fileService = await import('../../src/services/fileService');
+    const dbModule = await import('../../src/db');
+    dbQueries = dbModule.dbQueries;
+    
+    // Set up global cache for getReceiptDirByReceiptId to use
+    (globalThis as any).__medstash_dbQueries = dbQueries;
+    
+    // Clear database
+    dbModule.db.exec(`
+      DELETE FROM receipt_flags;
+      DELETE FROM receipt_files;
+      DELETE FROM receipts;
+      DELETE FROM flags;
+      DELETE FROM receipt_types;
+      DELETE FROM users;
+      DELETE FROM settings;
+    `);
   });
 
   afterEach(async () => {
@@ -43,14 +97,19 @@ describe('fileService', () => {
 
   describe('ensureReceiptDir', () => {
     it('should create receipt-specific directory', async () => {
-      const receiptDir = await fileService.ensureReceiptDir(1);
+      const receiptId = await createTestReceipt(1);
+      const receiptDir = await fileService.ensureReceiptDir(receiptId);
       const exists = await checkFileExists(receiptDir);
       expect(exists).toBe(true);
     });
 
-    it('should return the receipt directory path', async () => {
-      const receiptDir = await fileService.ensureReceiptDir(123);
-      expect(receiptDir).toContain('123');
+    it('should return the receipt directory path with user/date structure', async () => {
+      const receiptId = await createTestReceipt(123, 'Test User', '2024-01-15');
+      const receiptDir = await fileService.ensureReceiptDir(receiptId);
+      expect(receiptDir).toContain('test-user');
+      expect(receiptDir).toContain('2024');
+      expect(receiptDir).toContain('01');
+      expect(receiptDir).toContain('15');
     });
   });
 
@@ -91,6 +150,7 @@ describe('fileService', () => {
 
   describe('saveReceiptFile', () => {
     it('should save a PDF file', async () => {
+      const receiptId = await createTestReceipt(1, 'Test User', '2024-01-15');
       const mockFile = createMockFile({
         originalname: 'test.pdf',
         path: path.join(testDirs.uploadDir, 'test.pdf'),
@@ -99,7 +159,7 @@ describe('fileService', () => {
 
       const result = await fileService.saveReceiptFile(
         mockFile,
-        1,
+        receiptId,
         '2024-01-15',
         'Test User',
         'Test Vendor',
@@ -112,12 +172,15 @@ describe('fileService', () => {
       expect(result.originalFilename).toBe('test.pdf');
       expect(result.optimized).toBe(false);
 
-      const filePath = fileService.getReceiptFilePath(1, result.filename);
-      const exists = await fileService.fileExists(1, result.filename);
+      const filePath = fileService.getReceiptFilePath(receiptId, result.filename);
+      // Note: getReceiptFilePath is synchronous but uses async lookup internally
+      // The file should exist at the path
+      const exists = await fileService.fileExists(receiptId, result.filename);
       expect(exists).toBe(true);
     });
 
     it('should save and optimize an image file', async () => {
+      const receiptId = await createTestReceipt(1, 'Test User', '2024-01-15');
       const mockFile = createMockFile({
         originalname: 'test.jpg',
         path: path.join(testDirs.uploadDir, 'test.jpg'),
@@ -126,7 +189,7 @@ describe('fileService', () => {
 
       const result = await fileService.saveReceiptFile(
         mockFile,
-        1,
+        receiptId,
         '2024-01-15',
         'Test User',
         'Test Vendor',
@@ -138,11 +201,12 @@ describe('fileService', () => {
       expect(result.filename).toBeDefined();
       expect(result.originalFilename).toBe('test.jpg');
       // Note: optimization may fail in test environment, so we just check the file was saved
-      const exists = await fileService.fileExists(1, result.filename);
+      const exists = await fileService.fileExists(receiptId, result.filename);
       expect(exists).toBe(true);
     });
 
     it('should generate correct filename format', async () => {
+      const receiptId = await createTestReceipt(1, 'John Doe', '2024-01-15');
       // Ensure default pattern is used by clearing any custom pattern
       const { getSetting, setSetting } = await import('../../src/services/dbService');
       const currentPattern = getSetting('filenamePattern');
@@ -160,7 +224,7 @@ describe('fileService', () => {
 
       const result = await fileService.saveReceiptFile(
         mockFile,
-        1,
+        receiptId,
         '2024-01-15',
         'John Doe',
         'Test Clinic',
@@ -179,6 +243,7 @@ describe('fileService', () => {
     });
 
     it('should handle multiple files with correct ordering', async () => {
+      const receiptId = await createTestReceipt(1, 'User', '2024-01-15');
       const mockFile1 = createMockFile({
         originalname: 'file1.pdf',
         path: path.join(testDirs.uploadDir, 'file1.pdf'),
@@ -193,7 +258,7 @@ describe('fileService', () => {
 
       const result1 = await fileService.saveReceiptFile(
         mockFile1,
-        1,
+        receiptId,
         '2024-01-15',
         'User',
         'Vendor',
@@ -203,7 +268,7 @@ describe('fileService', () => {
       );
       const result2 = await fileService.saveReceiptFile(
         mockFile2,
-        1,
+        receiptId,
         '2024-01-15',
         'User',
         'Vendor',
@@ -217,6 +282,7 @@ describe('fileService', () => {
     });
 
     it('should include flags in filename when provided', async () => {
+      const receiptId = await createTestReceipt(1, 'John Doe', '2024-01-15');
       const mockFile = createMockFile({
         originalname: 'receipt.pdf',
         path: path.join(testDirs.uploadDir, 'receipt.pdf'),
@@ -230,7 +296,7 @@ describe('fileService', () => {
 
       const result = await fileService.saveReceiptFile(
         mockFile,
-        1,
+        receiptId,
         '2024-01-15',
         'John Doe',
         'Test Clinic',
@@ -249,6 +315,7 @@ describe('fileService', () => {
 
   describe('deleteReceiptFile', () => {
     it('should delete a file from disk', async () => {
+      const receiptId = await createTestReceipt(1, 'User', '2024-01-15');
       const mockFile = createMockFile({
         originalname: 'test.pdf',
         path: path.join(testDirs.uploadDir, 'test.pdf'),
@@ -257,7 +324,7 @@ describe('fileService', () => {
 
       const result = await fileService.saveReceiptFile(
         mockFile,
-        1,
+        receiptId,
         '2024-01-15',
         'User',
         'Vendor',
@@ -266,22 +333,24 @@ describe('fileService', () => {
         0
       );
 
-      let exists = await fileService.fileExists(1, result.filename);
+      let exists = await fileService.fileExists(receiptId, result.filename);
       expect(exists).toBe(true);
 
-      await fileService.deleteReceiptFile(1, result.filename);
+      await fileService.deleteReceiptFile(receiptId, result.filename);
 
-      exists = await fileService.fileExists(1, result.filename);
+      exists = await fileService.fileExists(receiptId, result.filename);
       expect(exists).toBe(false);
     });
 
     it('should not throw if file does not exist', async () => {
-      await expect(fileService.deleteReceiptFile(1, 'non-existent.pdf')).resolves.not.toThrow();
+      const receiptId = await createTestReceipt(1);
+      await expect(fileService.deleteReceiptFile(receiptId, 'non-existent.pdf')).resolves.not.toThrow();
     });
   });
 
   describe('deleteReceiptFiles', () => {
     it('should delete all files for a receipt', async () => {
+      const receiptId = await createTestReceipt(1, 'User', '2024-01-15');
       const mockFile1 = createMockFile({
         originalname: 'file1.pdf',
         path: path.join(testDirs.uploadDir, 'file1.pdf'),
@@ -294,23 +363,31 @@ describe('fileService', () => {
       await createTestPdfFile(testDirs.uploadDir, 'file1.pdf');
       await createTestPdfFile(testDirs.uploadDir, 'file2.pdf');
 
-      await fileService.saveReceiptFile(mockFile1, 1, '2024-01-15', 'User', 'Vendor', 100, 'type', 0);
-      await fileService.saveReceiptFile(mockFile2, 1, '2024-01-15', 'User', 'Vendor', 100, 'type', 1);
+      const result1 = await fileService.saveReceiptFile(mockFile1, receiptId, '2024-01-15', 'User', 'Vendor', 100, 'type', 0);
+      const result2 = await fileService.saveReceiptFile(mockFile2, receiptId, '2024-01-15', 'User', 'Vendor', 100, 'type', 1);
+      
+      // Add files to database so deleteReceiptFiles can find them
+      dbQueries.insertReceiptFile.run(receiptId, result1.filename, result1.originalFilename, 0);
+      dbQueries.insertReceiptFile.run(receiptId, result2.filename, result2.originalFilename, 1);
 
-      await fileService.deleteReceiptFiles(1);
+      await fileService.deleteReceiptFiles(receiptId);
 
-      const receiptDir = path.join(process.env.RECEIPTS_DIR!, '1');
-      const exists = await checkFileExists(receiptDir);
-      expect(exists).toBe(false);
+      // Files should be deleted
+      const exists1 = await fileService.fileExists(receiptId, result1.filename);
+      const exists2 = await fileService.fileExists(receiptId, result2.filename);
+      expect(exists1).toBe(false);
+      expect(exists2).toBe(false);
     });
 
     it('should not throw if directory does not exist', async () => {
-      await expect(fileService.deleteReceiptFiles(99999)).resolves.not.toThrow();
+      const receiptId = await createTestReceipt(99999);
+      await expect(fileService.deleteReceiptFiles(receiptId)).resolves.not.toThrow();
     });
   });
 
   describe('fileExists', () => {
     it('should return true if file exists', async () => {
+      const receiptId = await createTestReceipt(1, 'User', '2024-01-15');
       const mockFile = createMockFile({
         originalname: 'test.pdf',
         path: path.join(testDirs.uploadDir, 'test.pdf'),
@@ -319,7 +396,7 @@ describe('fileService', () => {
 
       const result = await fileService.saveReceiptFile(
         mockFile,
-        1,
+        receiptId,
         '2024-01-15',
         'User',
         'Vendor',
@@ -328,20 +405,25 @@ describe('fileService', () => {
         0
       );
 
-      const exists = await fileService.fileExists(1, result.filename);
+      const exists = await fileService.fileExists(receiptId, result.filename);
       expect(exists).toBe(true);
     });
 
     it('should return false if file does not exist', async () => {
-      const exists = await fileService.fileExists(1, 'non-existent.pdf');
+      const receiptId = await createTestReceipt(1);
+      const exists = await fileService.fileExists(receiptId, 'non-existent.pdf');
       expect(exists).toBe(false);
     });
   });
 
   describe('getReceiptFilePath', () => {
-    it('should return correct file path', () => {
-      const filePath = fileService.getReceiptFilePath(123, 'test.pdf');
-      expect(filePath).toContain('123');
+    it('should return correct file path with user/date structure', async () => {
+      const receiptId = await createTestReceipt(123, 'Test User', '2024-01-15');
+      const filePath = fileService.getReceiptFilePath(receiptId, 'test.pdf');
+      expect(filePath).toContain('test-user');
+      expect(filePath).toContain('2024');
+      expect(filePath).toContain('01');
+      expect(filePath).toContain('15');
       expect(filePath).toContain('test.pdf');
     });
   });
@@ -371,6 +453,12 @@ describe('fileService', () => {
 
   describe('renameReceiptFiles', () => {
     it('should rename files when receipt data changes', async () => {
+      // Create receipt with initial data - get actual receipt ID
+      const receiptId = await createTestReceipt(1, 'John Doe', '2024-01-15');
+      // Verify receipt exists
+      const receipt = dbQueries.getReceiptById.get(receiptId) as any;
+      expect(receipt).toBeDefined();
+      
       // Create initial file
       const mockFile = createMockFile({
         originalname: 'receipt.pdf',
@@ -380,7 +468,7 @@ describe('fileService', () => {
 
       const result = await fileService.saveReceiptFile(
         mockFile,
-        1,
+        receiptId,
         '2024-01-15',
         'John Doe',
         'Old Clinic',
@@ -389,14 +477,18 @@ describe('fileService', () => {
         0
       );
 
+      // Add file to database
+      const fileResult = dbQueries.insertReceiptFile.run(receiptId, result.filename, 'receipt.pdf', 0);
+      const fileId = Number(fileResult.lastInsertRowid);
+
       const oldFilename = result.filename;
-      const oldExists = await fileService.fileExists(1, oldFilename);
+      const oldExists = await fileService.fileExists(receiptId, oldFilename);
       expect(oldExists).toBe(true);
 
       // Rename with updated data
       const files = [
         {
-          id: 1,
+          id: fileId,
           filename: oldFilename,
           original_filename: 'receipt.pdf',
           file_order: 0,
@@ -404,7 +496,7 @@ describe('fileService', () => {
       ];
 
       const renameResults = await fileService.renameReceiptFiles(
-        1,
+        receiptId,
         files,
         '2024-01-16', // Updated date
         'Jane Smith', // Updated user
@@ -418,16 +510,50 @@ describe('fileService', () => {
       expect(renameResults[0].oldFilename).toBe(oldFilename);
       expect(renameResults[0].newFilename).not.toBe(oldFilename);
 
-      // Old file should not exist
-      const oldStillExists = await fileService.fileExists(1, oldFilename);
+      // Update receipt in database to reflect new user and date
+      // This is needed because fileExists looks up receipt from database
+      const janeUser = dbQueries.getUserByName.get('Jane Smith') as { id: number } | undefined;
+      let janeUserId: number;
+      if (!janeUser) {
+        dbQueries.insertUser.run('Jane Smith');
+        const janeUserResult = dbQueries.getUserByName.get('Jane Smith') as { id: number };
+        janeUserId = janeUserResult.id;
+      } else {
+        janeUserId = janeUser.id;
+      }
+      // Get prescription type
+      const prescriptionType = dbQueries.getReceiptTypeByName.get('prescription') as { id: number } | undefined;
+      let prescriptionTypeId: number;
+      if (!prescriptionType) {
+        dbQueries.insertReceiptType.run('prescription', null, 0);
+        const prescriptionTypeResult = dbQueries.getReceiptTypeByName.get('prescription') as { id: number };
+        prescriptionTypeId = prescriptionTypeResult.id;
+      } else {
+        prescriptionTypeId = prescriptionType.id;
+      }
+      // Update receipt: user_id, receipt_type_id, amount, vendor, provider_address, description, date, notes, id
+      dbQueries.updateReceipt.run(janeUserId, prescriptionTypeId, 200.00, 'New Clinic', '', 'Test Description', '2024-01-16', null, receiptId);
+      
+      // Update filename in database
+      dbQueries.updateReceiptFilename.run(renameResults[0].newFilename, fileId);
+
+      // Old file should not exist (check in old directory)
+      // Use the helper to construct the old directory path
+      const { sanitizeFilename } = await import('../../src/utils/filename');
+      const sanitizedUser = sanitizeFilename('John Doe');
+      const oldReceiptDir = path.join(process.env.RECEIPTS_DIR!, sanitizedUser, '2024', '01', '15');
+      const oldFilePath = path.join(oldReceiptDir, oldFilename);
+      const oldStillExists = await checkFileExists(oldFilePath);
       expect(oldStillExists).toBe(false);
 
-      // New file should exist
-      const newExists = await fileService.fileExists(1, renameResults[0].newFilename);
+      // New file should exist (check using fileExists which uses updated receipt data)
+      const newExists = await fileService.fileExists(receiptId, renameResults[0].newFilename);
       expect(newExists).toBe(true);
     });
 
     it('should include flags in renamed filename', async () => {
+      const receiptId = await createTestReceipt(1, 'John Doe', '2024-01-15');
+      
       const mockFile = createMockFile({
         originalname: 'receipt.pdf',
         path: path.join(testDirs.uploadDir, 'receipt.pdf'),
@@ -436,7 +562,7 @@ describe('fileService', () => {
 
       const result = await fileService.saveReceiptFile(
         mockFile,
-        1,
+        receiptId,
         '2024-01-15',
         'John Doe',
         'Clinic',
@@ -445,9 +571,13 @@ describe('fileService', () => {
         0
       );
 
+      // Add file to database
+      const fileResult = dbQueries.insertReceiptFile.run(receiptId, result.filename, 'receipt.pdf', 0);
+      const fileId = Number(fileResult.lastInsertRowid);
+
       const files = [
         {
-          id: 1,
+          id: fileId,
           filename: result.filename,
           original_filename: 'receipt.pdf',
           file_order: 0,
@@ -463,7 +593,7 @@ describe('fileService', () => {
       setSetting('filenamePattern', JSON.stringify('{date}_{user}_{flags}_{index}'));
 
       const renameResults = await fileService.renameReceiptFiles(
-        1,
+        receiptId,
         files,
         '2024-01-15',
         'John Doe',
@@ -481,6 +611,8 @@ describe('fileService', () => {
     });
 
     it('should not rename if filename unchanged', async () => {
+      const receiptId = await createTestReceipt(1, 'John Doe', '2024-01-15');
+      
       const mockFile = createMockFile({
         originalname: 'receipt.pdf',
         path: path.join(testDirs.uploadDir, 'receipt.pdf'),
@@ -489,7 +621,7 @@ describe('fileService', () => {
 
       const result = await fileService.saveReceiptFile(
         mockFile,
-        1,
+        receiptId,
         '2024-01-15',
         'John Doe',
         'Clinic',
@@ -498,9 +630,13 @@ describe('fileService', () => {
         0
       );
 
+      // Add file to database
+      const fileResult = dbQueries.insertReceiptFile.run(receiptId, result.filename, 'receipt.pdf', 0);
+      const fileId = Number(fileResult.lastInsertRowid);
+
       const files = [
         {
-          id: 1,
+          id: fileId,
           filename: result.filename,
           original_filename: 'receipt.pdf',
           file_order: 0,
@@ -509,7 +645,7 @@ describe('fileService', () => {
 
       // Rename with same data (should not change)
       const renameResults = await fileService.renameReceiptFiles(
-        1,
+        receiptId,
         files,
         '2024-01-15',
         'John Doe',

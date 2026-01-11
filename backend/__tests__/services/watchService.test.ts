@@ -28,12 +28,37 @@ vi.mock('../../src/services/fileService', async () => {
 		return process.env.RECEIPTS_DIR || '/tmp/test-receipts'
 	}
 
+	const { sanitizeFilename } = await import('../../src/utils/filename')
+	
+	// Helper to get receipt directory by user and date
+	const getReceiptDirByDate = (user: string, date: string) => {
+		const sanitizedUser = sanitizeFilename(user || 'unknown')
+		const dateStr = date.split('T')[0]
+		const parts = dateStr.split('-')
+		const year = parts[0] || '2024'
+		const month = (parts[1] || '01').padStart(2, '0')
+		const day = (parts[2] || '01').padStart(2, '0')
+		return pathMod.join(getTestReceiptsDir(), sanitizedUser, year, month, day)
+	}
+	
 	const getReceiptDir = (receiptId: number) => {
+		// For watch service tests, we'll use a simple fallback
+		// The actual implementation will use the database
 		return pathMod.join(getTestReceiptsDir(), receiptId.toString())
 	}
 
 	const ensureReceiptDir = async (receiptId: number) => {
 		const receiptDir = getReceiptDir(receiptId)
+		try {
+			await fsMod.access(receiptDir)
+		} catch {
+			await fsMod.mkdir(receiptDir, { recursive: true })
+		}
+		return receiptDir
+	}
+	
+	const ensureReceiptDirByDate = async (user: string, date: string) => {
+		const receiptDir = getReceiptDirByDate(user, date)
 		try {
 			await fsMod.access(receiptDir)
 		} catch {
@@ -53,6 +78,7 @@ vi.mock('../../src/services/fileService', async () => {
 		},
 		getReceiptDir,
 		ensureReceiptDir,
+		ensureReceiptDirByDate,
 		getReceiptFilePath: (receiptId: number, filename: string) => {
 			return pathMod.join(getReceiptDir(receiptId), filename)
 		},
@@ -67,8 +93,8 @@ vi.mock('../../src/services/fileService', async () => {
 			fileOrder: number,
 			flags?: any[]
 		) => {
-			await ensureReceiptDir(receiptId)
-			const receiptDir = getReceiptDir(receiptId)
+			await ensureReceiptDirByDate(user, date)
+			const receiptDir = getReceiptDirByDate(user, date)
 
 			const originalExt = pathMod.extname(file.originalname)
 			const originalFilename = file.originalname
