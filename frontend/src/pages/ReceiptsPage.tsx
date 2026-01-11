@@ -30,30 +30,36 @@ export default function ReceiptsPage() {
 	const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null)
 	const [autoRefreshEnabled] = useState(true)
 
-	const loadData = useCallback(async (showLoading = true) => {
-		try {
-			if (showLoading) {
-				setLoading(true)
+	const loadData = useCallback(
+		async (showLoading = true) => {
+			try {
+				if (showLoading) {
+					setLoading(true)
+				}
+				setIsRefreshing(true)
+				const [receiptsRes, flagsRes] = await Promise.all([receiptsApi.getAll(selectedFlagId), flagsApi.getAll()])
+				setReceipts(receiptsRes.data)
+				setFlags(flagsRes.data)
+				setLastRefreshTime(new Date())
+				setError(null)
+			} catch (err: any) {
+				setError(err.response?.data?.error || 'Failed to load receipts')
+			} finally {
+				if (showLoading) {
+					setLoading(false)
+				}
+				setIsRefreshing(false)
 			}
-			setIsRefreshing(true)
-			const [receiptsRes, flagsRes] = await Promise.all([receiptsApi.getAll(selectedFlagId), flagsApi.getAll()])
-			setReceipts(receiptsRes.data)
-			setFlags(flagsRes.data)
-			setLastRefreshTime(new Date())
-			setError(null)
-		} catch (err: any) {
-			setError(err.response?.data?.error || 'Failed to load receipts')
-		} finally {
-			if (showLoading) {
-				setLoading(false)
-			}
-			setIsRefreshing(false)
-		}
-	}, [selectedFlagId])
+		},
+		[selectedFlagId]
+	)
 
-	const handleRefresh = useCallback((showLoading = false) => {
-		loadData(showLoading)
-	}, [loadData])
+	const handleRefresh = useCallback(
+		(showLoading = false) => {
+			loadData(showLoading)
+		},
+		[loadData]
+	)
 
 	useEffect(() => {
 		loadData()
@@ -195,7 +201,7 @@ export default function ReceiptsPage() {
 
 	const allSelected = sortedReceipts.length > 0 && sortedReceipts.every(r => selectedReceiptIds.has(r.id))
 	const someSelected = sortedReceipts.some(r => selectedReceiptIds.has(r.id))
-	
+
 	// Determine checked state for select all checkbox (supports indeterminate)
 	const selectAllChecked = someSelected && !allSelected ? 'indeterminate' : allSelected
 
@@ -217,21 +223,12 @@ export default function ReceiptsPage() {
 					<h2 className="text-3xl font-bold">Receipts</h2>
 					<p className="text-muted-foreground">
 						Manage your medical receipts ({receipts.length} total)
-						{lastRefreshTime && (
-							<span className="ml-2 text-xs">
-								Last refreshed: {lastRefreshTime.toLocaleTimeString()}
-							</span>
-						)}
+						{lastRefreshTime && <span className="ml-2 text-xs">Last refreshed: {lastRefreshTime.toLocaleTimeString()}</span>}
 					</p>
 				</div>
 				<div className="flex gap-2">
-					<Button
-						onClick={() => handleRefresh(true)}
-						variant="outline"
-						disabled={isRefreshing}
-						className="relative"
-					>
-						<RefreshCw className={cn("mr-2 size-4", isRefreshing && "animate-spin")} />
+					<Button onClick={() => handleRefresh(true)} variant="outline" disabled={isRefreshing} className="relative">
+						<RefreshCw className={cn('mr-2 size-4', isRefreshing && 'animate-spin')} />
 						Refresh
 					</Button>
 					{selectedReceiptIds.size > 0 && (
@@ -306,12 +303,8 @@ export default function ReceiptsPage() {
 							<table className="w-full">
 								<thead>
 									<tr className="border-b bg-muted/50">
-										<th className="px-4 py-3 text-sm font-medium text-left w-12">
-											<Checkbox
-												checked={selectAllChecked}
-												onCheckedChange={handleSelectAll}
-												onClick={e => e.stopPropagation()}
-											/>
+										<th className="w-12 px-4 py-3 text-sm font-medium text-left">
+											<Checkbox checked={selectAllChecked} onCheckedChange={handleSelectAll} onClick={e => e.stopPropagation()} />
 										</th>
 										<th
 											className="px-4 py-3 text-sm font-medium text-left transition-colors cursor-pointer hover:bg-muted"
