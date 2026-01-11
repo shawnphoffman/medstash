@@ -315,8 +315,9 @@ describe('Filenames API', () => {
       expect(response.status).toBe(200);
       expect(response.body.totalReceipts).toBe(1);
       expect(response.body.totalFiles).toBe(1);
-      // File doesn't exist, so it won't be renamed but shouldn't cause an error
-      expect(response.body.renamed).toBe(0);
+      // File doesn't exist on disk, but database filename is still updated to match current pattern
+      // This keeps the database consistent even when files are missing
+      expect(response.body.renamed).toBe(1);
     });
 
     it('should use default pattern when no pattern is set', async () => {

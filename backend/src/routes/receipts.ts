@@ -510,10 +510,11 @@ router.get('/:id/files/:fileId', async (req, res) => {
 			return res.status(400).json({ error: 'Invalid filename: path traversal detected' })
 		}
 
-		const filePath = getReceiptFilePath(receiptId, file.filename)
-		const exists = await fileExists(receiptId, file.filename)
+		// Try to find the file path (with fallback to search alternative locations)
+		const { findReceiptFilePath } = await import('../services/fileService')
+		const filePath = await findReceiptFilePath(receiptId, file.filename)
 
-		if (!exists) {
+		if (!filePath) {
 			return res.status(404).json({
 				error: 'File not found on disk. The file may have been deleted or moved.',
 			})

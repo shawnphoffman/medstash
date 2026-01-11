@@ -732,7 +732,93 @@ export function getReceiptFilePathByDate(user: string, date: string, filename: s
 }
 
 /**
- * Check if file exists
+ * Find the actual file path for a receipt file, with fallback to search by receipt ID pattern
+ * Returns the path if found, or null if not found
+ */
+export async function findReceiptFilePath(receiptId: number, filename: string): Promise<string | null> {
+	const { getReceiptById } = await import('./dbService')
+	const receipt = getReceiptById(receiptId)
+	if (!receipt) {
+		return null
+	}
+
+	// Try expected location first
+	const expectedPath = getReceiptFilePathByDate(receipt.user || 'unknown', receipt.date, filename)
+	try {
+		await fs.access(expectedPath)
+		return expectedPath
+	} catch {
+		// File not found in expected location - try to find it by receipt ID pattern
+		// Extract file order from filename if possible (look for [receiptId-fileOrder] pattern)
+		const orderMatch = filename.match(/\[(\d+)-(\d+)\]/)
+		const fileOrder = orderMatch ? parseInt(orderMatch[2], 10) : undefined
+		
+		const foundPath = await findFileByReceiptIdPattern(receiptId, fileOrder)
+		if (foundPath) {
+			logger.warn(`File ${filename} for receipt ${receiptId} found in alternative location: ${foundPath}. Database may be out of sync.`)
+			return foundPath
+		}
+		
+		return null
+	}
+}
+
+/**
+ * Find a file by searching for receipt ID pattern in filename
+ * Searches in the receipts directory structure for files matching *[receiptId-*]*
+ */
+async function findFileByReceiptIdPattern(receiptId: number, fileOrder?: number): Promise<string | null> {
+	try {
+		const receiptsDir = getReceiptsDir()
+		
+		// Build search pattern: *[receiptId-fileOrder]* or *[receiptId-*]* if fileOrder unknown
+		const pattern = fileOrder !== undefined 
+			? `*[${receiptId}-${fileOrder}]*`
+			: `*[${receiptId}-*]*`
+
+		// Recursively search directories
+		async function searchDirectory(dirPath: string): Promise<string | null> {
+			try {
+				const entries = await fs.readdir(dirPath, { withFileTypes: true })
+				
+				for (const entry of entries) {
+					const fullPath = path.join(dirPath, entry.name)
+					
+					if (entry.isDirectory()) {
+						// Recursively search subdirectories
+						const found = await searchDirectory(fullPath)
+						if (found) return found
+					} else if (entry.isFile()) {
+						// Check if filename matches pattern
+						// Pattern: *[receiptId-fileOrder]* or *[receiptId-*]*
+						const receiptIdPattern = fileOrder !== undefined
+							? `[${receiptId}-${fileOrder}]`
+							: `[${receiptId}-`
+						
+						if (entry.name.includes(receiptIdPattern)) {
+							return fullPath
+						}
+					}
+				}
+			} catch (error: any) {
+				// Skip directories we can't read
+				if (error?.code !== 'ENOENT' && error?.code !== 'EACCES') {
+					logger.debug(`Error searching directory ${dirPath}:`, error)
+				}
+			}
+			
+			return null
+		}
+
+		return await searchDirectory(receiptsDir)
+	} catch (error) {
+		logger.debug(`Error searching for file with receipt ID ${receiptId}:`, error)
+		return null
+	}
+}
+
+/**
+ * Check if file exists, with fallback to search by receipt ID pattern
  */
 export async function fileExists(receiptId: number, filename: string): Promise<boolean> {
 	const { getReceiptById } = await import('./dbService')
@@ -746,6 +832,18 @@ export async function fileExists(receiptId: number, filename: string): Promise<b
 		await fs.access(filePath)
 		return true
 	} catch {
+		// File not found in expected location - try to find it by receipt ID pattern
+		// Extract file order from filename if possible (look for [receiptId-fileOrder] pattern)
+		const orderMatch = filename.match(/\[(\d+)-(\d+)\]/)
+		const fileOrder = orderMatch ? parseInt(orderMatch[2], 10) : undefined
+		
+		const foundPath = await findFileByReceiptIdPattern(receiptId, fileOrder)
+		if (foundPath) {
+			logger.warn(`File ${filename} for receipt ${receiptId} found in alternative location: ${foundPath}. Database may be out of sync.`)
+			// Optionally, we could update the database here, but that's risky without user confirmation
+			return true
+		}
+		
 		return false
 	}
 }
@@ -794,34 +892,87 @@ export async function renameReceiptFiles(
 		if (file.filename !== newFilename || oldReceiptDir !== newReceiptDir) {
 			try {
 				// Check if old file exists
+				let oldFileExists = false
 				try {
 					await fs.access(oldFilePath)
+					oldFileExists = true
 				} catch {
-					logger.warn(`File ${file.filename} does not exist, skipping rename`)
+					// Old file doesn't exist - check if it's already in the new location
+					oldFileExists = false
+				}
+
+				// Check if new filename already exists (maybe file was already moved)
+				let newFileExists = false
+				try {
+					await fs.access(newFilePath)
+					newFileExists = true
+				} catch {
+					// New file doesn't exist yet
+					newFileExists = false
+				}
+
+				// If file already exists in new location with new filename, just update database
+				if (newFileExists && oldFilePath !== newFilePath) {
+					logger.debug(`File ${file.filename} already exists in new location as ${newFilename}, updating database`)
+					renameResults.push({
+						fileId: file.id,
+						oldFilename: file.filename,
+						newFilename: newFilename,
+					})
 					continue
 				}
 
-				// Check if new filename already exists (shouldn't happen, but be safe)
-				try {
-					await fs.access(newFilePath)
-					if (oldFilePath !== newFilePath) {
-						logger.warn(`New filename ${newFilename} already exists, skipping rename for file ${file.id}`)
-						continue
-					}
-				} catch {
-					// File doesn't exist, which is what we want
+				// If old file doesn't exist and new file doesn't exist, file is missing
+				// Still update database to keep it consistent with new naming pattern
+				if (!oldFileExists && !newFileExists) {
+					logger.warn(`File ${file.filename} does not exist in old location (${oldReceiptDir}) or new location (${newReceiptDir}). Updating database filename to ${newFilename} for consistency, but file is missing.`)
+					renameResults.push({
+						fileId: file.id,
+						oldFilename: file.filename,
+						newFilename: newFilename,
+					})
+					continue
 				}
 
-				// Move/rename the file (fs.rename works across directories)
-				await fs.rename(oldFilePath, newFilePath)
+				// If old file exists, move it to new location
+				if (oldFileExists) {
+					// Check if new filename already exists (shouldn't happen, but be safe)
+					if (newFileExists && oldFilePath !== newFilePath) {
+						logger.warn(`New filename ${newFilename} already exists, skipping rename for file ${file.id}`)
+						// Still update database to new filename since file is already there
+						renameResults.push({
+							fileId: file.id,
+							oldFilename: file.filename,
+							newFilename: newFilename,
+						})
+						continue
+					}
+
+					// Move/rename the file (fs.rename works across directories)
+					await fs.rename(oldFilePath, newFilePath)
+					renameResults.push({
+						fileId: file.id,
+						oldFilename: file.filename,
+						newFilename: newFilename,
+					})
+				}
+			} catch (error) {
+				logger.error(`Failed to rename file ${file.filename} to ${newFilename}:`, error)
+				// Still update database to new filename for consistency, even if move failed
+				// This ensures the database matches the new naming pattern
 				renameResults.push({
 					fileId: file.id,
 					oldFilename: file.filename,
 					newFilename: newFilename,
 				})
-			} catch (error) {
-				logger.error(`Failed to rename file ${file.filename} to ${newFilename}:`, error)
-				// Continue with other files even if one fails
+			}
+		} else {
+			// Filename and directory didn't change, but we should still check if file exists
+			// in case it was moved/deleted externally
+			try {
+				await fs.access(oldFilePath)
+			} catch {
+				logger.warn(`File ${file.filename} does not exist at expected location ${oldFilePath} for receipt ${receiptId}`)
 			}
 		}
 	}
