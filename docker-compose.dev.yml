@@ -13,7 +13,9 @@ services:
       # Logging: Set LOG_LEVEL to ERROR, WARN, or DEBUG (default: DEBUG)
       - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
       # Upload directory: Directory for temporary file uploads (default: /tmp/medstash-uploads in development)
-      - UPLOAD_DIR=${UPLOAD_DIR:-/tmp/medstash-uploads}
+      # - UPLOAD_DIR=${UPLOAD_DIR:-/tmp/medstash-uploads}
+      - WATCH_FOLDER=${WATCH_FOLDER:-/data/watch}
+      - WATCH_INTERVAL=${WATCH_INTERVAL:-5}
     volumes:
       - ./backend/src:/app/src
       - ${MEDSTASH_DATA_DIR:-./data}:/data

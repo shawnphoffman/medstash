@@ -23,6 +23,13 @@ services:
       # WARN: Error and warning messages
       # DEBUG: All messages (errors, warnings, and debug info)
       - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      # Watch Folder: Path to watch folder for auto-import (default: /data/watch)
+      # Files placed in this folder will be automatically imported as receipts
+      # - WATCH_FOLDER=/data/watch
+      - WATCH_FOLDER=${WATCH_FOLDER:-/data/watch}
+      # Watch Interval: How often to scan the watch folder in minutes (default: 30)
+      # - WATCH_INTERVAL=30
+      - WATCH_INTERVAL=${WATCH_INTERVAL:-30}
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 60s

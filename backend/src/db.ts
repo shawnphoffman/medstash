@@ -473,6 +473,7 @@ const dbQueriesObj = {
 	// Flags
 	getAllFlags: dbInstance.prepare('SELECT * FROM flags ORDER BY name'),
 	getFlagById: dbInstance.prepare('SELECT * FROM flags WHERE id = ?'),
+	getFlagByName: dbInstance.prepare('SELECT * FROM flags WHERE name = ?'),
 	insertFlag: dbInstance.prepare('INSERT INTO flags (name, color) VALUES (?, ?)'),
 	updateFlag: dbInstance.prepare('UPDATE flags SET name = ?, color = ? WHERE id = ?'),
 	deleteFlag: dbInstance.prepare('DELETE FROM flags WHERE id = ?'),

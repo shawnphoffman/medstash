@@ -12,7 +12,9 @@ import receiptTypeGroupsRouter from './routes/receiptTypeGroups'
 import settingsRouter from './routes/settings'
 import exportRouter from './routes/export'
 import filenamesRouter from './routes/filenames'
+import watchRouter from './routes/watch'
 import { ensureReceiptsDir } from './services/fileService'
+import { startWatchService } from './services/watchService'
 import { errorHandler } from './middleware/errorHandler'
 import { logger } from './utils/logger'
 
@@ -63,6 +65,7 @@ app.use('/api/receipt-type-groups', receiptTypeGroupsRouter)
 app.use('/api/settings', settingsRouter)
 app.use('/api/export', exportRouter)
 app.use('/api/filenames', filenamesRouter)
+app.use('/api/watch', watchRouter)
 
 // Health check - verifies database connectivity
 app.get('/health', (req, res) => {
@@ -130,6 +133,9 @@ app.listen(PORT, () => {
 	logger.debug(`Environment: ${process.env.NODE_ENV || 'development'}`)
 	logger.debug(`Database: ${process.env.DB_DIR || '/data'}/medstash.db`)
 	logger.debug(`Receipts: ${process.env.RECEIPTS_DIR || '/data/receipts'}`)
+
+	// Start watch service
+	startWatchService()
 })
 
 export default app
