@@ -2,7 +2,19 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useToast } from '../components/ui/use-toast'
-import { receiptsApi, flagsApi, usersApi, receiptTypesApi, receiptTypeGroupsApi, Receipt, Flag, UpdateReceiptInput, User, ReceiptType, ReceiptTypeGroup } from '../lib/api'
+import {
+	receiptsApi,
+	flagsApi,
+	usersApi,
+	receiptTypesApi,
+	receiptTypeGroupsApi,
+	Receipt,
+	Flag,
+	UpdateReceiptInput,
+	User,
+	ReceiptType,
+	ReceiptTypeGroup,
+} from '../lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -427,7 +439,7 @@ export default function ReceiptDetailPage() {
 			<div className="py-8 text-center">
 				<p className="text-muted-foreground">Receipt not found</p>
 				<Button onClick={() => navigate('/')} className="mt-4">
-					<ArrowLeft className="w-4 h-4 mr-2" />
+					<ArrowLeft className="w-4 h-4 mr-1" />
 					Back to Receipts
 				</Button>
 			</div>
@@ -439,11 +451,11 @@ export default function ReceiptDetailPage() {
 			{ConfirmDialog}
 			<div className="flex items-center justify-between mb-6">
 				<Button variant="ghost" onClick={() => navigate('/')}>
-					<ArrowLeft className="w-4 h-4 mr-2" />
+					<ArrowLeft className="w-4 h-4 mr-1" />
 					Back to Receipts
 				</Button>
 				<Button variant="destructive" onClick={handleDeleteReceipt}>
-					<Trash2 className="w-4 h-4 mr-2" />
+					<Trash2 className="w-4 h-4 mr-1" />
 					Delete Receipt
 				</Button>
 			</div>
@@ -740,7 +752,7 @@ export default function ReceiptDetailPage() {
 																					onClick={() => handleReplaceFileCamera(file.id)}
 																					disabled={replacingFileId === file.id}
 																				>
-																					<Camera className="w-4 h-4 mr-2" />
+																					<Camera className="w-4 h-4 mr-1" />
 																					Camera
 																				</Button>
 																				<Button
@@ -754,7 +766,7 @@ export default function ReceiptDetailPage() {
 																						<>Replacing...</>
 																					) : (
 																						<>
-																							<Upload className="w-4 h-4 mr-2" />
+																							<Upload className="w-4 h-4 mr-1" />
 																							Replace
 																						</>
 																					)}
@@ -807,11 +819,11 @@ export default function ReceiptDetailPage() {
 										/>
 										<div className="flex gap-2">
 											<Button type="button" variant="outline" className="flex-1" onClick={handleCameraCapture}>
-												<Camera className="w-4 h-4 mr-2" />
+												<Camera className="w-4 h-4 mr-1" />
 												Take Photo
 											</Button>
 											<Button type="button" variant="outline" className="flex-1" onClick={() => fileInputRef.current?.click()}>
-												<Upload className="w-4 h-4 mr-2" />
+												<Upload className="w-4 h-4 mr-1" />
 												Select Files
 											</Button>
 										</div>
@@ -968,7 +980,7 @@ export default function ReceiptDetailPage() {
 																		onClick={() => handleReplaceFileCamera(file.id)}
 																		disabled={replacingFileId === file.id}
 																	>
-																		<Camera className="w-4 h-4 mr-2" />
+																		<Camera className="w-4 h-4 mr-1" />
 																		Camera
 																	</Button>
 																	<Button
@@ -982,7 +994,7 @@ export default function ReceiptDetailPage() {
 																			<>Replacing...</>
 																		) : (
 																			<>
-																				<Upload className="w-4 h-4 mr-2" />
+																				<Upload className="w-4 h-4 mr-1" />
 																				Replace File
 																			</>
 																		)}

@@ -215,7 +215,7 @@ export default function BulkUploadPage() {
 								</label>
 								<div className="flex gap-2 mt-4">
 									<Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="flex-1">
-										<Upload className="w-4 h-4 mr-2" />
+										<Upload className="w-4 h-4 mr-1" />
 										Select Files
 									</Button>
 								</div>

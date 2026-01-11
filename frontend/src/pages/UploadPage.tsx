@@ -1,7 +1,18 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { receiptsApi, flagsApi, usersApi, receiptTypesApi, receiptTypeGroupsApi, CreateReceiptInput, Flag, User, ReceiptType, ReceiptTypeGroup } from '../lib/api'
+import {
+	receiptsApi,
+	flagsApi,
+	usersApi,
+	receiptTypesApi,
+	receiptTypeGroupsApi,
+	CreateReceiptInput,
+	Flag,
+	User,
+	ReceiptType,
+	ReceiptTypeGroup,
+} from '../lib/api'
 import { useToast } from '../components/ui/use-toast'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -316,7 +327,7 @@ export default function UploadPage() {
 									</div>
 									<div className="flex gap-2 mt-4">
 										<Button type="button" variant="outline" onClick={handleCameraCapture} className="flex-1 lg:hidden">
-											<Camera className="w-4 h-4 mr-2" />
+											<Camera className="w-4 h-4 mr-1" />
 											Take Photo
 										</Button>
 										<Button
@@ -325,7 +336,7 @@ export default function UploadPage() {
 											onClick={() => document.getElementById('file-input')?.click()}
 											className="flex-1"
 										>
-											<Upload className="w-4 h-4 mr-2" />
+											<Upload className="w-4 h-4 mr-1" />
 											Select Files
 										</Button>
 									</div>

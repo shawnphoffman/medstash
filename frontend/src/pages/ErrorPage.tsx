@@ -95,40 +95,40 @@ export function ErrorPage({ type, message, onRetry }: ErrorPageProps) {
 			<Card className="w-full max-w-2xl">
 				<CardHeader className="text-center">
 					<div className="flex justify-center mb-4">
-						<div className="rounded-full bg-destructive/10 p-4">
+						<div className="p-4 rounded-full bg-destructive/10">
 							<Icon className="w-12 h-12 text-destructive" />
 						</div>
 					</div>
 					<CardTitle className="text-2xl">{details.title}</CardTitle>
-					<CardDescription className="text-base mt-2">{details.description}</CardDescription>
+					<CardDescription className="mt-2 text-base">{details.description}</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-6">
 					{errorMessage && (
-						<div className="rounded-lg bg-muted p-4">
-							<p className="text-sm font-medium text-muted-foreground mb-1">Error Details:</p>
+						<div className="p-4 rounded-lg bg-muted">
+							<p className="mb-1 text-sm font-medium text-muted-foreground">Error Details:</p>
 							<p className="text-sm">{errorMessage}</p>
 						</div>
 					)}
 
 					<div>
-						<p className="text-sm font-medium mb-3">Possible Solutions:</p>
+						<p className="mb-3 text-sm font-medium">Possible Solutions:</p>
 						<ul className="space-y-2">
 							{details.solutions.map((solution, index) => (
 								<li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-									<span className="text-primary mt-1">•</span>
+									<span className="mt-1 text-primary">•</span>
 									<span>{solution}</span>
 								</li>
 							))}
 						</ul>
 					</div>
 
-					<div className="flex flex-col sm:flex-row gap-3 pt-4">
+					<div className="flex flex-col gap-3 pt-4 sm:flex-row">
 						<Button onClick={handleRetry} className="flex-1" variant="default">
-							<RefreshCw className="w-4 h-4 mr-2" />
+							<RefreshCw className="w-4 h-4 mr-1" />
 							Retry
 						</Button>
 						<Button onClick={handleGoHome} className="flex-1" variant="outline">
-							<Home className="w-4 h-4 mr-2" />
+							<Home className="w-4 h-4 mr-1" />
 							Go Home
 						</Button>
 					</div>

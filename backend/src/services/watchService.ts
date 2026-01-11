@@ -369,3 +369,86 @@ export function getWatchServiceStatus(): {
 export async function triggerScan(): Promise<void> {
 	await scanWatchFolder()
 }
+
+/**
+ * Count files in processed folder recursively
+ */
+export async function countProcessedFiles(): Promise<number> {
+	const processedFolder = getProcessedFolderPath()
+	let count = 0
+
+	try {
+		// Check if processed folder exists
+		try {
+			await fs.access(processedFolder)
+		} catch {
+			// Folder doesn't exist, return 0
+			return 0
+		}
+
+		// Recursively count files
+		async function countFiles(dir: string): Promise<void> {
+			const entries = await fs.readdir(dir, { withFileTypes: true })
+			for (const entry of entries) {
+				const fullPath = path.join(dir, entry.name)
+				if (entry.isFile()) {
+					count++
+				} else if (entry.isDirectory()) {
+					await countFiles(fullPath)
+				}
+			}
+		}
+
+		await countFiles(processedFolder)
+		return count
+	} catch (error) {
+		logger.error('Error counting processed files:', error)
+		throw error
+	}
+}
+
+/**
+ * Delete all files in processed folder
+ */
+export async function deleteProcessedFiles(): Promise<{ deleted: number; errors: string[] }> {
+	const processedFolder = getProcessedFolderPath()
+	let deleted = 0
+	const errors: string[] = []
+
+	try {
+		// Check if processed folder exists
+		try {
+			await fs.access(processedFolder)
+		} catch {
+			// Folder doesn't exist, return empty result
+			return { deleted: 0, errors: [] }
+		}
+
+		// Recursively delete files and directories
+		async function deleteRecursive(dir: string): Promise<void> {
+			const entries = await fs.readdir(dir, { withFileTypes: true })
+			for (const entry of entries) {
+				const fullPath = path.join(dir, entry.name)
+				try {
+					if (entry.isFile()) {
+						await fs.unlink(fullPath)
+						deleted++
+					} else if (entry.isDirectory()) {
+						await deleteRecursive(fullPath)
+						await fs.rmdir(fullPath)
+					}
+				} catch (error: any) {
+					const errorMsg = `Failed to delete ${fullPath}: ${error.message}`
+					errors.push(errorMsg)
+					logger.error(errorMsg)
+				}
+			}
+		}
+
+		await deleteRecursive(processedFolder)
+		return { deleted, errors }
+	} catch (error: any) {
+		logger.error('Error deleting processed files:', error)
+		throw error
+	}
+}

@@ -7,6 +7,7 @@ import {
 	receiptTypesApi,
 	receiptTypeGroupsApi,
 	exportApi,
+	watchApi,
 	Flag,
 	User,
 	ReceiptType,
@@ -245,7 +246,7 @@ function UngroupedSection({
 			<div className="p-3 border-b bg-muted/50">
 				<h3 className="font-semibold">Ungrouped</h3>
 			</div>
-			<div className="p-3 space-y-2 xxx">
+			<div className="p-3 space-y-1">
 				<SortableContext items={types.map(t => `type-${t.id}`)} strategy={verticalListSortingStrategy}>
 					{types.map(type => (
 						<SortableType
@@ -309,13 +310,30 @@ export default function SettingsPage() {
 	const [originalPattern, setOriginalPattern] = useState(DEFAULT_FILENAME_PATTERN)
 	const [patternError, setPatternError] = useState<string | null>(null)
 	const [isRenaming, setIsRenaming] = useState(false)
+	const [processedFileCount, setProcessedFileCount] = useState<number | null>(null)
+	const [isLoadingProcessedCount, setIsLoadingProcessedCount] = useState(false)
+	const [isDeletingProcessed, setIsDeletingProcessed] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const { confirm, ConfirmDialog } = useConfirmDialog()
 	const { alert, AlertDialog } = useAlertDialog()
 
 	useEffect(() => {
 		loadData()
+		loadProcessedCount()
 	}, [])
+
+	const loadProcessedCount = async () => {
+		try {
+			setIsLoadingProcessedCount(true)
+			const response = await watchApi.getProcessedCount()
+			setProcessedFileCount(response.data.count)
+		} catch (err: any) {
+			// Don't show error, just leave count as null
+			console.error('Failed to load processed file count:', err)
+		} finally {
+			setIsLoadingProcessedCount(false)
+		}
+	}
 
 	const loadData = async () => {
 		try {
@@ -1172,6 +1190,45 @@ export default function SettingsPage() {
 		}
 	}
 
+	// Handle delete processed files
+	const handleDeleteProcessed = async () => {
+		const confirmed = await confirm({
+			title: 'Delete Processed Files',
+			message: `Are you sure you want to delete all ${
+				processedFileCount || 0
+			} file(s) in the processed folder? This action cannot be undone.`,
+			variant: 'destructive',
+			confirmText: 'Delete',
+			cancelText: 'Cancel',
+		})
+
+		if (!confirmed) return
+
+		setIsDeletingProcessed(true)
+		setError(null)
+
+		try {
+			const result = await watchApi.deleteProcessed()
+			if (result.data.errors.length > 0) {
+				await alert({
+					title: 'Partial Success',
+					message: `Deleted ${result.data.deleted} file(s). ${result.data.errors.length} error(s) occurred.`,
+				})
+			} else {
+				await alert({
+					title: 'Success',
+					message: `Successfully deleted ${result.data.deleted} file(s).`,
+				})
+			}
+			// Refresh count
+			await loadProcessedCount()
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to delete processed files')
+		} finally {
+			setIsDeletingProcessed(false)
+		}
+	}
+
 	if (loading) {
 		return <div className="py-8 text-center">Loading settings...</div>
 	}
@@ -1186,6 +1243,45 @@ export default function SettingsPage() {
 			</div>
 
 			{error && <div className="p-4 rounded-md bg-destructive/10 text-destructive">{error}</div>}
+
+			{/* Processed Files */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Processed Files</CardTitle>
+					<CardDescription>Manage files in the processed folder from the watch service</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="flex items-center justify-between">
+						<div>
+							<p className="text-sm text-muted-foreground">
+								{isLoadingProcessedCount ? (
+									'Loading...'
+								) : processedFileCount !== null ? (
+									<>
+										<span className="font-medium">{processedFileCount}</span> file{processedFileCount !== 1 ? 's' : ''} in processed folder
+									</>
+								) : (
+									'Unable to load file count'
+								)}
+							</p>
+						</div>
+						<div className="flex gap-2">
+							<Button variant="outline" onClick={loadProcessedCount} disabled={isLoadingProcessedCount}>
+								<RefreshCw className={`w-4 h-4 mr-1 ${isLoadingProcessedCount ? 'animate-spin' : ''}`} />
+								Refresh
+							</Button>
+							<Button
+								variant="destructive"
+								onClick={handleDeleteProcessed}
+								disabled={isDeletingProcessed || processedFileCount === null || processedFileCount === 0}
+							>
+								<Trash2 className="w-4 h-4 mr-1" />
+								{isDeletingProcessed ? 'Deleting...' : 'Delete All'}
+							</Button>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
 
 			{/* Users Management */}
 			<Card>
@@ -1203,11 +1299,11 @@ export default function SettingsPage() {
 							className="flex-1"
 						/>
 						<Button onClick={handleAddUser}>
-							<Plus className="w-4 h-4 mr-2" />
+							<Plus className="w-4 h-4 mr-1" />
 							Add User
 						</Button>
 					</div>
-					<div className="space-y-2">
+					<div className="space-y-1">
 						{users.length === 0 ? (
 							<p className="py-4 text-sm text-center text-muted-foreground">No users configured yet</p>
 						) : (
@@ -1271,7 +1367,7 @@ export default function SettingsPage() {
 							<div className="flex gap-2">
 								<ColorPicker value={newFlagColor} onChange={color => setNewFlagColor(color)} />
 								<Button onClick={handleCreateFlag}>
-									<Plus className="w-4 h-4 mr-2" />
+									<Plus className="w-4 h-4 mr-1" />
 									Add Flag
 								</Button>
 							</div>
@@ -1375,7 +1471,7 @@ export default function SettingsPage() {
 								</SelectContent>
 							</Select>
 							<Button type="button" onClick={handleAddReceiptType}>
-								<Plus className="w-4 h-4 mr-2" />
+								<Plus className="w-4 h-4 mr-1" />
 								Add Type
 							</Button>
 						</div>
@@ -1398,7 +1494,7 @@ export default function SettingsPage() {
 								className="flex-1"
 							/>
 							<Button type="button" onClick={handleCreateGroup}>
-								<Plus className="w-4 h-4 mr-2" />
+								<Plus className="w-4 h-4 mr-1" />
 								Add Group
 							</Button>
 						</div>
@@ -1416,11 +1512,11 @@ export default function SettingsPage() {
 								</div>
 								<div className="flex gap-2">
 									<Button type="button" variant="outline" onClick={handleCancelReceiptTypes} disabled={isSavingTypes}>
-										<X className="w-4 h-4 mr-2" />
+										<X className="w-4 h-4 mr-1" />
 										Cancel
 									</Button>
 									<Button type="button" onClick={handleSaveReceiptTypes} disabled={isSavingTypes}>
-										<Save className={`w-4 h-4 mr-2 ${isSavingTypes ? 'animate-spin' : ''}`} />
+										<Save className={`w-4 h-4 mr-1 ${isSavingTypes ? 'animate-spin' : ''}`} />
 										{isSavingTypes ? 'Saving...' : 'Save Changes'}
 									</Button>
 								</div>
@@ -1459,7 +1555,7 @@ export default function SettingsPage() {
 													dragOverId={dragOverId}
 													hasChanged={changedGroupIds.has(group.id)}
 												>
-													<div className="space-y-2 ">
+													<div className="space-y-1 ">
 														{typesInGroup.length > 0 ? (
 															<SortableContext items={typesInGroup.map(t => `type-${t.id}`)} strategy={verticalListSortingStrategy}>
 																{typesInGroup.map(type => (
@@ -1526,7 +1622,7 @@ export default function SettingsPage() {
 								<p className="mt-1 text-sm text-muted-foreground">Restore all receipt types and groups to their default values</p>
 							</div>
 							<Button type="button" variant="destructive" onClick={handleResetToDefaults}>
-								<RotateCcw className="w-4 h-4 mr-2" />
+								<RotateCcw className="w-4 h-4 mr-1" />
 								Reset to Defaults
 							</Button>
 						</div>
@@ -1610,11 +1706,11 @@ export default function SettingsPage() {
 					{/* Actions */}
 					<div className="flex gap-2">
 						<Button onClick={handleSavePattern} disabled={!!patternError || filenamePattern === originalPattern}>
-							<Save className="w-4 h-4 mr-2" />
+							<Save className="w-4 h-4 mr-1" />
 							Save Pattern
 						</Button>
 						<Button variant="outline" onClick={handleRenameAll} disabled={!!patternError || isRenaming}>
-							<RefreshCw className={`w-4 h-4 mr-2 ${isRenaming ? 'animate-spin' : ''}`} />
+							<RefreshCw className={`w-4 h-4 mr-1 ${isRenaming ? 'animate-spin' : ''}`} />
 							{isRenaming ? 'Renaming...' : 'Rename All Files'}
 						</Button>
 					</div>
@@ -1629,7 +1725,7 @@ export default function SettingsPage() {
 				</CardHeader>
 				<CardContent>
 					<Button onClick={handleExport} variant="outline">
-						<Download className="w-4 h-4 mr-2" />
+						<Download className="w-4 h-4 mr-1" />
 						Export All Receipts
 					</Button>
 				</CardContent>

@@ -1,5 +1,5 @@
 import express from 'express'
-import { getWatchServiceStatus, triggerScan } from '../services/watchService'
+import { getWatchServiceStatus, triggerScan, countProcessedFiles, deleteProcessedFiles } from '../services/watchService'
 import { logger } from '../utils/logger'
 
 const router = express.Router()
@@ -31,6 +31,32 @@ router.post('/scan', async (req, res) => {
 	} catch (error) {
 		logger.error('Error triggering watch scan:', error)
 		res.status(500).json({ error: 'Failed to trigger scan' })
+	}
+})
+
+/**
+ * GET /api/watch/processed/count - Get count of files in processed folder
+ */
+router.get('/processed/count', async (req, res) => {
+	try {
+		const count = await countProcessedFiles()
+		res.json({ count })
+	} catch (error) {
+		logger.error('Error counting processed files:', error)
+		res.status(500).json({ error: 'Failed to count processed files' })
+	}
+})
+
+/**
+ * DELETE /api/watch/processed - Delete all files in processed folder
+ */
+router.delete('/processed', async (req, res) => {
+	try {
+		const result = await deleteProcessedFiles()
+		res.json(result)
+	} catch (error) {
+		logger.error('Error deleting processed files:', error)
+		res.status(500).json({ error: 'Failed to delete processed files' })
 	}
 })
 

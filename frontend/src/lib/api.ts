@@ -352,5 +352,30 @@ export const filenamesApi = {
   }>('/filenames/rename-all'),
 };
 
+// Watch API
+export const watchApi = {
+  getStatus: () => api.get<{
+    enabled: boolean;
+    watchFolder: string;
+    interval: number;
+    lastScan?: string;
+    nextScan?: string;
+    isScanning: boolean;
+  }>('/watch/status'),
+  triggerScan: () => api.post<{
+    message: string;
+    status: {
+      enabled: boolean;
+      watchFolder: string;
+      interval: number;
+      lastScan?: string;
+      nextScan?: string;
+      isScanning: boolean;
+    };
+  }>('/watch/scan'),
+  getProcessedCount: () => api.get<{ count: number }>('/watch/processed/count'),
+  deleteProcessed: () => api.delete<{ deleted: number; errors: string[] }>('/watch/processed'),
+};
+
 export default api;
 
