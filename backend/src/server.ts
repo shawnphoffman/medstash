@@ -93,16 +93,42 @@ const publicPath = path.resolve(process.cwd(), 'public')
 
 // Check if public directory exists (production build)
 if (existsSync(publicPath)) {
-	// Serve static files
-	app.use(express.static(publicPath))
+	logger.debug(`Serving static files from: ${publicPath}`)
+	
+	// Log if logo.png exists
+	const logoPath = path.join(publicPath, 'logo.png')
+	if (existsSync(logoPath)) {
+		logger.debug(`Logo file found at: ${logoPath}`)
+	} else {
+		logger.warn(`Logo file not found at: ${logoPath}`)
+	}
+
+	// Serve static files with explicit options
+	app.use(
+		express.static(publicPath, {
+			maxAge: '1y', // Cache static assets for 1 year
+			etag: true, // Enable ETag for cache validation
+			lastModified: true, // Enable Last-Modified headers
+		})
+	)
 
 	// Catch-all handler: send back React's index.html file for client-side routing
-	// This must be after all API routes
-	app.get('*', (req, res) => {
+	// This must be after all API routes and static file serving
+	// Exclude API routes and static file extensions
+	app.get('*', (req, res, next) => {
 		// Don't serve index.html for API routes
 		if (req.path.startsWith('/api')) {
 			return res.status(404).json({ error: 'Not found' })
 		}
+
+		// Don't serve index.html for static file requests (images, fonts, etc.)
+		// These should have been handled by express.static above
+		const staticFileExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.woff', '.woff2', '.ttf', '.eot', '.css', '.js', '.map', '.json', '.xml', '.txt']
+		const hasStaticExtension = staticFileExtensions.some(ext => req.path.toLowerCase().endsWith(ext))
+		if (hasStaticExtension) {
+			return res.status(404).json({ error: 'Not found' })
+		}
+
 		res.sendFile(path.join(publicPath, 'index.html'))
 	})
 }
