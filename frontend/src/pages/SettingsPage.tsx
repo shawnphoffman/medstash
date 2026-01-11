@@ -6,6 +6,7 @@ import {
 	usersApi,
 	receiptTypesApi,
 	receiptTypeGroupsApi,
+	exportApi,
 	Flag,
 	User,
 	ReceiptType,
@@ -21,7 +22,7 @@ import { FlagBadge } from '../components/FlagBadge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { useConfirmDialog } from '../components/ConfirmDialog'
 import { useAlertDialog } from '../components/AlertDialog'
-import { Plus, Trash2, Edit2, Save, X, RefreshCw, Info, Flag as FlagIcon, RotateCcw, GripVertical } from 'lucide-react'
+import { Plus, Trash2, Edit2, Save, X, RefreshCw, Info, Flag as FlagIcon, RotateCcw, GripVertical, Download } from 'lucide-react'
 import {
 	DndContext,
 	rectIntersection,
@@ -1155,6 +1156,22 @@ export default function SettingsPage() {
 		}
 	}
 
+	// Handle export all receipts
+	const handleExport = async () => {
+		try {
+			const response = await exportApi.download()
+			const url = window.URL.createObjectURL(new Blob([response.data]))
+			const link = document.createElement('a')
+			link.href = url
+			link.setAttribute('download', 'medstash-export.zip')
+			document.body.appendChild(link)
+			link.click()
+			link.remove()
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to export')
+		}
+	}
+
 	if (loading) {
 		return <div className="py-8 text-center">Loading settings...</div>
 	}
@@ -1601,6 +1618,20 @@ export default function SettingsPage() {
 							{isRenaming ? 'Renaming...' : 'Rename All Files'}
 						</Button>
 					</div>
+				</CardContent>
+			</Card>
+
+			{/* Export */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Export Data</CardTitle>
+					<CardDescription>Download all receipts and files as a ZIP archive</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<Button onClick={handleExport} variant="outline">
+						<Download className="w-4 h-4 mr-2" />
+						Export All Receipts
+					</Button>
 				</CardContent>
 			</Card>
 		</div>

@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { receiptsApi, flagsApi, exportApi, Receipt, Flag } from '../lib/api'
+import { receiptsApi, flagsApi, Receipt, Flag } from '../lib/api'
 import { Card, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Checkbox } from '../components/ui/checkbox'
-import { Download, Search, File, ArrowUp, ArrowDown, ArrowUpDown, Flag as FlagIcon, Edit, RefreshCw } from 'lucide-react'
+import { Search, File, ArrowUp, ArrowDown, ArrowUpDown, Flag as FlagIcon, Edit, RefreshCw } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip'
 import BulkEditDialog from '../components/BulkEditDialog'
@@ -98,21 +98,6 @@ export default function ReceiptsPage() {
 		return <ArrowDown className="size-4" />
 	}
 
-	const handleExport = async () => {
-		try {
-			const response = await exportApi.download()
-			const url = window.URL.createObjectURL(new Blob([response.data]))
-			const link = document.createElement('a')
-			link.href = url
-			link.setAttribute('download', 'medstash-export.zip')
-			document.body.appendChild(link)
-			link.click()
-			link.remove()
-		} catch (err: any) {
-			setError(err.response?.data?.error || 'Failed to export')
-		}
-	}
-
 	const filteredReceipts = receipts.filter(receipt => {
 		if (!searchTerm) return true
 		const search = searchTerm.toLowerCase()
@@ -201,7 +186,7 @@ export default function ReceiptsPage() {
 
 	return (
 		<div className="space-y-6">
-			<div className="flex items-center justify-between">
+			<div className="flex flex-col justify-between gap-2 sm:items-center sm:flex-row">
 				<div>
 					<h2 className="text-3xl font-bold">Receipts</h2>
 					<p className="text-muted-foreground">
@@ -209,20 +194,16 @@ export default function ReceiptsPage() {
 						{/* {lastRefreshTime && <span className="ml-2 text-xs">Last refreshed: {lastRefreshTime.toLocaleTimeString()}</span>} */}
 					</p>
 				</div>
-				<div className="flex gap-2">
+				<div className="flex justify-end gap-2">
 					{selectedReceiptIds.size > 0 && (
 						<Button onClick={() => setShowBulkEditDialog(true)} variant="secondary">
-							<Edit className="mr-1 size-4" />
-							Bulk Edit ({selectedReceiptIds.size})
+							<Edit className="size-4 md:mr-1" />
+							<span className="hidden md:inline">Bulk Edit ({selectedReceiptIds.size})</span>
 						</Button>
 					)}
-					<Button onClick={handleRefresh} variant="outline" disabled={isRefreshing} className="relative">
-						<RefreshCw className={cn('mr-1 size-4', isRefreshing && 'animate-spin')} />
-						Refresh
-					</Button>
-					<Button onClick={handleExport} variant="outline">
-						<Download className="mr-1 size-4" />
-						Export All
+					<Button onClick={handleRefresh} variant="outline" disabled={isRefreshing} className="hidden sm:flex">
+						<RefreshCw className={cn('size-4 md:mr-1', isRefreshing && 'animate-spin')} />
+						<span className="hidden md:inline">Refresh</span>
 					</Button>
 				</div>
 			</div>
