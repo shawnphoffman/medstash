@@ -19,7 +19,6 @@ export function mockApi() {
 
   const mockFlagsApi = {
     getAll: vi.fn(),
-    getById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
@@ -27,7 +26,6 @@ export function mockApi() {
 
   const mockUsersApi = {
     getAll: vi.fn(),
-    getById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
@@ -35,7 +33,6 @@ export function mockApi() {
 
   const mockReceiptTypesApi = {
     getAll: vi.fn(),
-    getById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),

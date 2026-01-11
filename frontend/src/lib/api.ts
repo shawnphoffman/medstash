@@ -285,7 +285,6 @@ export const receiptsApi = {
 // Flags API
 export const flagsApi = {
   getAll: () => api.get<Flag[]>('/flags'),
-  getById: (id: number) => api.get<Flag>(`/flags/${id}`),
   create: (data: CreateFlagInput) => api.post<Flag>('/flags', data),
   update: (id: number, data: Partial<CreateFlagInput>) =>
     api.put<Flag>(`/flags/${id}`, data),
@@ -295,7 +294,6 @@ export const flagsApi = {
 // Users API
 export const usersApi = {
   getAll: () => api.get<User[]>('/users'),
-  getById: (id: number) => api.get<User>(`/users/${id}`),
   create: (data: CreateUserInput) => api.post<User>('/users', data),
   update: (id: number, data: UpdateUserInput) =>
     api.put<User>(`/users/${id}`, data),
@@ -305,7 +303,6 @@ export const usersApi = {
 // Receipt Type Groups API
 export const receiptTypeGroupsApi = {
   getAll: () => api.get<ReceiptTypeGroup[]>('/receipt-type-groups'),
-  getById: (id: number) => api.get<ReceiptTypeGroup>(`/receipt-type-groups/${id}`),
   create: (data: CreateReceiptTypeGroupInput) => api.post<ReceiptTypeGroup>('/receipt-type-groups', data),
   update: (id: number, data: UpdateReceiptTypeGroupInput) =>
     api.put<ReceiptTypeGroup>(`/receipt-type-groups/${id}`, data),
@@ -315,12 +312,9 @@ export const receiptTypeGroupsApi = {
 // Receipt Types API
 export const receiptTypesApi = {
   getAll: () => api.get<ReceiptType[]>('/receipt-types'),
-  getById: (id: number) => api.get<ReceiptType>(`/receipt-types/${id}`),
   create: (data: CreateReceiptTypeInput) => api.post<ReceiptType>('/receipt-types', data),
   update: (id: number, data: UpdateReceiptTypeInput) =>
     api.put<ReceiptType>(`/receipt-types/${id}`, data),
-  move: (id: number, groupId: number | null, displayOrder?: number) =>
-    api.put<ReceiptType>(`/receipt-types/${id}/move`, { group_id: groupId, display_order: displayOrder }),
   delete: (id: number) => api.delete(`/receipt-types/${id}`),
   bulkUpdate: (updates: Array<{ id: number; group_id: number | null; display_order: number }>) =>
     api.post<ReceiptType[]>('/receipt-types/bulk-update', { updates }),
