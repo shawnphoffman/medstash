@@ -45,6 +45,9 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi && \
 # Copy backend source code
 COPY backend/src ./src
 
+# Copy migrations directory (needed for runtime)
+COPY backend/migrations ./migrations
+
 # Build backend TypeScript (production build without source maps/declarations)
 RUN npx tsc --project tsconfig.json --sourceMap false --declaration false --declarationMap false
 
@@ -115,6 +118,9 @@ COPY --from=backend-builder /app/backend/dist ./dist
 
 # Copy package.json for runtime reference (needed by some modules)
 COPY --from=backend-builder /app/backend/package.json ./package.json
+
+# Copy migrations directory (needed at runtime)
+COPY --from=backend-builder /app/backend/migrations ./migrations
 
 # Copy built frontend static files
 COPY --from=frontend-builder /app/frontend/dist ./public

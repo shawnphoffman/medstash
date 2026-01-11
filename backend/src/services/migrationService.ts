@@ -4,20 +4,38 @@ import path from 'path'
 import { logger } from '../utils/logger'
 
 // Resolve migrations directory
-// In development: __dirname = backend/src/services, so ../../migrations = backend/migrations
-// In production (compiled): __dirname = backend/dist/services, so ../../migrations = backend/migrations
-// Fallback to process.cwd() if __dirname doesn't work
+// In Docker: process.cwd() = /app, so migrations = /app/migrations
+// In development: process.cwd() = project root, so we need to go to backend/migrations
+// Try multiple path resolution strategies
 const MIGRATIONS_DIR = (() => {
+	const cwd = process.cwd()
+	
+	// Strategy 1: Check if migrations exists in cwd (Docker/production)
+	const cwdMigrations = path.join(cwd, 'migrations')
+	if (fs.existsSync(cwdMigrations)) {
+		return cwdMigrations
+	}
+	
+	// Strategy 2: Check if we're in backend directory (development)
+	const backendMigrations = path.join(cwd, 'backend', 'migrations')
+	if (fs.existsSync(backendMigrations)) {
+		return backendMigrations
+	}
+	
+	// Strategy 3: Use __dirname if available (compiled code)
 	try {
-		// Try using __dirname first (works in CommonJS/compiled JS)
 		if (typeof __dirname !== 'undefined') {
-			return path.join(__dirname, '../../migrations')
+			const dirnameMigrations = path.join(__dirname, '../../migrations')
+			if (fs.existsSync(dirnameMigrations)) {
+				return dirnameMigrations
+			}
 		}
 	} catch {
-		// __dirname not available (ES modules)
+		// __dirname not available
 	}
-	// Fallback to process.cwd() + migrations path
-	return path.join(process.cwd(), 'migrations')
+	
+	// Fallback: return expected path (will log warning if not found)
+	return cwdMigrations
 })()
 
 /**
