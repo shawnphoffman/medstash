@@ -1493,8 +1493,8 @@ export default function SettingsPage() {
 					{/* Create New Type */}
 					<div className="p-4 space-y-3 border rounded-lg">
 						<Label>Create New Receipt Type</Label>
-						<div className="flex flex-col gap-2 sm:flex-row">
-							<div className="flex flex-row gap-2">
+						<div className="flex flex-col w-full gap-2 sm:flex-row">
+							<div className="flex flex-row flex-1 gap-2">
 								<Input
 									placeholder="Type name (e.g., Doctor Visit)"
 									value={newReceiptType}
@@ -1505,7 +1505,7 @@ export default function SettingsPage() {
 											handleAddReceiptType(e)
 										}
 									}}
-									className="flex-1"
+									className="flex-1 w-full"
 								/>
 								<Select
 									value={newReceiptTypeGroupId?.toString() || 'ungrouped'}

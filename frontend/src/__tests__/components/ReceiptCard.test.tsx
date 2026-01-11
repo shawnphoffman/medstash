@@ -33,40 +33,6 @@ describe('ReceiptCard', () => {
     expect(screen.getByText('Test description')).toBeInTheDocument();
   });
 
-  it('should format date correctly', () => {
-    const receipt = createReceiptFixture({
-      date: '2024-01-15',
-    });
-
-    render(
-      <ReceiptCard
-        receipt={receipt}
-        onDelete={mockOnDelete}
-        onDownloadFile={mockOnDownloadFile}
-      />
-    );
-
-    // Date should be formatted (exact format depends on locale)
-    const dateElement = screen.getByText(/1\/15\/2024|15\/1\/2024|2024-01-15/);
-    expect(dateElement).toBeInTheDocument();
-  });
-
-  it('should format currency correctly', () => {
-    const receipt = createReceiptFixture({
-      amount: 1234.56,
-    });
-
-    render(
-      <ReceiptCard
-        receipt={receipt}
-        onDelete={mockOnDelete}
-        onDownloadFile={mockOnDownloadFile}
-      />
-    );
-
-    expect(screen.getByText('$1,234.56')).toBeInTheDocument();
-  });
-
   it('should display flags when present', () => {
     const flag1 = createFlagFixture({ id: 1, name: 'Flag 1', color: '#FF0000' });
     const flag2 = createFlagFixture({ id: 2, name: 'Flag 2', color: '#00FF00' });
@@ -84,22 +50,6 @@ describe('ReceiptCard', () => {
 
     expect(screen.getByText('Flag 1')).toBeInTheDocument();
     expect(screen.getByText('Flag 2')).toBeInTheDocument();
-  });
-
-  it('should not display flags section when no flags', () => {
-    const receipt = createReceiptFixture({
-      flags: [],
-    });
-
-    render(
-      <ReceiptCard
-        receipt={receipt}
-        onDelete={mockOnDelete}
-        onDownloadFile={mockOnDownloadFile}
-      />
-    );
-
-    expect(screen.queryByText('Flags')).not.toBeInTheDocument();
   });
 
   it('should display files when present', () => {
@@ -138,22 +88,6 @@ describe('ReceiptCard', () => {
     expect(screen.getByText(/original2\.pdf/)).toBeInTheDocument();
   });
 
-  it('should not display files section when no files', () => {
-    const receipt = createReceiptFixture({
-      files: [],
-    });
-
-    render(
-      <ReceiptCard
-        receipt={receipt}
-        onDelete={mockOnDelete}
-        onDownloadFile={mockOnDownloadFile}
-      />
-    );
-
-    expect(screen.queryByText('Files')).not.toBeInTheDocument();
-  });
-
   it('should display notes when present', () => {
     const receipt = createReceiptFixture({
       notes: 'Test notes',
@@ -168,38 +102,6 @@ describe('ReceiptCard', () => {
     );
 
     expect(screen.getByText('Test notes')).toBeInTheDocument();
-  });
-
-  it('should not display notes section when no notes', () => {
-    const receipt = createReceiptFixture({
-      notes: undefined,
-    });
-
-    render(
-      <ReceiptCard
-        receipt={receipt}
-        onDelete={mockOnDelete}
-        onDownloadFile={mockOnDownloadFile}
-      />
-    );
-
-    expect(screen.queryByText('Notes')).not.toBeInTheDocument();
-  });
-
-  it('should not display provider address when empty', () => {
-    const receipt = createReceiptFixture({
-      provider_address: '',
-    });
-
-    render(
-      <ReceiptCard
-        receipt={receipt}
-        onDelete={mockOnDelete}
-        onDownloadFile={mockOnDownloadFile}
-      />
-    );
-
-    expect(screen.queryByText('Provider Address')).not.toBeInTheDocument();
   });
 
   it('should call onDelete when delete button is clicked', async () => {

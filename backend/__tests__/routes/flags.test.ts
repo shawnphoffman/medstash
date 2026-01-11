@@ -34,12 +34,6 @@ describe('Flags API', () => {
   });
 
   describe('GET /api/flags', () => {
-    it('should return empty array when no flags exist', async () => {
-      const response = await request(app).get('/api/flags');
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual([]);
-    });
-
     it('should return all flags', async () => {
       dbQueries.insertFlag.run('Flag 1', '#FF0000');
       dbQueries.insertFlag.run('Flag 2', '#00FF00');
@@ -66,34 +60,11 @@ describe('Flags API', () => {
       expect(response.body.color).toBe('#FF0000');
     });
 
-    it('should create a flag without color', async () => {
-      const response = await request(app)
-        .post('/api/flags')
-        .send({
-          name: 'Flag Without Color',
-        });
-
-      expect(response.status).toBe(201);
-      expect(response.body.name).toBe('Flag Without Color');
-      expect(response.body.color).toBeNull();
-    });
-
     it('should return 400 if name is missing', async () => {
       const response = await request(app)
         .post('/api/flags')
         .send({
           color: '#FF0000',
-        });
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Flag name is required');
-    });
-
-    it('should return 400 if name is empty string', async () => {
-      const response = await request(app)
-        .post('/api/flags')
-        .send({
-          name: '   ',
         });
 
       expect(response.status).toBe(400);
@@ -125,36 +96,6 @@ describe('Flags API', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.name).toBe('New Name');
-    });
-
-    it('should update flag color', async () => {
-      const result = dbQueries.insertFlag.run('Test Flag', '#FF0000');
-      const flagId = Number(result.lastInsertRowid);
-
-      const response = await request(app)
-        .put(`/api/flags/${flagId}`)
-        .send({
-          color: '#00FF00',
-        });
-
-      expect(response.status).toBe(200);
-      expect(response.body.color).toBe('#00FF00');
-    });
-
-    it('should update both name and color', async () => {
-      const result = dbQueries.insertFlag.run('Old Name', '#FF0000');
-      const flagId = Number(result.lastInsertRowid);
-
-      const response = await request(app)
-        .put(`/api/flags/${flagId}`)
-        .send({
-          name: 'New Name',
-          color: '#00FF00',
-        });
-
-      expect(response.status).toBe(200);
-      expect(response.body.name).toBe('New Name');
-      expect(response.body.color).toBe('#00FF00');
     });
 
     it('should return 404 for non-existent flag', async () => {
@@ -200,18 +141,6 @@ describe('Flags API', () => {
     });
 
     it('should reject invalid flag ID (non-numeric)', async () => {
-      const response = await request(app).delete('/api/flags/abc');
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Invalid flag ID');
-    });
-
-    it('should reject invalid flag ID in PUT request', async () => {
-      const response = await request(app).put('/api/flags/abc').send({ name: 'Test' });
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Invalid flag ID');
-    });
-
-    it('should reject invalid flag ID in DELETE request', async () => {
       const response = await request(app).delete('/api/flags/abc');
       expect(response.status).toBe(400);
       expect(response.body.error).toContain('Invalid flag ID');

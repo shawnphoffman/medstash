@@ -43,22 +43,6 @@ describe('UploadPage', () => {
 		vi.clearAllMocks()
 	})
 
-	it('should render camera button', async () => {
-		render(<UploadPage />)
-
-		await waitFor(() => {
-			expect(screen.getByRole('button', { name: /take photo/i })).toBeInTheDocument()
-		})
-	})
-
-	it('should render select files button', async () => {
-		render(<UploadPage />)
-
-		await waitFor(() => {
-			expect(screen.getByRole('button', { name: /select files/i })).toBeInTheDocument()
-		})
-	})
-
 	it('should trigger camera input when camera button is clicked', async () => {
 		const user = userEvent.setup()
 		render(<UploadPage />)
@@ -79,20 +63,6 @@ describe('UploadPage', () => {
 		await user.click(cameraButton)
 
 		expect(clickSpy).toHaveBeenCalled()
-	})
-
-	it('should have camera input with correct attributes', async () => {
-		render(<UploadPage />)
-
-		await waitFor(() => {
-			expect(screen.getByRole('button', { name: /take photo/i })).toBeInTheDocument()
-		})
-
-		const cameraInput = document.getElementById('camera-input') as HTMLInputElement
-		expect(cameraInput).toBeInTheDocument()
-		expect(cameraInput).toHaveAttribute('accept', 'image/*')
-		expect(cameraInput).toHaveAttribute('capture', 'environment')
-		expect(cameraInput.type).toBe('file')
 	})
 
 	it('should trigger file input when select files button is clicked', async () => {

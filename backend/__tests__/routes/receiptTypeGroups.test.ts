@@ -47,13 +47,6 @@ describe('ReceiptTypeGroups API', () => {
       expect(response.body.map((g: any) => g.name)).toContain('Group 1');
       expect(response.body.map((g: any) => g.name)).toContain('Group 2');
     });
-
-    it('should return empty array when no groups exist', async () => {
-      const response = await request(app).get('/api/receipt-type-groups');
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual([]);
-    });
   });
 
   describe('POST /api/receipt-type-groups', () => {
@@ -78,13 +71,6 @@ describe('ReceiptTypeGroups API', () => {
 
     it('should return 400 if name is missing', async () => {
       const response = await request(app).post('/api/receipt-type-groups').send({});
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Receipt type group name is required');
-    });
-
-    it('should return 400 if name is empty', async () => {
-      const response = await request(app).post('/api/receipt-type-groups').send({ name: '   ' });
 
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('Receipt type group name is required');

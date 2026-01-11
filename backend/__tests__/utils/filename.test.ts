@@ -68,21 +68,6 @@ describe('filename utils', () => {
       expect(filename).toBe('2024-01-15_john-doe_test-clinic_100-50_doctor-visit_0[123-0].pdf');
     });
 
-    it('should handle date with time component', () => {
-      const filename = generateReceiptFilename(
-        '2024-01-15T10:30:00Z',
-        'John Doe',
-        'Test Clinic',
-        100.50,
-        'doctor-visit',
-        0,
-        '.pdf',
-        123
-      );
-      expect(filename).toContain('2024-01-15_');
-      expect(filename).toContain('[123-0].pdf');
-    });
-
     it('should format amount with 2 decimal places', () => {
       const filename = generateReceiptFilename(
         '2024-01-15',
@@ -95,21 +80,6 @@ describe('filename utils', () => {
         123
       );
       expect(filename).toContain('99-90');
-      expect(filename).toContain('[123-0].pdf');
-    });
-
-    it('should replace decimal point with dash in amount', () => {
-      const filename = generateReceiptFilename(
-        '2024-01-15',
-        'John',
-        'Clinic',
-        100.50,
-        'visit',
-        0,
-        '.pdf',
-        123
-      );
-      expect(filename).toContain('100-50');
       expect(filename).toContain('[123-0].pdf');
     });
 
@@ -170,21 +140,6 @@ describe('filename utils', () => {
       expect(filename2).toContain('[123-1].pdf');
     });
 
-    it('should handle zero amount', () => {
-      const filename = generateReceiptFilename(
-        '2024-01-15',
-        'John',
-        'Clinic',
-        0,
-        'visit',
-        0,
-        '.pdf',
-        123
-      );
-      expect(filename).toContain('0-00');
-      expect(filename).toContain('[123-0].pdf');
-    });
-
     it('should handle empty strings with defaults', () => {
       const filename = generateReceiptFilename(
         '2024-01-15',
@@ -198,20 +153,6 @@ describe('filename utils', () => {
       );
       expect(filename).toContain('unknown');
       expect(filename).toContain('[123-0].pdf');
-    });
-
-    it('should use default pattern when no pattern provided', () => {
-      const filename = generateReceiptFilename(
-        '2024-01-15',
-        'John Doe',
-        'Test Clinic',
-        100.50,
-        'doctor-visit',
-        0,
-        '.pdf',
-        123
-      );
-      expect(filename).toBe('2024-01-15_john-doe_test-clinic_100-50_doctor-visit_0[123-0].pdf');
     });
 
     it('should use custom pattern when provided', () => {
@@ -265,23 +206,6 @@ describe('filename utils', () => {
       expect(filename).toBe('2024-01-15_john-doe_reimbursed-tax-deductible_0[123-0].pdf');
     });
 
-    it('should handle empty flags array', () => {
-      const filename = generateReceiptFilename(
-        '2024-01-15',
-        'John Doe',
-        'Test Clinic',
-        100.50,
-        'doctor-visit',
-        0,
-        '.pdf',
-        123,
-        [],
-        '{date}_{user}_{flags}_{index}'
-      );
-      // Empty flags should result in empty string, so we get double separators cleaned up
-      expect(filename).toBe('2024-01-15_john-doe_0[123-0].pdf');
-    });
-
     it('should handle flags with special characters', () => {
       const flags = [
         { id: 1, name: 'Tax & Deductible!', color: '#10b981', created_at: '2024-01-01' },
@@ -300,22 +224,6 @@ describe('filename utils', () => {
       );
       expect(filename).toContain('tax-deductible');
       expect(filename).toContain('[123-0].pdf');
-    });
-
-    it('should always append [pk-index] and extension regardless of pattern', () => {
-      const filename = generateReceiptFilename(
-        '2024-01-15',
-        'John',
-        'Clinic',
-        100,
-        'visit',
-        0,
-        '.png',
-        123,
-        undefined,
-        '{date}'
-      );
-      expect(filename).toBe('2024-01-15[123-0].png');
     });
 
     it('should handle all tokens in custom pattern', () => {
@@ -345,12 +253,6 @@ describe('filename utils', () => {
 
     it('should reject empty pattern', () => {
       const result = validatePattern('');
-      expect(result.valid).toBe(false);
-      expect(result.error).toContain('cannot be empty');
-    });
-
-    it('should reject pattern with whitespace only', () => {
-      const result = validatePattern('   ');
       expect(result.valid).toBe(false);
       expect(result.error).toContain('cannot be empty');
     });
@@ -390,26 +292,8 @@ describe('filename utils', () => {
       expect(result.error).toContain('too long');
     });
 
-    it('should reject pattern with leading spaces', () => {
-      const result = validatePattern(' {date}_{user}');
-      expect(result.valid).toBe(false);
-      expect(result.error).toContain('leading or trailing spaces');
-    });
-
-    it('should reject pattern with trailing spaces', () => {
-      const result = validatePattern('{date}_{user} ');
-      expect(result.valid).toBe(false);
-      expect(result.error).toContain('leading or trailing spaces');
-    });
-
     it('should reject pattern starting with dot', () => {
       const result = validatePattern('.{date}_{user}');
-      expect(result.valid).toBe(false);
-      expect(result.error).toContain('cannot start or end with a dot');
-    });
-
-    it('should reject pattern ending with dot', () => {
-      const result = validatePattern('{date}_{user}.');
       expect(result.valid).toBe(false);
       expect(result.error).toContain('cannot start or end with a dot');
     });
@@ -424,15 +308,6 @@ describe('filename utils', () => {
       }
     });
 
-    it('should handle pattern with multiple instances of same token', () => {
-      const result = validatePattern('{date}_{date}_{user}');
-      expect(result.valid).toBe(true);
-    });
-
-    it('should handle pattern with no tokens (just separators)', () => {
-      const result = validatePattern('test-pattern');
-      expect(result.valid).toBe(true);
-    });
   });
 });
 

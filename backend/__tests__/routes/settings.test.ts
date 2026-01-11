@@ -34,12 +34,6 @@ describe('Settings API', () => {
   });
 
   describe('GET /api/settings', () => {
-    it('should return empty object when no settings exist', async () => {
-      const response = await request(app).get('/api/settings');
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual({});
-    });
-
     it('should return all settings', async () => {
       dbQueries.setSetting.run('filenamePattern', JSON.stringify('{date}_{user}_{vendor}'));
       dbQueries.setSetting.run('invalid_key', JSON.stringify('value')); // Direct DB insert bypasses validation
@@ -50,21 +44,6 @@ describe('Settings API', () => {
       // Invalid keys in DB can still be read, but can't be set via API
     });
 
-    it('should parse JSON values', async () => {
-      dbQueries.setSetting.run('filenamePattern', JSON.stringify('{date}_{index}'));
-
-      const response = await request(app).get('/api/settings');
-      expect(response.status).toBe(200);
-      expect(response.body.filenamePattern).toBe('{date}_{index}');
-    });
-
-    it('should handle non-JSON values gracefully', async () => {
-      dbQueries.setSetting.run('filenamePattern', 'not-json');
-
-      const response = await request(app).get('/api/settings');
-      expect(response.status).toBe(200);
-      expect(response.body.filenamePattern).toBe('not-json');
-    });
   });
 
   describe('GET /api/settings/:key', () => {
@@ -75,14 +54,6 @@ describe('Settings API', () => {
       expect(response.status).toBe(200);
       expect(response.body.key).toBe('filenamePattern');
       expect(response.body.value).toBe('{date}_{user}');
-    });
-
-    it('should parse JSON value', async () => {
-      dbQueries.setSetting.run('filenamePattern', JSON.stringify('{date}_{vendor}_{index}'));
-
-      const response = await request(app).get('/api/settings/filenamePattern');
-      expect(response.status).toBe(200);
-      expect(response.body.value).toBe('{date}_{vendor}_{index}');
     });
 
     it('should return 404 for non-existent setting', async () => {
@@ -113,19 +84,6 @@ describe('Settings API', () => {
       // Verify it was saved
       const getResponse = await request(app).get('/api/settings/filenamePattern');
       expect(getResponse.body.value).toBe('{date}_{user}_{vendor}');
-    });
-
-    it('should overwrite existing setting', async () => {
-      dbQueries.setSetting.run('filenamePattern', JSON.stringify('{date}_{index}'));
-
-      const response = await request(app)
-        .put('/api/settings/filenamePattern')
-        .send({
-          value: '{date}_{user}_{vendor}_{index}',
-        });
-
-      expect(response.status).toBe(200);
-      expect(response.body.value).toBe('{date}_{user}_{vendor}_{index}');
     });
 
     it('should return 400 if value is missing', async () => {

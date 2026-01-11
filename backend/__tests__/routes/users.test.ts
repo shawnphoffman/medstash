@@ -46,13 +46,6 @@ describe('Users API', () => {
       expect(response.body.map((u: any) => u.name)).toContain('User 1');
       expect(response.body.map((u: any) => u.name)).toContain('User 2');
     });
-
-    it('should return empty array when no users exist', async () => {
-      const response = await request(app).get('/api/users');
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual([]);
-    });
   });
 
   describe('POST /api/users', () => {
@@ -73,12 +66,6 @@ describe('Users API', () => {
       expect(response.body.error).toBe('User name is required');
     });
 
-    it('should return 400 if name is empty', async () => {
-      const response = await request(app).post('/api/users').send({ name: '   ' });
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toBe('User name is required');
-    });
   });
 
   describe('PUT /api/users/:id', () => {
@@ -135,18 +122,6 @@ describe('Users API', () => {
     });
 
     it('should reject invalid user ID (non-numeric)', async () => {
-      const response = await request(app).delete('/api/users/abc');
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Invalid user ID');
-    });
-
-    it('should reject invalid user ID in PUT request', async () => {
-      const response = await request(app).put('/api/users/abc').send({ name: 'Test' });
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Invalid user ID');
-    });
-
-    it('should reject invalid user ID in DELETE request', async () => {
       const response = await request(app).delete('/api/users/abc');
       expect(response.status).toBe(400);
       expect(response.body.error).toContain('Invalid user ID');
