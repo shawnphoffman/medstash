@@ -8,6 +8,7 @@ import receiptTypeGroupsRouter from '../../src/routes/receiptTypeGroups';
 import settingsRouter from '../../src/routes/settings';
 import exportRouter from '../../src/routes/export';
 import filenamesRouter from '../../src/routes/filenames';
+import watchRouter from '../../src/routes/watch';
 
 /**
  * Create a test Express app instance
@@ -29,6 +30,7 @@ export function createTestApp(): express.Application {
   app.use('/api/settings', settingsRouter);
   app.use('/api/export', exportRouter);
   app.use('/api/filenames', filenamesRouter);
+  app.use('/api/watch', watchRouter);
 
   // Health check
   app.get('/health', (req, res) => {

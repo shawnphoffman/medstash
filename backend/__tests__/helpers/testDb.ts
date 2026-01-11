@@ -168,6 +168,7 @@ export function createTestDbQueries(db: DatabaseType) {
     deleteFilesByReceiptId: db.prepare('DELETE FROM receipt_files WHERE receipt_id = ?'),
     getAllFlags: db.prepare('SELECT * FROM flags ORDER BY name'),
     getFlagById: db.prepare('SELECT * FROM flags WHERE id = ?'),
+    getFlagByName: db.prepare('SELECT * FROM flags WHERE name = ?'),
     insertFlag: db.prepare('INSERT INTO flags (name, color) VALUES (?, ?)'),
     updateFlag: db.prepare('UPDATE flags SET name = ?, color = ? WHERE id = ?'),
     deleteFlag: db.prepare('DELETE FROM flags WHERE id = ?'),
