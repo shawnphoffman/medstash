@@ -177,6 +177,9 @@ export default function ReceiptsPage() {
 	// Determine checked state for select all checkbox (supports indeterminate)
 	const selectAllChecked = someSelected && !allSelected ? 'indeterminate' : allSelected
 
+	// Show ID column only in development
+	const isDevelopment = import.meta.env.DEV
+
 	const handleBulkEditSuccess = () => {
 		// Refresh receipts list
 		loadData()
@@ -211,7 +214,7 @@ export default function ReceiptsPage() {
 			{/* Filters */}
 			<Card className="border-0">
 				<CardContent className="p-0">
-					<div className="flex gap-4">
+					<div className="flex flex-col gap-4 sm:flex-row">
 						<div className="flex-1">
 							<div className="relative">
 								<Search className="absolute transform -translate-y-1/2 size-4 left-3 top-1/2 text-muted-foreground" />
@@ -227,14 +230,14 @@ export default function ReceiptsPage() {
 							value={selectedFlagId?.toString() || 'all'}
 							onValueChange={value => setSelectedFlagId(value === 'all' ? undefined : parseInt(value))}
 						>
-							<SelectTrigger className="w-48">
-								<SelectValue placeholder="All Flags" />
+							<SelectTrigger className="w-full sm:w-fit">
+								<SelectValue placeholder="No Flag Filter" />
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="all">
 									<div className="flex items-center gap-2">
 										<FlagIcon className="size-4 text-muted-foreground" />
-										<span>All Flags</span>
+										<span>No Filter (All/None)</span>
 									</div>
 								</SelectItem>
 								{flags.map(flag => (
@@ -270,6 +273,7 @@ export default function ReceiptsPage() {
 										<th className="w-12 px-4 py-3 text-sm font-medium text-left">
 											<Checkbox checked={selectAllChecked} onCheckedChange={handleSelectAll} onClick={e => e.stopPropagation()} />
 										</th>
+										{isDevelopment && <th className="px-4 py-3 text-sm font-medium text-left text-muted-foreground">ID</th>}
 										<th
 											className="px-4 py-3 text-sm font-medium text-left transition-colors cursor-pointer hover:bg-muted"
 											onClick={e => {
@@ -380,6 +384,7 @@ export default function ReceiptsPage() {
 													onClick={e => e.stopPropagation()}
 												/>
 											</td>
+											{isDevelopment && <td className="px-4 py-3 font-mono text-sm text-muted-foreground">{receipt.id}</td>}
 											<td className="px-4 py-3 text-sm">{formatDate(receipt.date)}</td>
 											<td className="px-4 py-3 text-sm font-medium">{receipt.vendor}</td>
 											<td className="px-4 py-3 text-sm">{receipt.type}</td>
