@@ -1750,7 +1750,13 @@ export default function SettingsPage() {
 									</li>
 								</ul>
 								<p className="mt-2 text-muted-foreground">
-									<strong>Note:</strong> All filenames automatically end with <code className="bg-background px-1 py-0.5 rounded">[pk-index]</code> before the extension to prevent filename collisions, where <code className="bg-background px-1 py-0.5 rounded">pk</code> is the receipt ID and <code className="bg-background px-1 py-0.5 rounded">index</code> is the file order. For example: <code className="bg-background px-1 py-0.5 rounded">pattern[123-0].pdf</code> where <code className="bg-background px-1 py-0.5 rounded">123</code> is the receipt ID and <code className="bg-background px-1 py-0.5 rounded">0</code> is the file order.
+									<strong>Note:</strong> All filenames automatically end with{' '}
+									<code className="bg-background px-1 py-0.5 rounded">[pk-index]</code> before the extension to prevent filename collisions,
+									where <code className="bg-background px-1 py-0.5 rounded">pk</code> is the receipt ID and{' '}
+									<code className="bg-background px-1 py-0.5 rounded">index</code> is the file order. For example:{' '}
+									<code className="bg-background px-1 py-0.5 rounded">pattern[123-0].pdf</code> where{' '}
+									<code className="bg-background px-1 py-0.5 rounded">123</code> is the receipt ID and{' '}
+									<code className="bg-background px-1 py-0.5 rounded">0</code> is the file order.
 								</p>
 								<p className="mt-1 text-muted-foreground">File extension is automatically appended and cannot be customized.</p>
 							</div>
