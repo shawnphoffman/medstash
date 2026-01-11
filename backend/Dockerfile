@@ -40,6 +40,9 @@ RUN apk del .build-deps && rm -rf /var/cache/apk/*
 # Copy built application
 COPY --from=builder /app/dist ./dist
 
+# Copy migrations directory (needed at runtime)
+COPY migrations ./migrations
+
 # Expose port
 EXPOSE 3001
 

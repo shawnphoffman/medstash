@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import type { Database as DatabaseType } from 'better-sqlite3';
 import { dbQueries } from '../../src/db';
+import { runMigrations } from '../../src/services/migrationService';
 
 let testDb: DatabaseType | null = null;
 
@@ -11,88 +12,8 @@ export function setupTestDb(): DatabaseType {
   testDb = new Database(':memory:');
   testDb.pragma('foreign_keys = ON');
 
-  // Initialize schema (same as production)
-  testDb.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS receipt_type_groups (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      display_order INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS receipt_types (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      group_id INTEGER,
-      display_order INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS receipts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      receipt_type_id INTEGER NOT NULL,
-      amount REAL NOT NULL,
-      vendor TEXT NOT NULL,
-      provider_address TEXT NOT NULL,
-      description TEXT NOT NULL,
-      date TEXT NOT NULL,
-      notes TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id),
-      FOREIGN KEY (receipt_type_id) REFERENCES receipt_types(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS receipt_files (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      receipt_id INTEGER NOT NULL,
-      filename TEXT NOT NULL,
-      original_filename TEXT NOT NULL,
-      file_order INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      is_optimized INTEGER NOT NULL DEFAULT 0,
-      optimized_at TEXT,
-      FOREIGN KEY (receipt_id) REFERENCES receipts(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS flags (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      color TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS receipt_flags (
-      receipt_id INTEGER NOT NULL,
-      flag_id INTEGER NOT NULL,
-      PRIMARY KEY (receipt_id, flag_id),
-      FOREIGN KEY (receipt_id) REFERENCES receipts(id) ON DELETE CASCADE,
-      FOREIGN KEY (flag_id) REFERENCES flags(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_receipts_user_id ON receipts(user_id);
-    CREATE INDEX IF NOT EXISTS idx_receipts_receipt_type_id ON receipts(receipt_type_id);
-    CREATE INDEX IF NOT EXISTS idx_receipts_date ON receipts(date);
-    CREATE INDEX IF NOT EXISTS idx_receipt_files_receipt_id ON receipt_files(receipt_id);
-    CREATE INDEX IF NOT EXISTS idx_receipt_flags_receipt_id ON receipt_flags(receipt_id);
-    CREATE INDEX IF NOT EXISTS idx_receipt_flags_flag_id ON receipt_flags(flag_id);
-    CREATE INDEX IF NOT EXISTS idx_users_name ON users(name);
-    CREATE INDEX IF NOT EXISTS idx_receipt_types_name ON receipt_types(name);
-    CREATE INDEX IF NOT EXISTS idx_receipt_types_group_id ON receipt_types(group_id);
-    CREATE INDEX IF NOT EXISTS idx_receipt_type_groups_display_order ON receipt_type_groups(display_order);
-  `);
+  // Run migrations to set up schema (same as production)
+  runMigrations(testDb);
 
   return testDb;
 }
