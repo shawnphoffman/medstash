@@ -1,7 +1,6 @@
 import express from 'express';
 import {
   getAllReceiptTypeGroups,
-  getReceiptTypeGroupById,
   createReceiptTypeGroup,
   updateReceiptTypeGroup,
   deleteReceiptTypeGroup,
@@ -20,24 +19,6 @@ router.get('/', (req, res) => {
   } catch (error) {
     logger.error('Error fetching receipt type groups:', error);
     res.status(500).json({ error: 'Failed to fetch receipt type groups' });
-  }
-});
-
-// GET /api/receipt-type-groups/:id - Get group by ID
-router.get('/:id', (req, res) => {
-  try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'Invalid receipt type group ID: must be a number' });
-    }
-    const group = getReceiptTypeGroupById(id);
-    if (!group) {
-      return res.status(404).json({ error: 'Receipt type group not found' });
-    }
-    res.json(group);
-  } catch (error) {
-    logger.error('Error fetching receipt type group:', error);
-    res.status(500).json({ error: 'Failed to fetch receipt type group' });
   }
 });
 

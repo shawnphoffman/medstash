@@ -8,7 +8,6 @@ import {
 	getReceiptFilePath,
 	fileExists,
 	deleteReceiptFile as deleteFile,
-	restoreFileAssociations,
 	replaceReceiptFile,
 	migrateFilesToDateStructure,
 } from '../services/fileService'
@@ -763,20 +762,6 @@ router.post('/bulk-update', async (req, res) => {
 	} catch (error: any) {
 		logger.error('Error in bulk update:', error)
 		res.status(500).json({ error: error.message || 'Failed to update receipts' })
-	}
-})
-
-// POST /api/receipts/restore-files - Restore file associations from filesystem
-router.post('/restore-files', async (req, res) => {
-	try {
-		const results = await restoreFileAssociations()
-		res.json({
-			message: 'File associations restored',
-			...results,
-		})
-	} catch (error) {
-		logger.error('Error restoring file associations:', error)
-		res.status(500).json({ error: 'Failed to restore file associations' })
 	}
 })
 

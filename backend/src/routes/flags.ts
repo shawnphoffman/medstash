@@ -1,7 +1,6 @@
 import express from 'express';
 import {
   getAllFlags,
-  getFlagById,
   createFlag,
   updateFlag,
   deleteFlag,
@@ -20,24 +19,6 @@ router.get('/', (req, res) => {
   } catch (error) {
     logger.error('Error fetching flags:', error);
     res.status(500).json({ error: 'Failed to fetch flags' });
-  }
-});
-
-// GET /api/flags/:id - Get flag by ID
-router.get('/:id', (req, res) => {
-  try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'Invalid flag ID: must be a number' });
-    }
-    const flag = getFlagById(id);
-    if (!flag) {
-      return res.status(404).json({ error: 'Flag not found' });
-    }
-    res.json(flag);
-  } catch (error) {
-    logger.error('Error fetching flag:', error);
-    res.status(500).json({ error: 'Failed to fetch flag' });
   }
 });
 
