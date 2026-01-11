@@ -18,7 +18,6 @@ export default function ReceiptsPage() {
 	const navigate = useNavigate()
 	const [receipts, setReceipts] = useState<Receipt[]>([])
 	const [flags, setFlags] = useState<Flag[]>([])
-	const [loading, setLoading] = useState(true)
 	const [searchTerm, setSearchTerm] = useState('')
 	const [selectedFlagId, setSelectedFlagId] = useState<number | undefined>()
 	const [error, setError] = useState<string | null>(null)
@@ -31,11 +30,8 @@ export default function ReceiptsPage() {
 	const [autoRefreshEnabled] = useState(true)
 
 	const loadData = useCallback(
-		async (showLoading = true) => {
+		async () => {
 			try {
-				if (showLoading) {
-					setLoading(true)
-				}
 				setIsRefreshing(true)
 				const [receiptsRes, flagsRes] = await Promise.all([receiptsApi.getAll(selectedFlagId), flagsApi.getAll()])
 				setReceipts(receiptsRes.data)
@@ -45,21 +41,15 @@ export default function ReceiptsPage() {
 			} catch (err: any) {
 				setError(err.response?.data?.error || 'Failed to load receipts')
 			} finally {
-				if (showLoading) {
-					setLoading(false)
-				}
 				setIsRefreshing(false)
 			}
 		},
 		[selectedFlagId]
 	)
 
-	const handleRefresh = useCallback(
-		(showLoading = false) => {
-			loadData(showLoading)
-		},
-		[loadData]
-	)
+	const handleRefresh = useCallback(() => {
+		loadData()
+	}, [loadData])
 
 	useEffect(() => {
 		loadData()
@@ -70,7 +60,7 @@ export default function ReceiptsPage() {
 		if (!autoRefreshEnabled) return
 
 		const interval = setInterval(() => {
-			loadData(false) // Silent refresh (no loading state)
+			loadData()
 		}, 120000) // 2 minutes (120 seconds)
 
 		return () => clearInterval(interval)
@@ -212,10 +202,6 @@ export default function ReceiptsPage() {
 		setSelectedReceiptIds(new Set())
 	}
 
-	if (loading) {
-		return <div className="py-8 text-center">Loading receipts...</div>
-	}
-
 	return (
 		<div className="space-y-6">
 			<div className="flex items-center justify-between">
@@ -233,7 +219,7 @@ export default function ReceiptsPage() {
 							Bulk Edit ({selectedReceiptIds.size})
 						</Button>
 					)}
-					<Button onClick={() => handleRefresh(true)} variant="outline" disabled={isRefreshing} className="relative">
+					<Button onClick={handleRefresh} variant="outline" disabled={isRefreshing} className="relative">
 						<RefreshCw className={cn('mr-1 size-4', isRefreshing && 'animate-spin')} />
 						Refresh
 					</Button>
@@ -299,7 +285,7 @@ export default function ReceiptsPage() {
 			) : (
 				<Card>
 					<CardContent className="p-0">
-						<div className="overflow-x-auto">
+						<div className={cn("overflow-x-auto transition-opacity duration-200", isRefreshing && "opacity-75")}>
 							<table className="w-full">
 								<thead>
 									<tr className="border-b bg-muted/50">
