@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+
+# Development files
+.env
+.env.local
+*.log
+
+# Test files
+__tests__/
+*.test.ts
+*.test.tsx
+vitest.config.*
+coverage
+
+# Build artifacts
+dist/
+node_modules
+build/
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+
+# Public assets (will be copied separately if needed)
+public/

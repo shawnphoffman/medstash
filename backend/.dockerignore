@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+
+# Development files
+.env
+.env.local
+*.log
+
+# Test files
+__tests__/
+*.test.ts
+vitest.config.*
+coverage
+
+# Build artifacts
+dist/
+node_modules
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store

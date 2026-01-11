@@ -11,8 +11,8 @@ COPY frontend/tailwind.config.js ./
 COPY frontend/postcss.config.js ./
 COPY frontend/components.json ./
 
-# Install frontend dependencies
-RUN npm install
+# Install frontend dependencies (use npm ci for faster, more reliable installs)
+RUN npm ci && npm cache clean --force
 
 # Copy frontend source code
 COPY frontend/src ./src
@@ -26,12 +26,20 @@ FROM node:20-alpine AS backend-builder
 
 WORKDIR /app/backend
 
+# Install build dependencies needed for better-sqlite3 compilation
+RUN apk add --no-cache --virtual .build-deps \
+    python3 \
+    make \
+    g++
+
 # Copy backend package files
 COPY backend/package*.json ./
 COPY backend/tsconfig.json ./
 
-# Install backend dependencies
-RUN npm install
+# Install ALL dependencies (including dev dependencies for TypeScript build)
+# Use npm ci if package-lock.json exists, otherwise use npm install
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi && \
+    npm cache clean --force
 
 # Copy backend source code
 COPY backend/src ./src
@@ -39,7 +47,13 @@ COPY backend/src ./src
 # Build backend TypeScript
 RUN npm run build
 
-# Stage 3: Runtime
+# Remove dev dependencies (keeps production deps with compiled native modules)
+RUN npm prune --production && \
+    npm cache clean --force && \
+    apk del .build-deps && \
+    rm -rf /var/cache/apk/*
+
+# Stage 3: Runtime - optimized production image
 FROM node:20-alpine
 
 # Set production as default (can be overridden in docker-compose)
@@ -47,13 +61,14 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
-# Copy backend package files and install production dependencies only
-COPY backend/package*.json ./
-RUN npm install --production
+# Copy production node_modules from builder (already compiled, no build tools)
+COPY --from=backend-builder /app/backend/node_modules ./node_modules
 
-# Copy built backend
+# Copy built backend (only dist, not src)
 COPY --from=backend-builder /app/backend/dist ./dist
-COPY --from=backend-builder /app/backend/src ./src
+
+# Copy package.json for runtime reference (needed by some modules)
+COPY --from=backend-builder /app/backend/package.json ./package.json
 
 # Copy built frontend static files
 COPY --from=frontend-builder /app/frontend/dist ./public

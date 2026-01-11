@@ -10,8 +10,8 @@ COPY tailwind.config.js ./
 COPY postcss.config.js ./
 COPY components.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies (use npm ci for faster, more reliable installs)
+RUN npm ci && npm cache clean --force
 
 # Copy source code
 COPY src ./src
@@ -23,8 +23,12 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
+# Copy built files
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Remove default nginx files we don't need
+RUN rm -rf /usr/share/nginx/html/index.html.bak /usr/share/nginx/html/50x.html || true
 
 EXPOSE 80
 
