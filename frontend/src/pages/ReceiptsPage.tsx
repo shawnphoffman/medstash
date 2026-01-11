@@ -190,9 +190,7 @@ export default function ReceiptsPage() {
 			<div className="flex flex-col justify-between gap-2 sm:items-center sm:flex-row">
 				<div>
 					<h2 className="text-3xl font-bold">Receipts</h2>
-					<p className="text-muted-foreground">
-						Manage your medical receipts ({receipts.length} total)
-					</p>
+					<p className="text-muted-foreground">Manage your medical receipts ({receipts.length} total)</p>
 				</div>
 				<div className="flex justify-end gap-2">
 					{selectedReceiptIds.size > 0 && (
