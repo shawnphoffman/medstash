@@ -238,8 +238,7 @@ describe('fileService', () => {
       expect(result.filename).toContain('test-clinic');
       expect(result.filename).toContain('100-50');
       expect(result.filename).toContain('doctor-visit');
-      expect(result.filename).toContain('_0');
-      expect(result.filename).toMatch(/\.pdf$/);
+      expect(result.filename).toMatch(new RegExp(`\\[${receiptId}-0\\]\\.pdf$`));
     });
 
     it('should handle multiple files with correct ordering', async () => {
@@ -277,8 +276,8 @@ describe('fileService', () => {
         1
       );
 
-      expect(result1.filename).toContain('_0.pdf');
-      expect(result2.filename).toContain('_1.pdf');
+      expect(result1.filename).toMatch(new RegExp(`\\[${receiptId}-0\\]\\.pdf$`));
+      expect(result2.filename).toMatch(new RegExp(`\\[${receiptId}-1\\]\\.pdf$`));
     });
 
     it('should include flags in filename when provided', async () => {

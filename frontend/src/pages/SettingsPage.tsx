@@ -8,6 +8,7 @@ import {
 	receiptTypeGroupsApi,
 	exportApi,
 	watchApi,
+	receiptsApi,
 	Flag,
 	User,
 	ReceiptType,
@@ -23,7 +24,20 @@ import { FlagBadge } from '../components/FlagBadge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { useConfirmDialog } from '../components/ConfirmDialog'
 import { useAlertDialog } from '../components/AlertDialog'
-import { Plus, Trash2, Edit2, Save, X, RefreshCw, Info, Flag as FlagIcon, RotateCcw, GripVertical, Download } from 'lucide-react'
+import {
+	Plus,
+	Trash2,
+	Edit2,
+	Save,
+	X,
+	RefreshCw,
+	Info,
+	Flag as FlagIcon,
+	RotateCcw,
+	GripVertical,
+	Download,
+	FolderTree,
+} from 'lucide-react'
 import {
 	DndContext,
 	rectIntersection,
@@ -310,6 +324,7 @@ export default function SettingsPage() {
 	const [originalPattern, setOriginalPattern] = useState(DEFAULT_FILENAME_PATTERN)
 	const [patternError, setPatternError] = useState<string | null>(null)
 	const [isRenaming, setIsRenaming] = useState(false)
+	const [isOrganizing, setIsOrganizing] = useState(false)
 	const [processedFileCount, setProcessedFileCount] = useState<number | null>(null)
 	const [isLoadingProcessedCount, setIsLoadingProcessedCount] = useState(false)
 	const [isDeletingProcessed, setIsDeletingProcessed] = useState(false)
@@ -1076,6 +1091,7 @@ export default function SettingsPage() {
 		const sampleType = 'visit'
 		const sampleFlags = 'reimbursed-tax-deductible'
 		const sampleIndex = '0'
+		const sampleReceiptId = '123'
 		const sampleExt = '.pdf'
 
 		let preview = filenamePattern
@@ -1091,7 +1107,10 @@ export default function SettingsPage() {
 		preview = preview.replace(/-+/g, '-').replace(/_+/g, '_')
 		preview = preview.replace(/^[-_]+|[-_]+$/g, '')
 
-		return `${preview}${sampleExt}`
+		// Always append [{receiptId}-{index}] before extension to match backend behavior
+		const uniqueSuffix = `[${sampleReceiptId}-${sampleIndex}]`
+
+		return `${preview}${uniqueSuffix}${sampleExt}`
 	}, [filenamePattern])
 
 	// Handle pattern change
@@ -1174,6 +1193,39 @@ export default function SettingsPage() {
 		}
 	}
 
+	// Handle organize files (migrate to new directory structure)
+	const handleOrganizeFiles = async () => {
+		const confirmed = await confirm({
+			message:
+				'This will move all receipt files from the old directory structure to the new user/date structure. This action cannot be undone. Continue?',
+			variant: 'destructive',
+		})
+		if (!confirmed) {
+			return
+		}
+
+		try {
+			setIsOrganizing(true)
+			setError(null)
+			const result = await receiptsApi.migrateFiles()
+			if (result.data.errors.length > 0) {
+				const errorCount = result.data.errors.length
+				const successCount = result.data.filesMoved
+				setError(`Moved ${successCount} of ${result.data.totalFiles} files. ${errorCount} error(s) occurred.`)
+			} else {
+				setError(null)
+				await alert({
+					title: 'Success',
+					message: `Successfully moved ${result.data.filesMoved} file(s) to the new directory structure.`,
+				})
+			}
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to organize files')
+		} finally {
+			setIsOrganizing(false)
+		}
+	}
+
 	// Handle export all receipts
 	const handleExport = async () => {
 		try {
@@ -1251,7 +1303,7 @@ export default function SettingsPage() {
 					<CardDescription>Manage files in the processed folder from the watch service</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="flex items-center justify-between">
+					<div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
 						<div>
 							<p className="text-sm text-muted-foreground">
 								{isLoadingProcessedCount ? (
@@ -1265,7 +1317,7 @@ export default function SettingsPage() {
 								)}
 							</p>
 						</div>
-						<div className="flex gap-2">
+						<div className="flex flex-col gap-2 sm:flex-row">
 							<Button variant="outline" onClick={loadProcessedCount} disabled={isLoadingProcessedCount}>
 								<RefreshCw className={`w-4 h-4 mr-1 ${isLoadingProcessedCount ? 'animate-spin' : ''}`} />
 								Refresh
@@ -1290,7 +1342,7 @@ export default function SettingsPage() {
 					<CardDescription>Manage users for categorizing receipts</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="flex gap-2">
+					<div className="flex flex-col gap-2 sm:flex-row">
 						<Input
 							placeholder="Enter user name"
 							value={newUser}
@@ -1352,26 +1404,26 @@ export default function SettingsPage() {
 				</CardHeader>
 				<CardContent className="space-y-4">
 					{/* Create New Flag */}
-					<div className="flex gap-2 p-4 border rounded-lg">
-						<div className="flex-1 space-y-2">
-							<Label>Flag Name</Label>
-							<Input
-								placeholder="e.g., Reimbursed, Tax Deductible"
-								value={newFlagName}
-								onChange={e => setNewFlagName(e.target.value)}
-								onKeyDown={e => e.key === 'Enter' && handleCreateFlag()}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label>Color</Label>
-							<div className="flex gap-2">
+					<div className="flex flex-col gap-2 p-4 border rounded-lg sm:items-end sm:flex-row">
+						<div className="flex flex-row flex-1 gap-2">
+							<div className="flex-1 space-y-2">
+								<Label>Flag Name</Label>
+								<Input
+									placeholder="e.g., Reimbursed, Tax Deductible"
+									value={newFlagName}
+									onChange={e => setNewFlagName(e.target.value)}
+									onKeyDown={e => e.key === 'Enter' && handleCreateFlag()}
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label>Color</Label>
 								<ColorPicker value={newFlagColor} onChange={color => setNewFlagColor(color)} />
-								<Button onClick={handleCreateFlag}>
-									<Plus className="w-4 h-4 mr-1" />
-									Add Flag
-								</Button>
 							</div>
 						</div>
+						<Button onClick={handleCreateFlag}>
+							<Plus className="w-4 h-4 mr-1" />
+							Add Flag
+						</Button>
 					</div>
 
 					{/* Existing Flags */}
@@ -1441,35 +1493,38 @@ export default function SettingsPage() {
 					{/* Create New Type */}
 					<div className="p-4 space-y-3 border rounded-lg">
 						<Label>Create New Receipt Type</Label>
-						<div className="flex gap-2">
-							<Input
-								placeholder="Type name (e.g., Doctor Visit)"
-								value={newReceiptType}
-								onChange={e => setNewReceiptType(e.target.value)}
-								onKeyDown={e => {
-									if (e.key === 'Enter') {
-										e.preventDefault()
-										handleAddReceiptType(e)
-									}
-								}}
-								className="flex-1"
-							/>
-							<Select
-								value={newReceiptTypeGroupId?.toString() || 'ungrouped'}
-								onValueChange={value => setNewReceiptTypeGroupId(value === 'ungrouped' ? null : parseInt(value))}
-							>
-								<SelectTrigger className="w-48">
-									<SelectValue placeholder="Select group" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="ungrouped">Ungrouped</SelectItem>
-									{receiptTypeGroups.map(g => (
-										<SelectItem key={g.id} value={g.id.toString()}>
-											{g.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+						<div className="flex flex-col gap-2 sm:flex-row">
+							<div className="flex flex-row gap-2">
+								<Input
+									placeholder="Type name (e.g., Doctor Visit)"
+									value={newReceiptType}
+									onChange={e => setNewReceiptType(e.target.value)}
+									onKeyDown={e => {
+										if (e.key === 'Enter') {
+											e.preventDefault()
+											handleAddReceiptType(e)
+										}
+									}}
+									className="flex-1"
+								/>
+								<Select
+									value={newReceiptTypeGroupId?.toString() || 'ungrouped'}
+									onValueChange={value => setNewReceiptTypeGroupId(value === 'ungrouped' ? null : parseInt(value))}
+								>
+									<SelectTrigger className="w-48">
+										<SelectValue placeholder="Select group" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="ungrouped">Ungrouped</SelectItem>
+										{receiptTypeGroups.map(g => (
+											<SelectItem key={g.id} value={g.id.toString()}>
+												{g.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+
 							<Button type="button" onClick={handleAddReceiptType}>
 								<Plus className="w-4 h-4 mr-1" />
 								Add Type
@@ -1480,7 +1535,7 @@ export default function SettingsPage() {
 					{/* Create New Group */}
 					<div className="p-4 space-y-3 border rounded-lg">
 						<Label>Create New Group</Label>
-						<div className="flex gap-2">
+						<div className="flex flex-col gap-2 sm:flex-row">
 							<Input
 								placeholder="Group name (e.g., Medical Expenses)"
 								value={newGroupName}
@@ -1616,7 +1671,7 @@ export default function SettingsPage() {
 
 					{/* Reset to Defaults */}
 					<div className="p-4 border rounded-lg border-destructive">
-						<div className="flex items-center justify-between">
+						<div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
 							<div>
 								<Label>Reset to Default Types (DANGER)</Label>
 								<p className="mt-1 text-sm text-muted-foreground">Restore all receipt types and groups to their default values</p>
@@ -1633,8 +1688,12 @@ export default function SettingsPage() {
 			{/* Filename Pattern */}
 			<Card>
 				<CardHeader>
-					<CardTitle>Filename Pattern</CardTitle>
-					<CardDescription>Customize how receipt files are named. File extension is automatically appended.</CardDescription>
+					<div className="flex items-center justify-between">
+						<div>
+							<CardTitle>Filename Pattern</CardTitle>
+							<CardDescription>Customize how receipt files are named. File extension is automatically appended.</CardDescription>
+						</div>
+					</div>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="space-y-2">
@@ -1690,7 +1749,10 @@ export default function SettingsPage() {
 										reimbursed-tax-deductible)
 									</li>
 								</ul>
-								<p className="mt-2 text-muted-foreground">Note: File extension is automatically appended and cannot be customized.</p>
+								<p className="mt-2 text-muted-foreground">
+									<strong>Note:</strong> All filenames automatically end with <code className="bg-background px-1 py-0.5 rounded">[pk-index]</code> before the extension to prevent filename collisions, where <code className="bg-background px-1 py-0.5 rounded">pk</code> is the receipt ID and <code className="bg-background px-1 py-0.5 rounded">index</code> is the file order. For example: <code className="bg-background px-1 py-0.5 rounded">pattern[123-0].pdf</code> where <code className="bg-background px-1 py-0.5 rounded">123</code> is the receipt ID and <code className="bg-background px-1 py-0.5 rounded">0</code> is the file order.
+								</p>
+								<p className="mt-1 text-muted-foreground">File extension is automatically appended and cannot be customized.</p>
 							</div>
 						</div>
 					</div>
@@ -1704,7 +1766,7 @@ export default function SettingsPage() {
 					)}
 
 					{/* Actions */}
-					<div className="flex gap-2">
+					<div className="flex flex-col gap-2 sm:flex-row">
 						<Button onClick={handleSavePattern} disabled={!!patternError || filenamePattern === originalPattern}>
 							<Save className="w-4 h-4 mr-1" />
 							Save Pattern
@@ -1712,6 +1774,16 @@ export default function SettingsPage() {
 						<Button variant="outline" onClick={handleRenameAll} disabled={!!patternError || isRenaming}>
 							<RefreshCw className={`w-4 h-4 mr-1 ${isRenaming ? 'animate-spin' : ''}`} />
 							{isRenaming ? 'Renaming...' : 'Rename All Files'}
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={handleOrganizeFiles}
+							disabled={isOrganizing}
+							title="Move files to the new user/date directory structure"
+						>
+							<FolderTree className={`w-4 h-4 mr-1 ${isOrganizing ? 'animate-spin' : ''}`} />
+							{isOrganizing ? 'Organizing...' : 'Organize Files'}
 						</Button>
 					</div>
 				</CardContent>

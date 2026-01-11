@@ -273,6 +273,13 @@ export const receiptsApi = {
       ...data
     });
   },
+  migrateFiles: () => api.post<{
+    message: string;
+    totalReceipts: number;
+    totalFiles: number;
+    filesMoved: number;
+    errors: Array<{ receiptId: number; error: string }>;
+  }>('/receipts/migrate-files'),
 };
 
 // Flags API

@@ -92,7 +92,8 @@ describe('Filenames API', () => {
       const sanitizedUser = sanitizeFilename('John Doe');
       const receiptDir = path.join(testDirs.receiptsDir, sanitizedUser, '2024', '01', '15');
       await fs.mkdir(receiptDir, { recursive: true });
-      const oldFilename = '2024-01-15_john-doe_test-clinic_100-50_doctor-visit_0.pdf';
+      // Old filename needs to include [pk-index] suffix to match new format
+      const oldFilename = `2024-01-15_john-doe_test-clinic_100-50_doctor-visit_0[${receiptId}-0].pdf`;
       const oldFilePath = path.join(receiptDir, oldFilename);
       await createTestPdfFile(receiptDir, oldFilename);
 
@@ -112,8 +113,12 @@ describe('Filenames API', () => {
       expect(response.body.renamed).toBe(1);
       expect(response.body.errors).toHaveLength(0);
 
-      // Verify file was renamed
-      const newFilename = '2024-01-15_john-doe_reimbursed_0.pdf';
+      // Verify file was renamed (filename will include [receiptId-index] suffix)
+      const files = dbQueries.getFilesByReceiptId.all(receiptId);
+      expect(files).toHaveLength(1);
+      const newFilename = (files[0] as any).filename;
+      expect(newFilename).toContain('2024-01-15_john-doe_reimbursed_0');
+      expect(newFilename).toMatch(/\[\d+-\d+\]\.pdf$/); // Should end with [pk-index].pdf
       const newFilePath = path.join(receiptDir, newFilename);
       const newFileExists = await fs.access(newFilePath).then(() => true).catch(() => false);
       expect(newFileExists).toBe(true);
@@ -122,10 +127,8 @@ describe('Filenames API', () => {
       const oldFileExists = await fs.access(oldFilePath).then(() => true).catch(() => false);
       expect(oldFileExists).toBe(false);
 
-      // Verify database was updated
-      const files = dbQueries.getFilesByReceiptId.all(receiptId);
-      expect(files).toHaveLength(1);
-      expect((files[0] as any).filename).toBe(newFilename);
+      // Verify database was updated (already checked above)
+      expect(newFilename).toBeDefined();
     });
 
     it('should handle multiple receipts and files', async () => {
@@ -162,9 +165,10 @@ describe('Filenames API', () => {
       await fs.mkdir(receipt1Dir, { recursive: true });
       await fs.mkdir(receipt2Dir, { recursive: true });
 
-      const file1 = '2024-01-15_john-doe_clinic-a_100-50_doctor-visit_0.pdf';
-      const file2 = '2024-01-15_john-doe_clinic-a_100-50_doctor-visit_1.pdf';
-      const file3 = '2024-01-16_jane-smith_pharmacy-b_50-00_prescription_0.pdf';
+      // Files need to include [pk-index] suffix to match new format
+      const file1 = `2024-01-15_john-doe_clinic-a_100-50_doctor-visit_0[${receipt1Id}-0].pdf`;
+      const file2 = `2024-01-15_john-doe_clinic-a_100-50_doctor-visit_1[${receipt1Id}-1].pdf`;
+      const file3 = `2024-01-16_jane-smith_pharmacy-b_50-00_prescription_0[${receipt2Id}-0].pdf`;
 
       await createTestPdfFile(receipt1Dir, file1);
       await createTestPdfFile(receipt1Dir, file2);
@@ -211,7 +215,8 @@ describe('Filenames API', () => {
       // Create file using new structure
       const receiptDir = path.join(testDirs.receiptsDir, sanitizeFilename('John Doe'), '2024', '01', '15');
       await fs.mkdir(receiptDir, { recursive: true });
-      const oldFilename = '2024-01-15_john-doe_clinic_100-50_doctor-visit_0.pdf';
+      // Old filename needs to include [pk-index] suffix
+      const oldFilename = `2024-01-15_john-doe_clinic_100-50_doctor-visit_0[${receiptId}-0].pdf`;
       await createTestPdfFile(receiptDir, oldFilename);
       dbQueries.insertReceiptFile.run(receiptId, oldFilename, 'original.pdf', 0);
 
@@ -246,7 +251,8 @@ describe('Filenames API', () => {
 
       const receiptDir = path.join(testDirs.receiptsDir, sanitizeFilename('John Doe'), '2024', '01', '15');
       await fs.mkdir(receiptDir, { recursive: true });
-      const oldFilename = '2024-01-15_john-doe_clinic_100-50_doctor-visit_0.pdf';
+      // Old filename needs to include [pk-index] suffix
+      const oldFilename = `2024-01-15_john-doe_clinic_100-50_doctor-visit_0[${receiptId}-0].pdf`;
       await createTestPdfFile(receiptDir, oldFilename);
       dbQueries.insertReceiptFile.run(receiptId, oldFilename, 'original.pdf', 0);
 
@@ -329,7 +335,8 @@ describe('Filenames API', () => {
 
       const receiptDir = path.join(testDirs.receiptsDir, sanitizeFilename('John Doe'), '2024', '01', '15');
       await fs.mkdir(receiptDir, { recursive: true });
-      const oldFilename = '2024-01-15_john-doe_test-clinic_100-50_doctor-visit_0.pdf';
+      // Old filename needs to include [pk-index] suffix
+      const oldFilename = `2024-01-15_john-doe_test-clinic_100-50_doctor-visit_0[${receiptId}-0].pdf`;
       await createTestPdfFile(receiptDir, oldFilename);
       dbQueries.insertReceiptFile.run(receiptId, oldFilename, 'original.pdf', 0);
 

@@ -209,8 +209,8 @@ export async function saveReceiptFile(
 	const originalExt = path.extname(file.originalname)
 	const originalFilename = file.originalname
 
-	// Generate filename
-	const filename = generateReceiptFilename(date, user, vendor, amount, type, fileOrder, originalExt, flags)
+	// Generate filename (always includes [{receiptId}-{index}] before extension)
+	const filename = generateReceiptFilename(date, user, vendor, amount, type, fileOrder, originalExt, receiptId, flags)
 
 	const filePath = path.join(receiptDir, filename)
 
@@ -412,8 +412,8 @@ export async function renameReceiptFiles(
 		// Get the original extension from the original filename
 		const originalExt = path.extname(file.original_filename)
 
-		// Generate new filename with updated receipt data
-		const newFilename = generateReceiptFilename(date, user, vendor, amount, type, file.file_order, originalExt, flags)
+		// Generate new filename with updated receipt data (always includes [{receiptId}-{index}] before extension)
+		const newFilename = generateReceiptFilename(date, user, vendor, amount, type, file.file_order, originalExt, receiptId, flags)
 
 		const newFilePath = path.join(newReceiptDir, newFilename)
 

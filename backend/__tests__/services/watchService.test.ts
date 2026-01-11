@@ -99,7 +99,7 @@ vi.mock('../../src/services/fileService', async () => {
 			const originalExt = pathMod.extname(file.originalname)
 			const originalFilename = file.originalname
 
-			const filename = generateReceiptFilename(date, user, vendor, amount, type, fileOrder, originalExt, flags)
+			const filename = generateReceiptFilename(date, user, vendor, amount, type, fileOrder, originalExt, receiptId, flags)
 
 			const filePath = pathMod.join(receiptDir, filename)
 

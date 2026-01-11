@@ -62,9 +62,10 @@ describe('filename utils', () => {
         100.50,
         'doctor-visit',
         0,
-        '.pdf'
+        '.pdf',
+        123
       );
-      expect(filename).toBe('2024-01-15_john-doe_test-clinic_100-50_doctor-visit_0.pdf');
+      expect(filename).toBe('2024-01-15_john-doe_test-clinic_100-50_doctor-visit_0[123-0].pdf');
     });
 
     it('should handle date with time component', () => {
@@ -75,9 +76,11 @@ describe('filename utils', () => {
         100.50,
         'doctor-visit',
         0,
-        '.pdf'
+        '.pdf',
+        123
       );
       expect(filename).toContain('2024-01-15_');
+      expect(filename).toContain('[123-0].pdf');
     });
 
     it('should format amount with 2 decimal places', () => {
@@ -88,9 +91,11 @@ describe('filename utils', () => {
         99.9,
         'visit',
         0,
-        '.pdf'
+        '.pdf',
+        123
       );
       expect(filename).toContain('99-90');
+      expect(filename).toContain('[123-0].pdf');
     });
 
     it('should replace decimal point with dash in amount', () => {
@@ -101,9 +106,11 @@ describe('filename utils', () => {
         100.50,
         'visit',
         0,
-        '.pdf'
+        '.pdf',
+        123
       );
       expect(filename).toContain('100-50');
+      expect(filename).toContain('[123-0].pdf');
     });
 
     it('should handle extension without leading dot', () => {
@@ -114,9 +121,11 @@ describe('filename utils', () => {
         100,
         'visit',
         0,
-        'pdf'
+        'pdf',
+        123
       );
       expect(filename).toContain('.pdf');
+      expect(filename).toContain('[123-0].pdf');
     });
 
     it('should sanitize user, vendor, and type', () => {
@@ -127,11 +136,13 @@ describe('filename utils', () => {
         100,
         'doctor visit',
         0,
-        '.pdf'
+        '.pdf',
+        123
       );
       expect(filename).toContain('john-doe-co');
       expect(filename).toContain('testclinic123');
       expect(filename).toContain('doctor-visit');
+      expect(filename).toContain('[123-0].pdf');
     });
 
     it('should include file order index', () => {
@@ -142,7 +153,8 @@ describe('filename utils', () => {
         100,
         'visit',
         0,
-        '.pdf'
+        '.pdf',
+        123
       );
       const filename2 = generateReceiptFilename(
         '2024-01-15',
@@ -151,10 +163,11 @@ describe('filename utils', () => {
         100,
         'visit',
         1,
-        '.pdf'
+        '.pdf',
+        123
       );
-      expect(filename1).toContain('_0.pdf');
-      expect(filename2).toContain('_1.pdf');
+      expect(filename1).toContain('[123-0].pdf');
+      expect(filename2).toContain('[123-1].pdf');
     });
 
     it('should handle zero amount', () => {
@@ -165,9 +178,11 @@ describe('filename utils', () => {
         0,
         'visit',
         0,
-        '.pdf'
+        '.pdf',
+        123
       );
       expect(filename).toContain('0-00');
+      expect(filename).toContain('[123-0].pdf');
     });
 
     it('should handle empty strings with defaults', () => {
@@ -178,9 +193,11 @@ describe('filename utils', () => {
         0,
         '',
         0,
-        '.pdf'
+        '.pdf',
+        123
       );
       expect(filename).toContain('unknown');
+      expect(filename).toContain('[123-0].pdf');
     });
 
     it('should use default pattern when no pattern provided', () => {
@@ -191,9 +208,10 @@ describe('filename utils', () => {
         100.50,
         'doctor-visit',
         0,
-        '.pdf'
+        '.pdf',
+        123
       );
-      expect(filename).toBe('2024-01-15_john-doe_test-clinic_100-50_doctor-visit_0.pdf');
+      expect(filename).toBe('2024-01-15_john-doe_test-clinic_100-50_doctor-visit_0[123-0].pdf');
     });
 
     it('should use custom pattern when provided', () => {
@@ -205,10 +223,11 @@ describe('filename utils', () => {
         'doctor-visit',
         0,
         '.pdf',
+        123,
         undefined,
         '{date}-{user}-{vendor}'
       );
-      expect(filename).toBe('2024-01-15-john-doe-test-clinic.pdf');
+      expect(filename).toBe('2024-01-15-john-doe-test-clinic[123-0].pdf');
     });
 
     it('should read pattern from settings when not provided', () => {
@@ -220,9 +239,10 @@ describe('filename utils', () => {
         100.50,
         'doctor-visit',
         0,
-        '.pdf'
+        '.pdf',
+        123
       );
-      expect(filename).toBe('john-doe_2024-01-15.pdf');
+      expect(filename).toBe('john-doe_2024-01-15[123-0].pdf');
     });
 
     it('should include flags in filename when provided', () => {
@@ -238,10 +258,11 @@ describe('filename utils', () => {
         'doctor-visit',
         0,
         '.pdf',
+        123,
         flags,
         '{date}_{user}_{flags}_{index}'
       );
-      expect(filename).toBe('2024-01-15_john-doe_reimbursed-tax-deductible_0.pdf');
+      expect(filename).toBe('2024-01-15_john-doe_reimbursed-tax-deductible_0[123-0].pdf');
     });
 
     it('should handle empty flags array', () => {
@@ -253,11 +274,12 @@ describe('filename utils', () => {
         'doctor-visit',
         0,
         '.pdf',
+        123,
         [],
         '{date}_{user}_{flags}_{index}'
       );
       // Empty flags should result in empty string, so we get double separators cleaned up
-      expect(filename).toBe('2024-01-15_john-doe_0.pdf');
+      expect(filename).toBe('2024-01-15_john-doe_0[123-0].pdf');
     });
 
     it('should handle flags with special characters', () => {
@@ -272,13 +294,15 @@ describe('filename utils', () => {
         'doctor-visit',
         0,
         '.pdf',
+        123,
         flags,
         '{date}_{flags}'
       );
       expect(filename).toContain('tax-deductible');
+      expect(filename).toContain('[123-0].pdf');
     });
 
-    it('should always append extension regardless of pattern', () => {
+    it('should always append [pk-index] and extension regardless of pattern', () => {
       const filename = generateReceiptFilename(
         '2024-01-15',
         'John',
@@ -287,10 +311,11 @@ describe('filename utils', () => {
         'visit',
         0,
         '.png',
+        123,
         undefined,
         '{date}'
       );
-      expect(filename).toBe('2024-01-15.png');
+      expect(filename).toBe('2024-01-15[123-0].png');
     });
 
     it('should handle all tokens in custom pattern', () => {
@@ -303,10 +328,11 @@ describe('filename utils', () => {
         'doctor-visit',
         2,
         '.pdf',
+        123,
         flags,
         '{date}_{user}_{vendor}_{amount}_{type}_{flags}_{index}'
       );
-      expect(filename).toBe('2024-01-15_john-doe_test-clinic_100-50_doctor-visit_flag1_2.pdf');
+      expect(filename).toBe('2024-01-15_john-doe_test-clinic_100-50_doctor-visit_flag1_2[123-2].pdf');
     });
   });
 

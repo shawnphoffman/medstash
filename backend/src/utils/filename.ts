@@ -103,6 +103,7 @@ function formatFlags(flags: Flag[]): string {
 /**
  * Generate a sanitized filename for a receipt file using a customizable pattern
  * Format: Uses pattern from settings or default pattern, extension is automatically appended
+ * Always appends [{receiptId}-{index}] before the extension to prevent filename collisions
  */
 export function generateReceiptFilename(
 	date: string,
@@ -112,6 +113,7 @@ export function generateReceiptFilename(
 	type: string,
 	index: number,
 	originalExtension: string,
+	receiptId: number,
 	flags?: Flag[],
 	pattern?: string
 ): string {
@@ -162,8 +164,12 @@ export function generateReceiptFilename(
 	// Get extension (ensure it starts with .)
 	const ext = originalExtension.startsWith('.') ? originalExtension : `.${originalExtension}`
 
-	// Append extension
-	return `${filename}${ext}`
+	// Always append [{receiptId}-{index}] before extension to prevent filename collisions
+	// This ensures unique filenames even if pattern generates identical names
+	const uniqueSuffix = `[${receiptId}-${index}]`
+
+	// Append unique suffix and extension
+	return `${filename}${uniqueSuffix}${ext}`
 }
 
 /**
