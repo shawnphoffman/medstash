@@ -1802,10 +1802,12 @@ export default function SettingsPage() {
 					<CardDescription>Download all receipts and files as a ZIP archive</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<Button onClick={handleExport} variant="outline">
-						<Download className="w-4 h-4 mr-1" />
-						Export All Receipts
-					</Button>
+					<div className="flex flex-col gap-2 sm:flex-row">
+						<Button onClick={handleExport} variant="outline">
+							<Download className="w-4 h-4 mr-1" />
+							Export All Receipts
+						</Button>
+					</div>
 				</CardContent>
 			</Card>
 		</div>
