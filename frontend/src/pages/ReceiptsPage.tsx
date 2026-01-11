@@ -29,23 +29,20 @@ export default function ReceiptsPage() {
 	const [_lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null)
 	const [autoRefreshEnabled] = useState(true)
 
-	const loadData = useCallback(
-		async () => {
-			try {
-				setIsRefreshing(true)
-				const [receiptsRes, flagsRes] = await Promise.all([receiptsApi.getAll(selectedFlagId), flagsApi.getAll()])
-				setReceipts(receiptsRes.data)
-				setFlags(flagsRes.data)
-				setLastRefreshTime(new Date())
-				setError(null)
-			} catch (err: any) {
-				setError(err.response?.data?.error || 'Failed to load receipts')
-			} finally {
-				setIsRefreshing(false)
-			}
-		},
-		[selectedFlagId]
-	)
+	const loadData = useCallback(async () => {
+		try {
+			setIsRefreshing(true)
+			const [receiptsRes, flagsRes] = await Promise.all([receiptsApi.getAll(selectedFlagId), flagsApi.getAll()])
+			setReceipts(receiptsRes.data)
+			setFlags(flagsRes.data)
+			setLastRefreshTime(new Date())
+			setError(null)
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to load receipts')
+		} finally {
+			setIsRefreshing(false)
+		}
+	}, [selectedFlagId])
 
 	const handleRefresh = useCallback(() => {
 		loadData()
@@ -285,7 +282,7 @@ export default function ReceiptsPage() {
 			) : (
 				<Card>
 					<CardContent className="p-0">
-						<div className={cn("overflow-x-auto transition-opacity duration-200", isRefreshing && "opacity-75")}>
+						<div className={cn('overflow-x-auto transition-opacity duration-200', isRefreshing && 'opacity-75')}>
 							<table className="w-full">
 								<thead>
 									<tr className="border-b bg-muted/50">

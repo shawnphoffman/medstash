@@ -5,10 +5,23 @@ import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from './ui/select'
 import { DatePicker } from './DatePicker'
-import { receiptsApi, usersApi, receiptTypesApi, receiptTypeGroupsApi, flagsApi, BulkUpdateReceiptInput, User, ReceiptType, ReceiptTypeGroup, Flag } from '../lib/api'
+import {
+	receiptsApi,
+	usersApi,
+	receiptTypesApi,
+	receiptTypeGroupsApi,
+	flagsApi,
+	BulkUpdateReceiptInput,
+	User,
+	ReceiptType,
+	ReceiptTypeGroup,
+	Flag,
+} from '../lib/api'
 import { useToast } from './ui/use-toast'
 import { getBadgeClassName, getBorderClassName } from './ui/color-picker'
 import { cn } from '../lib/utils'
+import { Trash2 } from 'lucide-react'
+import { useConfirmDialog } from './ConfirmDialog'
 
 interface BulkEditDialogProps {
 	open: boolean
@@ -19,9 +32,11 @@ interface BulkEditDialogProps {
 
 export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds, onSuccess }: BulkEditDialogProps) {
 	const { toast } = useToast()
+	const { confirm, ConfirmDialog } = useConfirmDialog()
 	const [loading, setLoading] = useState(false)
+	const [deleting, setDeleting] = useState(false)
 	const [error, setError] = useState<string | null>(null)
-	
+
 	// Form state
 	const [vendor, setVendor] = useState('')
 	const [date, setDate] = useState<string | undefined>(undefined)
@@ -29,7 +44,7 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 	const [receiptTypeId, setReceiptTypeId] = useState<number | undefined>(undefined)
 	const [selectedFlagIds, setSelectedFlagIds] = useState<number[]>([])
 	const [flagOperation, setFlagOperation] = useState<'append' | 'replace'>('replace')
-	
+
 	// Data for dropdowns
 	const [users, setUsers] = useState<User[]>([])
 	const [receiptTypes, setReceiptTypes] = useState<ReceiptType[]>([])
@@ -76,7 +91,7 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 
 		// Build update data with only fields that have values
 		const updateData: BulkUpdateReceiptInput = {}
-		
+
 		if (vendor.trim()) {
 			updateData.vendor = vendor.trim()
 		}
@@ -140,6 +155,64 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 		})
 	}
 
+	const handleDelete = async () => {
+		if (selectedReceiptIds.length === 0) {
+			setError('No receipts selected')
+			return
+		}
+
+		const confirmed = await confirm({
+			title: 'Delete Receipts',
+			message: `Are you sure you want to delete ${selectedReceiptIds.length} receipt(s)? This action cannot be undone.`,
+			variant: 'destructive',
+			confirmText: 'Delete',
+			cancelText: 'Cancel',
+		})
+
+		if (!confirmed) return
+
+		setDeleting(true)
+		setError(null)
+
+		try {
+			// Delete receipts one by one
+			const errors: Array<{ id: number; error: string }> = []
+			let deletedCount = 0
+
+			for (const receiptId of selectedReceiptIds) {
+				try {
+					await receiptsApi.delete(receiptId)
+					deletedCount++
+				} catch (err: any) {
+					errors.push({
+						id: receiptId,
+						error: err.response?.data?.error || 'Failed to delete receipt',
+					})
+				}
+			}
+
+			if (errors.length > 0) {
+				toast({
+					title: 'Partial Success',
+					description: `Deleted ${deletedCount} receipt(s). ${errors.length} receipt(s) failed to delete.`,
+					variant: 'default',
+				})
+			} else {
+				toast({
+					title: 'Success',
+					description: `Successfully deleted ${deletedCount} receipt(s).`,
+				})
+			}
+
+			onSuccess()
+			onOpenChange(false)
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to delete receipts')
+		} finally {
+			setDeleting(false)
+		}
+	}
+
 	// Organize receipt types by group
 	const groupedTypes: Record<number | 'ungrouped', ReceiptType[]> = { ungrouped: [] }
 	const sortedGroups = [...receiptTypeGroups].sort((a, b) => {
@@ -183,29 +256,19 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="space-y-4 py-4">
-					{error && <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm">{error}</div>}
+				<div className="py-4 space-y-4">
+					{error && <div className="p-3 text-sm rounded-md bg-destructive/10 text-destructive">{error}</div>}
 
 					{/* Vendor */}
 					<div>
 						<Label htmlFor="bulk-vendor">Vendor</Label>
-						<Input
-							id="bulk-vendor"
-							value={vendor}
-							onChange={e => setVendor(e.target.value)}
-							placeholder="Leave empty to keep existing"
-						/>
+						<Input id="bulk-vendor" value={vendor} onChange={e => setVendor(e.target.value)} placeholder="Leave empty to keep existing" />
 					</div>
 
 					{/* Date */}
 					<div>
 						<Label htmlFor="bulk-date">Date</Label>
-						<DatePicker
-							id="bulk-date"
-							value={date}
-							onChange={setDate}
-							placeholder="Leave empty to keep existing"
-						/>
+						<DatePicker id="bulk-date" value={date} onChange={setDate} placeholder="Leave empty to keep existing" />
 					</div>
 
 					{/* User */}
@@ -292,7 +355,7 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 												type="radio"
 												checked={flagOperation === 'replace'}
 												onChange={() => setFlagOperation('replace')}
-												className="h-4 w-4"
+												className="w-4 h-4"
 											/>
 											<span className="text-sm">Replace</span>
 										</label>
@@ -301,7 +364,7 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 												type="radio"
 												checked={flagOperation === 'append'}
 												onChange={() => setFlagOperation('append')}
-												className="h-4 w-4"
+												className="w-4 h-4"
 											/>
 											<span className="text-sm">Append</span>
 										</label>
@@ -326,7 +389,7 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 									))}
 								</div>
 								<p className="text-xs text-muted-foreground">
-									{flagOperation === 'replace' 
+									{flagOperation === 'replace'
 										? 'Selected flags will replace all existing flags'
 										: 'Selected flags will be added to existing flags'}
 								</p>
@@ -335,15 +398,22 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 					)}
 				</div>
 
-				<DialogFooter>
-					<Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-						Cancel
+				<DialogFooter className="flex items-center justify-between">
+					<Button variant="destructive" onClick={handleDelete} disabled={loading || deleting}>
+						<Trash2 className="mr-1 size-4" />
+						{deleting ? 'Deleting...' : 'Delete'}
 					</Button>
-					<Button onClick={handleSubmit} disabled={loading}>
-						{loading ? 'Updating...' : 'Apply Changes'}
-					</Button>
+					<div className="flex gap-2">
+						<Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading || deleting}>
+							Cancel
+						</Button>
+						<Button onClick={handleSubmit} disabled={loading || deleting}>
+							{loading ? 'Updating...' : 'Apply Changes'}
+						</Button>
+					</div>
 				</DialogFooter>
 			</DialogContent>
+			{ConfirmDialog}
 		</Dialog>
 	)
 }
