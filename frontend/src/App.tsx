@@ -1,12 +1,14 @@
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
-import UploadPage from './pages/UploadPage'
-import BulkUploadPage from './pages/BulkUploadPage'
-import ReceiptsPage from './pages/ReceiptsPage'
-import ReceiptDetailPage from './pages/ReceiptDetailPage'
-import SettingsPage from './pages/SettingsPage'
+import { useState, useEffect, Suspense, lazy } from 'react'
 import AboutPage from './pages/AboutPage'
 import ErrorPage from './pages/ErrorPage'
+
+// Lazy load pages for code splitting
+const ReceiptsPage = lazy(() => import('./pages/ReceiptsPage'))
+const ReceiptDetailPage = lazy(() => import('./pages/ReceiptDetailPage'))
+const UploadPage = lazy(() => import('./pages/UploadPage'))
+const BulkUploadPage = lazy(() => import('./pages/BulkUploadPage'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 import { Receipt, Upload, Settings, HelpCircle, Github, Menu, X } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { ThemeToggle } from './components/ThemeToggle'
@@ -228,15 +230,25 @@ function AppContent() {
 			<div className="min-h-screen bg-background">
 				<Navigation />
 				<main className="container px-4 py-8 mx-auto">
-					<Routes>
-						<Route path="/" element={<ReceiptsPage />} />
-						<Route path="/receipts/:id" element={<ReceiptDetailPage />} />
-						<Route path="/upload" element={<UploadPage />} />
-						<Route path="/bulk-upload" element={<BulkUploadPage />} />
-						<Route path="/settings" element={<SettingsPage />} />
-						<Route path="/about" element={<AboutPage />} />
-						<Route path="/error" element={<ErrorPage />} />
-					</Routes>
+					<Suspense
+						fallback={
+							<div className="flex items-center justify-center min-h-[400px]">
+								<div className="text-center">
+									<p className="text-muted-foreground">Loading...</p>
+								</div>
+							</div>
+						}
+					>
+						<Routes>
+							<Route path="/" element={<ReceiptsPage />} />
+							<Route path="/receipts/:id" element={<ReceiptDetailPage />} />
+							<Route path="/upload" element={<UploadPage />} />
+							<Route path="/bulk-upload" element={<BulkUploadPage />} />
+							<Route path="/settings" element={<SettingsPage />} />
+							<Route path="/about" element={<AboutPage />} />
+							<Route path="/error" element={<ErrorPage />} />
+						</Routes>
+					</Suspense>
 				</main>
 				<UserSetupDialog open={showUserSetup} onComplete={handleUserSetupComplete} />
 				<Toaster />

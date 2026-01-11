@@ -22,5 +22,45 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          // React core libraries
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'react-vendor'
+          }
+          // React Router
+          if (id.includes('node_modules/react-router')) {
+            return 'router'
+          }
+          // Drag and drop (only used in SettingsPage)
+          if (id.includes('node_modules/@dnd-kit')) {
+            return 'dnd-kit'
+          }
+          // Form libraries
+          if (id.includes('node_modules/react-hook-form')) {
+            return 'form-libs'
+          }
+          // Date libraries
+          if (id.includes('node_modules/date-fns')) {
+            return 'date-libs'
+          }
+          // Radix UI components
+          if (id.includes('node_modules/@radix-ui')) {
+            return 'radix-ui'
+          }
+          // Icons
+          if (id.includes('node_modules/lucide-react')) {
+            return 'icons'
+          }
+          // HTTP client
+          if (id.includes('node_modules/axios')) {
+            return 'http'
+          }
+        },
+      },
+    },
+  },
 })
 
