@@ -56,26 +56,6 @@ describe('ReceiptTypeGroups API', () => {
     });
   });
 
-  describe('GET /api/receipt-type-groups/:id', () => {
-    it('should get a receipt type group by ID', async () => {
-      const { createReceiptTypeGroup } = await import('../../src/services/dbService');
-      const group = createReceiptTypeGroup('Test Group');
-
-      const response = await request(app).get(`/api/receipt-type-groups/${group.id}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.id).toBe(group.id);
-      expect(response.body.name).toBe('Test Group');
-    });
-
-    it('should return 404 for non-existent group', async () => {
-      const response = await request(app).get('/api/receipt-type-groups/99999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Receipt type group not found');
-    });
-  });
-
   describe('POST /api/receipt-type-groups', () => {
     it('should create a receipt type group', async () => {
       const groupData = createReceiptTypeGroupFixture();
@@ -198,7 +178,7 @@ describe('ReceiptTypeGroups API', () => {
     });
 
     it('should reject invalid group ID (non-numeric)', async () => {
-      const response = await request(app).get('/api/receipt-type-groups/abc');
+      const response = await request(app).delete('/api/receipt-type-groups/abc');
       expect(response.status).toBe(400);
       expect(response.body.error).toContain('Invalid receipt type group ID');
     });

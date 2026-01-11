@@ -56,26 +56,6 @@ describe('ReceiptTypes API', () => {
     });
   });
 
-  describe('GET /api/receipt-types/:id', () => {
-    it('should get a receipt type by ID', async () => {
-      const { createReceiptType } = await import('../../src/services/dbService');
-      const type = createReceiptType('Test Type');
-
-      const response = await request(app).get(`/api/receipt-types/${type.id}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.id).toBe(type.id);
-      expect(response.body.name).toBe('Test Type');
-    });
-
-    it('should return 404 for non-existent receipt type', async () => {
-      const response = await request(app).get('/api/receipt-types/99999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Receipt type not found');
-    });
-  });
-
   describe('POST /api/receipt-types', () => {
     it('should create a receipt type', async () => {
       const typeData = createReceiptTypeFixture();
@@ -206,70 +186,6 @@ describe('ReceiptTypes API', () => {
     });
   });
 
-  describe('PUT /api/receipt-types/:id/move', () => {
-    it('should move a receipt type to a different group', async () => {
-      const { createReceiptType, createReceiptTypeGroup } = await import('../../src/services/dbService');
-      const group1 = createReceiptTypeGroup('Group 1');
-      const group2 = createReceiptTypeGroup('Group 2');
-      const type = createReceiptType('Test Type', group1.id);
-
-      const response = await request(app)
-        .put(`/api/receipt-types/${type.id}/move`)
-        .send({ group_id: group2.id });
-
-      expect(response.status).toBe(200);
-      expect(response.body.group_id).toBe(group2.id);
-    });
-
-    it('should move a receipt type with display_order', async () => {
-      const { createReceiptType, createReceiptTypeGroup } = await import('../../src/services/dbService');
-      const group = createReceiptTypeGroup('Test Group');
-      const type = createReceiptType('Test Type');
-
-      const response = await request(app)
-        .put(`/api/receipt-types/${type.id}/move`)
-        .send({ group_id: group.id, display_order: 5 });
-
-      expect(response.status).toBe(200);
-      expect(response.body.group_id).toBe(group.id);
-      expect(response.body.display_order).toBe(5);
-    });
-
-    it('should ungroup a receipt type via move', async () => {
-      const { createReceiptType, createReceiptTypeGroup } = await import('../../src/services/dbService');
-      const group = createReceiptTypeGroup('Test Group');
-      const type = createReceiptType('Test Type', group.id);
-
-      const response = await request(app)
-        .put(`/api/receipt-types/${type.id}/move`)
-        .send({ group_id: null });
-
-      expect(response.status).toBe(200);
-      expect(response.body.group_id).toBeNull();
-    });
-
-    it('should return 404 for non-existent receipt type', async () => {
-      const response = await request(app)
-        .put('/api/receipt-types/99999/move')
-        .send({ group_id: 1 });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Receipt type not found');
-    });
-
-    it('should return 400 if group_id is invalid', async () => {
-      const { createReceiptType } = await import('../../src/services/dbService');
-      const type = createReceiptType('Test Type');
-
-      const response = await request(app)
-        .put(`/api/receipt-types/${type.id}/move`)
-        .send({ group_id: 'invalid' });
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Group ID must be a number or null');
-    });
-  });
-
   describe('DELETE /api/receipt-types/:id', () => {
     it('should delete a receipt type', async () => {
       const { createReceiptType } = await import('../../src/services/dbService');
@@ -288,7 +204,7 @@ describe('ReceiptTypes API', () => {
     });
 
     it('should reject invalid receipt type ID (non-numeric)', async () => {
-      const response = await request(app).get('/api/receipt-types/abc');
+      const response = await request(app).delete('/api/receipt-types/abc');
       expect(response.status).toBe(400);
       expect(response.body.error).toContain('Invalid receipt type ID');
     });

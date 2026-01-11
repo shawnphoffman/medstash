@@ -55,26 +55,6 @@ describe('Users API', () => {
     });
   });
 
-  describe('GET /api/users/:id', () => {
-    it('should get a user by ID', async () => {
-      const { createUser } = await import('../../src/services/dbService');
-      const user = createUser('Test User');
-
-      const response = await request(app).get(`/api/users/${user.id}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.id).toBe(user.id);
-      expect(response.body.name).toBe('Test User');
-    });
-
-    it('should return 404 for non-existent user', async () => {
-      const response = await request(app).get('/api/users/99999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('User not found');
-    });
-  });
-
   describe('POST /api/users', () => {
     it('should create a user', async () => {
       const userData = createUserFixture();
@@ -155,7 +135,7 @@ describe('Users API', () => {
     });
 
     it('should reject invalid user ID (non-numeric)', async () => {
-      const response = await request(app).get('/api/users/abc');
+      const response = await request(app).delete('/api/users/abc');
       expect(response.status).toBe(400);
       expect(response.body.error).toContain('Invalid user ID');
     });

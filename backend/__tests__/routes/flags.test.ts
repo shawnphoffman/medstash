@@ -51,25 +51,6 @@ describe('Flags API', () => {
     });
   });
 
-  describe('GET /api/flags/:id', () => {
-    it('should return a flag by ID', async () => {
-      const result = dbQueries.insertFlag.run('Test Flag', '#FF0000');
-      const flagId = Number(result.lastInsertRowid);
-
-      const response = await request(app).get(`/api/flags/${flagId}`);
-      expect(response.status).toBe(200);
-      expect(response.body.id).toBe(flagId);
-      expect(response.body.name).toBe('Test Flag');
-      expect(response.body.color).toBe('#FF0000');
-    });
-
-    it('should return 404 for non-existent flag', async () => {
-      const response = await request(app).get('/api/flags/99999');
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Flag not found');
-    });
-  });
-
   describe('POST /api/flags', () => {
     it('should create a flag', async () => {
       const response = await request(app)
@@ -210,10 +191,6 @@ describe('Flags API', () => {
       const response = await request(app).delete(`/api/flags/${flagId}`);
 
       expect(response.status).toBe(204);
-
-      // Verify flag is deleted
-      const getResponse = await request(app).get(`/api/flags/${flagId}`);
-      expect(getResponse.status).toBe(404);
     });
 
     it('should return 404 for non-existent flag', async () => {
@@ -223,7 +200,7 @@ describe('Flags API', () => {
     });
 
     it('should reject invalid flag ID (non-numeric)', async () => {
-      const response = await request(app).get('/api/flags/abc');
+      const response = await request(app).delete('/api/flags/abc');
       expect(response.status).toBe(400);
       expect(response.body.error).toContain('Invalid flag ID');
     });
