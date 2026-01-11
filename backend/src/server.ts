@@ -114,21 +114,22 @@ if (existsSync(publicPath)) {
 
 	// Catch-all handler: send back React's index.html file for client-side routing
 	// This must be after all API routes and static file serving
-	// Exclude API routes and static file extensions
 	app.get('*', (req, res, next) => {
 		// Don't serve index.html for API routes
 		if (req.path.startsWith('/api')) {
 			return res.status(404).json({ error: 'Not found' })
 		}
 
-		// Don't serve index.html for static file requests (images, fonts, etc.)
-		// These should have been handled by express.static above
+		// For static file requests that weren't found by express.static,
+		// return 404 (they should have been served if they exist)
 		const staticFileExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.woff', '.woff2', '.ttf', '.eot', '.css', '.js', '.map', '.json', '.xml', '.txt']
 		const hasStaticExtension = staticFileExtensions.some(ext => req.path.toLowerCase().endsWith(ext))
 		if (hasStaticExtension) {
+			logger.debug(`Static file not found: ${req.path} (searched in ${publicPath})`)
 			return res.status(404).json({ error: 'Not found' })
 		}
 
+		// For all other routes, serve index.html for SPA routing
 		res.sendFile(path.join(publicPath, 'index.html'))
 	})
 }

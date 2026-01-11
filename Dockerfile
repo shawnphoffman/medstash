@@ -18,6 +18,9 @@ RUN npm ci && npm cache clean --force
 COPY frontend/src ./src
 COPY frontend/index.html ./
 
+# Copy public directory (contains logo.png and other static assets)
+COPY frontend/public ./public
+
 # Build frontend (production build without source maps)
 RUN npm run build && \
     find dist -name "*.map" -delete 2>/dev/null || true
