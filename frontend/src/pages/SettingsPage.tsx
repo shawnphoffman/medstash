@@ -1991,9 +1991,7 @@ export default function SettingsPage() {
 					)}
 					{!imageOptimizationEnabled && (
 						<div className="p-3 rounded-lg bg-muted">
-							<p className="text-sm text-muted-foreground">
-								Enable image optimization above to use manual optimization features.
-							</p>
+							<p className="text-sm text-muted-foreground">Enable image optimization above to use manual optimization features.</p>
 						</div>
 					)}
 				</CardContent>
