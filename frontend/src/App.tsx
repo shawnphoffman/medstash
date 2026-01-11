@@ -82,6 +82,16 @@ function Navigation() {
 
 					{/* Mobile Menu Button */}
 					<div className="flex items-center gap-2 md:hidden">
+						<Link to="/upload">
+							<Button
+								variant="ghost"
+								size="icon"
+								className={cn(location.pathname === '/upload' && 'bg-primary text-primary-foreground')}
+								aria-label="Upload"
+							>
+								<Upload className="w-5 h-5" />
+							</Button>
+						</Link>
 						<ThemeToggle />
 						<Button variant="ghost" size="icon" onClick={toggleMobileMenu} aria-label="Toggle menu">
 							{isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
