@@ -7,7 +7,7 @@ import ReceiptDetailPage from './pages/ReceiptDetailPage'
 import SettingsPage from './pages/SettingsPage'
 import AboutPage from './pages/AboutPage'
 import ErrorPage from './pages/ErrorPage'
-import { Receipt, Upload, Settings, ReceiptText, HelpCircle, Github, Menu, X } from 'lucide-react'
+import { Receipt, Upload, Settings, HelpCircle, Github, Menu, X } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { ThemeToggle } from './components/ThemeToggle'
 import UserSetupDialog from './components/UserSetupDialog'
@@ -41,7 +41,7 @@ function Navigation() {
 			<div className="container px-4 py-4 mx-auto">
 				<div className="flex items-center justify-between">
 					<Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80" onClick={closeMobileMenu}>
-						<ReceiptText className="w-6 h-6" />
+						<img src="/logo.png" alt="MedStash" className="size-9" />
 						<h1 className="text-2xl font-bold cursor-pointer">MedStash</h1>
 					</Link>
 
