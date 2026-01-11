@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { receiptsApi, flagsApi, exportApi, Receipt, Flag } from '../lib/api'
 import { Card, CardContent } from '../components/ui/card'
@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Checkbox } from '../components/ui/checkbox'
-import { Download, Search, File, ArrowUp, ArrowDown, ArrowUpDown, Flag as FlagIcon, Edit } from 'lucide-react'
+import { Download, Search, File, ArrowUp, ArrowDown, ArrowUpDown, Flag as FlagIcon, Edit, RefreshCw } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip'
 import BulkEditDialog from '../components/BulkEditDialog'
@@ -26,23 +26,49 @@ export default function ReceiptsPage() {
 	const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 	const [selectedReceiptIds, setSelectedReceiptIds] = useState<Set<number>>(new Set())
 	const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
+	const [isRefreshing, setIsRefreshing] = useState(false)
+	const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null)
+	const [autoRefreshEnabled] = useState(true)
 
-	useEffect(() => {
-		loadData()
-	}, [selectedFlagId])
-
-	const loadData = async () => {
+	const loadData = useCallback(async (showLoading = true) => {
 		try {
-			setLoading(true)
+			if (showLoading) {
+				setLoading(true)
+			}
+			setIsRefreshing(true)
 			const [receiptsRes, flagsRes] = await Promise.all([receiptsApi.getAll(selectedFlagId), flagsApi.getAll()])
 			setReceipts(receiptsRes.data)
 			setFlags(flagsRes.data)
+			setLastRefreshTime(new Date())
+			setError(null)
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to load receipts')
 		} finally {
-			setLoading(false)
+			if (showLoading) {
+				setLoading(false)
+			}
+			setIsRefreshing(false)
 		}
-	}
+	}, [selectedFlagId])
+
+	const handleRefresh = useCallback((showLoading = false) => {
+		loadData(showLoading)
+	}, [loadData])
+
+	useEffect(() => {
+		loadData()
+	}, [loadData])
+
+	// Auto-refresh every 2 minutes
+	useEffect(() => {
+		if (!autoRefreshEnabled) return
+
+		const interval = setInterval(() => {
+			loadData(false) // Silent refresh (no loading state)
+		}, 120000) // 2 minutes (120 seconds)
+
+		return () => clearInterval(interval)
+	}, [autoRefreshEnabled, loadData])
 
 	const formatDate = (dateString: string) => {
 		return new Date(dateString).toLocaleDateString()
@@ -189,9 +215,25 @@ export default function ReceiptsPage() {
 			<div className="flex items-center justify-between">
 				<div>
 					<h2 className="text-3xl font-bold">Receipts</h2>
-					<p className="text-muted-foreground">Manage your medical receipts ({receipts.length} total)</p>
+					<p className="text-muted-foreground">
+						Manage your medical receipts ({receipts.length} total)
+						{lastRefreshTime && (
+							<span className="ml-2 text-xs">
+								Last refreshed: {lastRefreshTime.toLocaleTimeString()}
+							</span>
+						)}
+					</p>
 				</div>
 				<div className="flex gap-2">
+					<Button
+						onClick={() => handleRefresh(true)}
+						variant="outline"
+						disabled={isRefreshing}
+						className="relative"
+					>
+						<RefreshCw className={cn("mr-2 size-4", isRefreshing && "animate-spin")} />
+						Refresh
+					</Button>
 					{selectedReceiptIds.size > 0 && (
 						<Button onClick={() => setShowBulkEditDialog(true)} variant="default">
 							<Edit className="mr-2 size-4" />
