@@ -6,7 +6,7 @@ import { logger } from '../utils/logger'
 const router = express.Router()
 
 // Whitelist of allowed setting keys for security
-const ALLOWED_SETTING_KEYS = ['filenamePattern'] as const
+const ALLOWED_SETTING_KEYS = ['filenamePattern', 'imageOptimizationEnabled'] as const
 type AllowedSettingKey = (typeof ALLOWED_SETTING_KEYS)[number]
 
 /**
@@ -95,6 +95,10 @@ router.put('/:key', (req, res) => {
 			const validation = validatePattern(value)
 			if (!validation.valid) {
 				return res.status(400).json({ error: validation.error || 'Invalid filename pattern' })
+			}
+		} else if (key === 'imageOptimizationEnabled') {
+			if (typeof value !== 'boolean') {
+				return res.status(400).json({ error: 'imageOptimizationEnabled must be a boolean' })
 			}
 		}
 

@@ -120,6 +120,8 @@ export interface ReceiptFile {
   original_filename: string;
   file_order: number;
   created_at: string;
+  is_optimized?: number; // 0 = false, 1 = true (SQLite boolean)
+  optimized_at?: string | null; // Timestamp when optimized
 }
 
 export interface Flag {
@@ -376,6 +378,28 @@ export const watchApi = {
   }>('/watch/scan'),
   getProcessedCount: () => api.get<{ count: number }>('/watch/processed/count'),
   deleteProcessed: () => api.delete<{ deleted: number; errors: string[] }>('/watch/processed'),
+};
+
+// Images API
+export const imagesApi = {
+  optimize: (options?: { batchSize?: number; maxConcurrent?: number }) =>
+    api.post<{
+      success: boolean;
+      total: number;
+      optimized: number;
+      skipped: number;
+      errors: Array<{ fileId: number; error: string }>;
+      duration: number;
+    }>('/images/optimize', options || {}),
+  reoptimize: (options?: { batchSize?: number; maxConcurrent?: number }) =>
+    api.post<{
+      success: boolean;
+      total: number;
+      optimized: number;
+      skipped: number;
+      errors: Array<{ fileId: number; error: string }>;
+      duration: number;
+    }>('/images/reoptimize', options || {}),
 };
 
 export default api;

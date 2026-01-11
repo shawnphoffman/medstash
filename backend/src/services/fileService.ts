@@ -4,6 +4,7 @@ import path from 'path'
 import { generateReceiptFilename, sanitizeFilename } from '../utils/filename'
 import { ReceiptFile, Flag } from '../models/receipt'
 import { logger } from '../utils/logger'
+import { getSetting } from './dbService'
 
 // Get receipts directory dynamically to support test environments
 function getReceiptsDir(): string {
@@ -20,12 +21,12 @@ function parseDateComponents(date: string): { year: string; month: string; day: 
 		// Extract date part from ISO string (YYYY-MM-DD)
 		const dateStr = date.split('T')[0]
 		const parts = dateStr.split('-')
-		
+
 		if (parts.length === 3) {
 			const year = parts[0]
 			const month = parts[1]?.padStart(2, '0') || '01'
 			const day = parts[2]?.padStart(2, '0') || '01'
-			
+
 			// Validate year is 4 digits, month is 01-12, day is 01-31
 			if (year.length === 4 && /^\d{4}$/.test(year)) {
 				const monthNum = parseInt(month, 10)
@@ -38,7 +39,7 @@ function parseDateComponents(date: string): { year: string; month: string; day: 
 	} catch (error) {
 		logger.warn(`Failed to parse date: ${date}, using current date`, error)
 	}
-	
+
 	// Default to current date if parsing fails
 	const now = new Date()
 	return {
@@ -65,7 +66,7 @@ function getDbQueries(): any | null {
 	if ((globalThis as any).__medstash_dbQueries) {
 		return (globalThis as any).__medstash_dbQueries
 	}
-	
+
 	try {
 		// Try CommonJS require (works in most Node.js environments)
 		const dbModule = require('../db')
@@ -92,18 +93,18 @@ export function getReceiptDirByReceiptId(receiptId: number): string {
 			logger.debug(`Cannot load db module synchronously for receipt ${receiptId}, using default directory`)
 			return getReceiptDirByDate('unknown', new Date().toISOString().split('T')[0])
 		}
-		
+
 		// Get receipt from database
 		const receipt = dbQueries.getReceiptById.get(receiptId) as any
 		if (!receipt) {
 			logger.warn(`Receipt ${receiptId} not found, using default directory`)
 			return getReceiptDirByDate('unknown', new Date().toISOString().split('T')[0])
 		}
-		
+
 		// Get user name from database
 		const user = dbQueries.getUserById.get(receipt.user_id) as any
 		const userName = user?.name || 'unknown'
-		
+
 		return getReceiptDirByDate(userName, receipt.date)
 	} catch (error) {
 		// Fallback if anything goes wrong
@@ -162,6 +163,7 @@ export async function ensureReceiptDir(receiptId: number): Promise<string> {
 /**
  * Optimize image file if it's an image, otherwise return original
  * Converts JPEG/PNG to WebP at 85% quality
+ * @deprecated Use optimizeImageAdvanced() instead
  */
 export async function optimizeImage(inputPath: string, outputPath: string): Promise<void> {
 	try {
@@ -174,11 +176,326 @@ export async function optimizeImage(inputPath: string, outputPath: string): Prom
 }
 
 /**
+ * Optimization options for receipt images
+ */
+interface OptimizationOptions {
+	quality?: number // Default: 75 for JPEG
+	maxWidth?: number // Default: 2000px (if set, used for both width and height)
+	maxHeight?: number // Default: 2000px (if set, used for both width and height)
+	preserveMetadata?: boolean // Default: true
+	progressive?: boolean // Default: true for JPEG
+	grayscale?: boolean | 'auto' // Default: 'auto' - detect if B&W
+	force?: boolean // Default: false - if true, skip minimum size check and always optimize
+}
+
+/**
+ * Optimization result
+ */
+interface OptimizationResult {
+	optimized: boolean
+	originalSize: number
+	optimizedSize: number
+	format: string
+	dimensions?: { width: number; height: number }
+	quality: number
+	grayscale?: boolean
+	sizeReduction?: number // Percentage reduction
+	skipped?: boolean // Whether skipped because already optimized
+}
+
+/**
+ * Detect if image is primarily black and white
+ * Uses color variance analysis
+ */
+async function isBlackAndWhiteImage(inputPath: string, threshold: number = 0.1): Promise<boolean> {
+	try {
+		const stats = await sharp(inputPath).stats()
+		const channels = stats.channels
+
+		// Calculate color variance across RGB channels
+		// For a B&W image, all channels should have similar values
+		if (channels.length >= 3) {
+			const r = channels[0]
+			const g = channels[1]
+			const b = channels[2]
+
+			// Calculate average values
+			const rMean = r.mean
+			const gMean = g.mean
+			const bMean = b.mean
+
+			// Calculate variance between channels
+			const variance = (Math.abs(rMean - gMean) + Math.abs(rMean - bMean) + Math.abs(gMean - bMean)) / 3
+
+			// Normalize variance (0-1 scale, approximate)
+			const normalizedVariance = variance / 255
+
+			return normalizedVariance < threshold
+		}
+		return false
+	} catch (error) {
+		logger.debug('Failed to detect B&W image, assuming color:', error)
+		return false
+	}
+}
+
+/**
+ * Advanced image optimization for receipt images
+ * Optimizes JPEG/PNG with receipt-specific settings (text legibility focus)
+ */
+export async function optimizeImageAdvanced(
+	inputPath: string,
+	outputPath: string,
+	fileId?: number,
+	options?: OptimizationOptions
+): Promise<OptimizationResult> {
+	const startTime = Date.now()
+
+	// Load configuration from environment
+	const quality = options?.quality ?? parseInt(process.env.IMAGE_QUALITY || '75', 10)
+	const maxDimension = options?.maxWidth ?? options?.maxHeight ?? parseInt(process.env.IMAGE_MAX_DIMENSION || '2000', 10)
+	const maxWidth = maxDimension
+	const maxHeight = maxDimension
+	// Default to false (strip metadata) for better compression unless explicitly requested
+	const preserveMetadata = options?.preserveMetadata ?? process.env.IMAGE_PRESERVE_METADATA === 'true'
+	const progressive = options?.progressive ?? process.env.IMAGE_USE_PROGRESSIVE_JPEG !== 'false'
+	const grayscaleMode = options?.grayscale ?? (process.env.IMAGE_AUTO_GRAYSCALE !== 'false' ? 'auto' : false)
+	const grayscaleThreshold = parseFloat(process.env.IMAGE_GRAYSCALE_THRESHOLD || '0.1')
+	const force = options?.force ?? false
+
+	// Check if file is already optimized (if fileId provided and not forcing)
+	// Skip this check if force=true to allow re-optimization
+	if (!force && fileId !== undefined) {
+		try {
+			const dbQueries = getDbQueries()
+			if (dbQueries) {
+				const file = dbQueries.getFileById.get(fileId) as any
+				if (file?.is_optimized) {
+					logger.debug(`File ${fileId} already optimized, skipping`)
+					return {
+						optimized: false,
+						originalSize: 0,
+						optimizedSize: 0,
+						format: 'unknown',
+						quality: 0,
+						skipped: true,
+					}
+				}
+			}
+		} catch (error) {
+			logger.debug('Could not check optimization status:', error)
+		}
+	}
+
+	// Get original file size
+	const originalStats = await fs.stat(inputPath)
+	const originalSize = originalStats.size
+
+	// Get image metadata
+	const metadata = await sharp(inputPath).metadata()
+	const format = metadata.format?.toLowerCase() || 'unknown'
+	const width = metadata.width || 0
+	const height = metadata.height || 0
+
+	logger.debug(`Processing file ${fileId || inputPath}: format=${format}, size=${originalSize} bytes, dimensions=${width}x${height}`)
+
+	// Check if file is too small to optimize (unless forced)
+	const minSize = parseInt(process.env.IMAGE_MIN_SIZE_TO_OPTIMIZE || '200000', 10)
+	if (!force && originalSize < minSize && format === 'jpeg') {
+		// For small JPEGs, just copy with minimal processing
+		await fs.copyFile(inputPath, outputPath)
+		return {
+			optimized: false,
+			originalSize,
+			optimizedSize: originalSize,
+			format,
+			dimensions: { width, height },
+			quality: 0,
+			skipped: true,
+		}
+	}
+
+	let image = sharp(inputPath)
+
+	// Preserve metadata if requested (default: false for receipts to reduce file size)
+	// Only preserve if explicitly requested
+	if (preserveMetadata) {
+		image = image.keepMetadata()
+	} else {
+		// Strip all metadata for better compression
+		image = image.withMetadata({})
+	}
+
+	// Detect if image is B&W and convert to grayscale if needed
+	let isGrayscale = false
+	if (grayscaleMode === 'auto') {
+		isGrayscale = await isBlackAndWhiteImage(inputPath, grayscaleThreshold)
+		if (isGrayscale) {
+			image = image.greyscale()
+			logger.debug('Converting B&W image to grayscale')
+		}
+	} else if (grayscaleMode === true) {
+		image = image.greyscale()
+		isGrayscale = true
+	}
+
+	// Resize if dimensions exceed limits
+	if (width > maxWidth || height > maxHeight) {
+		image = image.resize(maxWidth, maxHeight, {
+			fit: 'inside',
+			withoutEnlargement: true,
+			kernel: sharp.kernel.lanczos3, // High quality for text
+		})
+		logger.debug(`Resizing image from ${width}x${height} to max ${maxWidth}x${maxHeight}`)
+	}
+
+	// Optimize based on format
+	try {
+		if (format === 'jpeg' || format === 'jpg') {
+			// Optimize JPEG with progressive encoding
+			await image
+				.jpeg({
+					quality,
+					progressive,
+				})
+				.toFile(outputPath)
+		} else if (format === 'png') {
+			// Convert all PNGs to JPEG (no transparency support needed)
+			// This provides better compression for receipt images
+			await image
+				.jpeg({
+					quality,
+					progressive,
+				})
+				.toFile(outputPath)
+		} else if (format === 'webp') {
+			// Convert WebP to JPEG (user doesn't want WebP format)
+			// This provides better compatibility and stability
+			await image
+				.jpeg({
+					quality,
+					progressive,
+				})
+				.toFile(outputPath)
+		} else {
+			// Unsupported format, just copy
+			logger.warn(`Unsupported image format: ${format} for file ${fileId || inputPath}`)
+			await fs.copyFile(inputPath, outputPath)
+			return {
+				optimized: false,
+				originalSize,
+				optimizedSize: originalSize,
+				format,
+				dimensions: { width, height },
+				quality: 0,
+			}
+		}
+	} catch (error: any) {
+		// If optimization fails, don't mark as optimized
+		const errorMsg = error.message || error.toString() || 'Unknown error'
+		const errorDetails = error.stack ? `${errorMsg}\n${error.stack}` : errorMsg
+		if (fileId !== undefined) {
+			console.error(`[ERROR] Failed to optimize file ${fileId} (${inputPath}): ${errorDetails}`)
+		} else {
+			console.error(`[ERROR] Failed to optimize file ${inputPath}: ${errorDetails}`)
+		}
+		logger.error(`Image optimization failed for ${inputPath}:`, errorDetails)
+		throw error // Re-throw so caller knows it failed
+	}
+
+	// Get optimized file size
+	const optimizedStats = await fs.stat(outputPath)
+	const optimizedSize = optimizedStats.size
+	const sizeReduction = originalSize > 0 ? ((originalSize - optimizedSize) / originalSize) * 100 : 0
+
+	// Check if optimization actually reduced file size
+	// If optimized file is larger, keep the original (skip optimization)
+	if (optimizedSize >= originalSize) {
+		logger.debug(
+			`Optimization increased file size (${originalSize} -> ${optimizedSize} bytes), keeping original for file ${fileId || inputPath}`
+		)
+		// Delete the larger optimized file
+		await fs.unlink(outputPath)
+		// Copy original to output (so caller gets the original)
+		await fs.copyFile(inputPath, outputPath)
+		return {
+			optimized: false,
+			originalSize,
+			optimizedSize: originalSize,
+			format: format === 'png' || format === 'webp' ? 'jpeg' : format,
+			dimensions: { width, height },
+			quality: 0,
+			skipped: true,
+		}
+	}
+
+	// Optimization was successful and reduced file size
+	const optimized = true
+
+	// Mark file as optimized in database if fileId provided
+	// Only mark if optimization was successful (don't mark on errors)
+	if (fileId !== undefined && optimized) {
+		try {
+			const dbQueries = getDbQueries()
+			if (dbQueries) {
+				dbQueries.updateReceiptFileOptimized.run(fileId)
+				logger.debug(`Marked file ${fileId} as optimized`)
+			}
+		} catch (error) {
+			logger.warn(`Failed to mark file ${fileId} as optimized:`, error)
+			// Don't throw - optimization succeeded, just marking failed
+		}
+	}
+
+	const duration = Date.now() - startTime
+	logger.debug(`Optimized image: ${originalSize} -> ${optimizedSize} bytes (${sizeReduction.toFixed(1)}% reduction) in ${duration}ms`)
+
+	// Determine final format (PNGs and WebP are converted to JPEG)
+	let finalFormat = format === 'png' || format === 'webp' ? 'jpeg' : format
+
+	return {
+		optimized,
+		originalSize,
+		optimizedSize,
+		format: finalFormat,
+		dimensions: { width, height },
+		quality,
+		grayscale: isGrayscale,
+		sizeReduction,
+	}
+}
+
+/**
  * Check if file is an image that can be optimized
  */
 export function isImageFile(filename: string): boolean {
 	const ext = path.extname(filename).toLowerCase()
 	return ['.jpg', '.jpeg', '.png', '.webp'].includes(ext)
+}
+
+/**
+ * Check if image optimization is enabled
+ * Defaults to true if setting is not set
+ */
+export function isImageOptimizationEnabled(): boolean {
+	try {
+		const setting = getSetting('imageOptimizationEnabled')
+		if (setting === null) {
+			// Default to enabled if not set
+			return true
+		}
+		// Parse JSON boolean value
+		try {
+			return JSON.parse(setting) === true
+		} catch {
+			// If parsing fails, treat as string
+			return setting === 'true'
+		}
+	} catch (error) {
+		// If there's any error, default to enabled
+		logger.debug('Error checking image optimization setting, defaulting to enabled:', error)
+		return true
+	}
 }
 
 /**
@@ -189,8 +506,28 @@ export function isPdfFile(filename: string): boolean {
 }
 
 /**
+ * Mark a receipt file as optimized in the database
+ */
+export async function markFileAsOptimized(receiptId: number, filename: string): Promise<void> {
+	try {
+		const dbQueries = getDbQueries()
+		if (dbQueries) {
+			const files = dbQueries.getFilesByReceiptId.all(receiptId) as any[]
+			const file = files.find((f: any) => f.filename === filename)
+			if (file) {
+				dbQueries.updateReceiptFileOptimized.run(file.id)
+				logger.debug(`Marked file ${file.id} (${filename}) as optimized`)
+			}
+		}
+	} catch (error) {
+		logger.debug('Could not mark file as optimized:', error)
+	}
+}
+
+/**
  * Process and save uploaded file
  * Returns the final filename and whether it was optimized
+ * Note: Call markFileAsOptimized() after addReceiptFile() if optimized is true
  */
 export async function saveReceiptFile(
 	file: Express.Multer.File,
@@ -216,20 +553,23 @@ export async function saveReceiptFile(
 
 	let optimized = false
 
-	// Optimize if it's an image
-	if (isImageFile(originalFilename)) {
+	// Optimize if it's an image and optimization is enabled
+	if (isImageFile(originalFilename) && isImageOptimizationEnabled()) {
 		try {
-			await optimizeImage(file.path, filePath)
-			optimized = true
+			// Use advanced optimization (no fileId yet, will mark after DB insert)
+			const result = await optimizeImageAdvanced(file.path, filePath)
+			optimized = result.optimized && !result.skipped
+
 			// Delete temporary file
 			await fs.unlink(file.path)
 		} catch (error) {
+			logger.warn('Image optimization failed, using original:', error)
 			// If optimization fails, just copy the original
 			await fs.copyFile(file.path, filePath)
 			await fs.unlink(file.path)
 		}
 	} else {
-		// For PDFs and other files, copy then delete (can't use rename across volumes in Docker)
+		// For PDFs and other files, or if optimization is disabled, copy then delete (can't use rename across volumes in Docker)
 		await fs.copyFile(file.path, filePath)
 		await fs.unlink(file.path)
 	}
@@ -240,6 +580,7 @@ export async function saveReceiptFile(
 /**
  * Replace an existing file with a new one, keeping the same filename
  * This is used when replacing missing files
+ * Resets optimization status since it's a new file
  */
 export async function replaceReceiptFile(
 	file: Express.Multer.File,
@@ -251,7 +592,7 @@ export async function replaceReceiptFile(
 	if (!receipt) {
 		throw new Error(`Receipt ${receiptId} not found`)
 	}
-	
+
 	await ensureReceiptDirByDate(receipt.user || 'unknown', receipt.date)
 	const receiptDir = getReceiptDirByDate(receipt.user || 'unknown', receipt.date)
 
@@ -260,20 +601,52 @@ export async function replaceReceiptFile(
 
 	let optimized = false
 
-	// Optimize if it's an image
-	if (isImageFile(originalFilename)) {
+	// Reset optimization status since this is a new file
+	try {
+		const dbQueries = getDbQueries()
+		if (dbQueries) {
+			const files = dbQueries.getFilesByReceiptId.all(receiptId) as any[]
+			const fileRecord = files.find((f: any) => f.filename === existingFilename)
+			if (fileRecord) {
+				dbQueries.resetReceiptFileOptimized.run(fileRecord.id)
+				logger.debug(`Reset optimization status for file ${fileRecord.id} (${existingFilename})`)
+			}
+		}
+	} catch (error) {
+		logger.debug('Could not reset optimization status:', error)
+	}
+
+	// Optimize if it's an image and optimization is enabled
+	if (isImageFile(originalFilename) && isImageOptimizationEnabled()) {
 		try {
-			await optimizeImage(file.path, filePath)
-			optimized = true
+			// Get file ID for optimization tracking
+			let fileId: number | undefined
+			try {
+				const dbQueries = getDbQueries()
+				if (dbQueries) {
+					const files = dbQueries.getFilesByReceiptId.all(receiptId) as any[]
+					const fileRecord = files.find((f: any) => f.filename === existingFilename)
+					if (fileRecord) {
+						fileId = fileRecord.id
+					}
+				}
+			} catch (error) {
+				logger.debug('Could not get file ID for optimization:', error)
+			}
+
+			const result = await optimizeImageAdvanced(file.path, filePath, fileId)
+			optimized = result.optimized && !result.skipped
+
 			// Delete temporary file
 			await fs.unlink(file.path)
 		} catch (error) {
+			logger.warn('Image optimization failed, using original:', error)
 			// If optimization fails, just copy the original
 			await fs.copyFile(file.path, filePath)
 			await fs.unlink(file.path)
 		}
 	} else {
-		// For PDFs and other files, copy then delete (can't use rename across volumes in Docker)
+		// For PDFs and other files, or if optimization is disabled, copy then delete (can't use rename across volumes in Docker)
 		await fs.copyFile(file.path, filePath)
 		await fs.unlink(file.path)
 	}
@@ -291,7 +664,7 @@ export async function deleteReceiptFile(receiptId: number, filename: string): Pr
 		logger.warn(`Receipt ${receiptId} not found, cannot delete file`)
 		return
 	}
-	
+
 	const receiptDir = getReceiptDirByDate(receipt.user || 'unknown', receipt.date)
 	const filePath = path.join(receiptDir, filename)
 	try {
@@ -316,9 +689,9 @@ export async function deleteReceiptFiles(receiptId: number): Promise<void> {
 		logger.warn(`Receipt ${receiptId} not found, cannot delete files`)
 		return
 	}
-	
+
 	const receiptDir = getReceiptDirByDate(receipt.user || 'unknown', receipt.date)
-	
+
 	// Delete all files for this receipt
 	for (const file of receipt.files) {
 		const filePath = path.join(receiptDir, file.filename)
@@ -330,7 +703,7 @@ export async function deleteReceiptFiles(receiptId: number): Promise<void> {
 			}
 		}
 	}
-	
+
 	// Try to remove the directory if it's empty (but don't fail if it's not)
 	try {
 		const entries = await fs.readdir(receiptDir)
@@ -367,7 +740,7 @@ export async function fileExists(receiptId: number, filename: string): Promise<b
 	if (!receipt) {
 		return false
 	}
-	
+
 	const filePath = getReceiptFilePathByDate(receipt.user || 'unknown', receipt.date, filename)
 	try {
 		await fs.access(filePath)
@@ -398,11 +771,11 @@ export async function renameReceiptFiles(
 		logger.warn(`Receipt ${receiptId} not found, cannot rename files`)
 		return []
 	}
-	
+
 	const oldReceiptDir = getReceiptDirByDate(oldReceipt.user || 'unknown', oldReceipt.date)
 	const newReceiptDir = getReceiptDirByDate(user, date)
 	const renameResults: Array<{ fileId: number; oldFilename: string; newFilename: string }> = []
-	
+
 	// Ensure new directory exists
 	await ensureReceiptDirByDate(user, date)
 
@@ -427,7 +800,7 @@ export async function renameReceiptFiles(
 					logger.warn(`File ${file.filename} does not exist, skipping rename`)
 					continue
 				}
-				
+
 				// Check if new filename already exists (shouldn't happen, but be safe)
 				try {
 					await fs.access(newFilePath)
@@ -540,7 +913,7 @@ export async function restoreFileAssociations(): Promise<{
 	const receiptsDir = getReceiptsDir()
 
 	// Build a map of receipts by their directory path for quick lookup
-	const receiptMap = new Map<string, Array<typeof receipts[0]>>()
+	const receiptMap = new Map<string, Array<(typeof receipts)[0]>>()
 	for (const receipt of receipts) {
 		const dirPath = getReceiptDirByDate(receipt.user || 'unknown', receipt.date)
 		if (!receiptMap.has(dirPath)) {
@@ -553,31 +926,31 @@ export async function restoreFileAssociations(): Promise<{
 	async function scanDirectory(dirPath: string, depth: number): Promise<void> {
 		try {
 			const entries = await fs.readdir(dirPath, { withFileTypes: true })
-			
+
 			for (const entry of entries) {
 				const fullPath = path.join(dirPath, entry.name)
-				
+
 				if (entry.isDirectory()) {
 					// Continue scanning subdirectories
 					await scanDirectory(fullPath, depth + 1)
 				} else if (entry.isFile() && !entry.name.startsWith('.')) {
 					// Found a file - try to match it to a receipt
 					results.totalFilesFound++
-					
+
 					// Get the directory this file is in (should be user/year/month/day/)
 					const fileDir = dirPath
 					const receiptsInDir = receiptMap.get(fileDir) || []
-					
+
 					// Try to find a receipt that should have this file
 					// We'll match by filename pattern or try all receipts in the directory
 					for (const receipt of receiptsInDir) {
 						const existingFiles = receipt.files.map(f => f.filename)
-						
+
 						// Skip if file already in database
 						if (existingFiles.includes(entry.name)) {
 							continue
 						}
-						
+
 						// Try to determine file order from filename
 						let fileOrder = existingFiles.length
 						const orderMatch = entry.name.match(/_(\d+)\.\w+$/)
@@ -587,10 +960,10 @@ export async function restoreFileAssociations(): Promise<{
 								fileOrder = extractedOrder
 							}
 						}
-						
+
 						// Use filename as original_filename (best guess)
 						const originalFilename = entry.name
-						
+
 						try {
 							addReceiptFile(receipt.id, entry.name, originalFilename, fileOrder)
 							results.filesRestored++
@@ -669,10 +1042,10 @@ export async function migrateFilesToDateStructure(): Promise<{
 
 		// Get old directory path
 		const oldDir = path.join(receiptsDir, dirName)
-		
+
 		// Get new directory path
 		const newDir = getReceiptDirByDate(receipt.user || 'unknown', receipt.date)
-		
+
 		// Skip if old and new directories are the same (already migrated)
 		if (oldDir === newDir) {
 			continue
@@ -750,4 +1123,379 @@ export async function migrateFilesToDateStructure(): Promise<{
 	}
 
 	return results
+}
+
+/**
+ * Optimize all unoptimized images in the database
+ * Returns statistics about the optimization process
+ */
+export async function optimizeExistingImages(options?: { batchSize?: number; maxConcurrent?: number }): Promise<{
+	total: number
+	optimized: number
+	skipped: number
+	errors: Array<{ fileId: number; error: string }>
+	duration: number
+}> {
+	const startTime = Date.now()
+	const batchSize = options?.batchSize ?? 10
+	const maxConcurrent = options?.maxConcurrent ?? 3
+
+	const results = {
+		total: 0,
+		optimized: 0,
+		skipped: 0,
+		errors: [] as Array<{ fileId: number; error: string }>,
+		duration: 0,
+	}
+
+	try {
+		const dbQueries = getDbQueries()
+		if (!dbQueries) {
+			throw new Error('Database queries not available')
+		}
+
+		// Get all unoptimized image files
+		const unoptimizedFiles = dbQueries.getUnoptimizedFiles.all() as Array<{
+			id: number
+			receipt_id: number
+			filename: string
+			original_filename: string
+		}>
+
+		results.total = unoptimizedFiles.length
+
+		if (unoptimizedFiles.length === 0) {
+			results.duration = Date.now() - startTime
+			return results
+		}
+
+		logger.debug(`Found ${unoptimizedFiles.length} unoptimized files to process`)
+
+		// Get receipt information for each file
+		const { getReceiptById } = await import('./dbService')
+
+		// Process files in batches
+		for (let i = 0; i < unoptimizedFiles.length; i += batchSize) {
+			const batch = unoptimizedFiles.slice(i, i + batchSize)
+
+			// Process batch with concurrency limit
+			const batchPromises = batch.map(async file => {
+				try {
+					// Get receipt to find file path
+					const receipt = getReceiptById(file.receipt_id)
+					if (!receipt) {
+						const errorMsg = `Receipt ${file.receipt_id} not found`
+						console.error(`[ERROR] Failed to optimize file ${file.id} (${file.filename}): ${errorMsg}`)
+						results.errors.push({
+							fileId: file.id,
+							error: errorMsg,
+						})
+						return
+					}
+
+					// Get file path
+					const receiptDir = getReceiptDirByDate(receipt.user || 'unknown', receipt.date)
+					const filePath = path.join(receiptDir, file.filename)
+
+					// Check if file exists
+					try {
+						await fs.access(filePath)
+					} catch (accessError: any) {
+						// File doesn't exist - mark as optimized (skip) so it doesn't appear in future runs
+						// This is not an error - file may have been deleted manually
+						dbQueries.updateReceiptFileOptimized.run(file.id)
+						logger.debug(`Skipped missing file ${file.id} (${file.filename}): file not found`)
+						results.skipped++
+						return
+					}
+
+					// Check if it's an image
+					if (!isImageFile(file.filename)) {
+						// Not an image, mark as optimized (skip)
+						dbQueries.updateReceiptFileOptimized.run(file.id)
+						results.skipped++
+						return
+					}
+
+					// Optimize the image (use temp file for in-place optimization)
+					const tempFilePath = `${filePath}.tmp.${Date.now()}`
+					try {
+						const result = await optimizeImageAdvanced(filePath, tempFilePath, file.id)
+						logger.debug(
+							`Optimization result for file ${file.id}: optimized=${result.optimized}, skipped=${result.skipped}, format=${result.format}`
+						)
+
+						if (result.optimized && !result.skipped) {
+							// Replace original with optimized version
+							await fs.rename(tempFilePath, filePath)
+							results.optimized++
+							logger.debug(
+								`Optimized file ${file.id}: ${result.originalSize} -> ${result.optimizedSize} bytes (${result.sizeReduction?.toFixed(
+									1
+								)}% reduction)`
+							)
+						} else if (result.skipped) {
+							// Clean up temp file if it was created
+							try {
+								await fs.unlink(tempFilePath)
+							} catch {
+								// Ignore cleanup errors
+							}
+							results.skipped++
+							logger.debug(`Skipped file ${file.id} (already optimized or too small)`)
+						} else {
+							// Clean up temp file
+							try {
+								await fs.unlink(tempFilePath)
+							} catch {
+								// Ignore cleanup errors
+							}
+							const errorMsg = `Optimization returned false (optimized=${result.optimized}, skipped=${result.skipped}, format=${result.format})`
+							console.error(`[ERROR] Failed to optimize file ${file.id} (${file.filename}): ${errorMsg}`)
+							logger.error(`Failed to optimize file ${file.id}: ${errorMsg}`)
+							results.errors.push({
+								fileId: file.id,
+								error: errorMsg,
+							})
+						}
+					} catch (optError: any) {
+						// Clean up temp file on error
+						try {
+							await fs.unlink(tempFilePath)
+						} catch {
+							// Ignore cleanup errors
+						}
+						throw optError
+					}
+				} catch (error: any) {
+					const errorMessage = error.message || error.toString() || 'Unknown error'
+					console.error(`[ERROR] Failed to optimize file ${file.id} (${file.filename}):`, errorMessage)
+					if (error.stack) {
+						console.error(`[ERROR] Stack trace for file ${file.id}:`, error.stack)
+						logger.debug(`Error stack for file ${file.id}:`, error.stack)
+					}
+					results.errors.push({
+						fileId: file.id,
+						error: errorMessage,
+					})
+					logger.error(`Failed to optimize file ${file.id} (${file.filename}):`, errorMessage)
+				}
+			})
+
+			// Process with concurrency limit
+			const chunks = []
+			for (let j = 0; j < batchPromises.length; j += maxConcurrent) {
+				chunks.push(batchPromises.slice(j, j + maxConcurrent))
+			}
+
+			for (const chunk of chunks) {
+				await Promise.all(chunk)
+			}
+
+			logger.debug(`Processed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(unoptimizedFiles.length / batchSize)}`)
+		}
+
+		results.duration = Date.now() - startTime
+		logger.debug(
+			`Batch optimization completed: ${results.optimized} optimized, ${results.skipped} skipped, ${results.errors.length} errors in ${results.duration}ms`
+		)
+
+		return results
+	} catch (error: any) {
+		results.duration = Date.now() - startTime
+		logger.error('Error in batch optimization:', error)
+		throw error
+	}
+}
+
+/**
+ * Re-optimize all images in the database (including already optimized ones)
+ * This resets the optimization status and re-optimizes all images
+ * Returns statistics about the optimization process
+ */
+export async function reoptimizeAllImages(options?: { batchSize?: number; maxConcurrent?: number }): Promise<{
+	total: number
+	optimized: number
+	skipped: number
+	errors: Array<{ fileId: number; error: string }>
+	duration: number
+}> {
+	const startTime = Date.now()
+	const batchSize = options?.batchSize ?? 10
+	const maxConcurrent = options?.maxConcurrent ?? 3
+
+	const results = {
+		total: 0,
+		optimized: 0,
+		skipped: 0,
+		errors: [] as Array<{ fileId: number; error: string }>,
+		duration: 0,
+	}
+
+	try {
+		const dbQueries = getDbQueries()
+		if (!dbQueries) {
+			throw new Error('Database queries not available')
+		}
+
+		// Get all image files (regardless of optimization status)
+		const allImageFiles = dbQueries.getAllImageFiles.all() as Array<{
+			id: number
+			receipt_id: number
+			filename: string
+			original_filename: string
+		}>
+
+		// Filter to only actual image files (double-check with isImageFile)
+		const imageFiles = allImageFiles.filter(file => isImageFile(file.filename))
+
+		results.total = imageFiles.length
+
+		if (imageFiles.length === 0) {
+			results.duration = Date.now() - startTime
+			return results
+		}
+
+		logger.debug(`Found ${imageFiles.length} image files to re-optimize`)
+
+		// Reset optimization status for all files
+		for (const file of imageFiles) {
+			dbQueries.resetReceiptFileOptimized.run(file.id)
+		}
+
+		logger.debug(`Reset optimization status for ${imageFiles.length} files`)
+
+		// Get receipt information for each file
+		const { getReceiptById } = await import('./dbService')
+
+		// Process files in batches
+		for (let i = 0; i < imageFiles.length; i += batchSize) {
+			const batch = imageFiles.slice(i, i + batchSize)
+
+			// Process batch with concurrency limit
+			const batchPromises = batch.map(async file => {
+				try {
+					// Get receipt to find file path
+					const receipt = getReceiptById(file.receipt_id)
+					if (!receipt) {
+						const errorMsg = `Receipt ${file.receipt_id} not found`
+						console.error(`[ERROR] Failed to optimize file ${file.id} (${file.filename}): ${errorMsg}`)
+						results.errors.push({
+							fileId: file.id,
+							error: errorMsg,
+						})
+						return
+					}
+
+					// Get file path
+					const receiptDir = getReceiptDirByDate(receipt.user || 'unknown', receipt.date)
+					const filePath = path.join(receiptDir, file.filename)
+
+					// Check if file exists
+					try {
+						await fs.access(filePath)
+					} catch (accessError: any) {
+						// File doesn't exist - mark as optimized (skip) so it doesn't appear in future runs
+						// This is not an error - file may have been deleted manually
+						dbQueries.updateReceiptFileOptimized.run(file.id)
+						logger.debug(`Skipped missing file ${file.id} (${file.filename}): file not found`)
+						results.skipped++
+						return
+					}
+
+					// Optimize the image (use temp file for in-place optimization)
+					// Use force=true to skip minimum size check and be more aggressive
+					// Use slightly lower quality (70) for re-optimization to get better compression
+					const tempFilePath = `${filePath}.tmp.${Date.now()}`
+					try {
+						const result = await optimizeImageAdvanced(filePath, tempFilePath, file.id, {
+							force: true, // Force optimization even for small files
+							quality: 70, // Slightly lower quality for better compression
+							preserveMetadata: false, // Strip metadata for better compression
+						})
+						logger.debug(
+							`Optimization result for file ${file.id}: optimized=${result.optimized}, skipped=${result.skipped}, format=${result.format}`
+						)
+
+						if (result.optimized && !result.skipped) {
+							// Replace original with optimized version
+							await fs.rename(tempFilePath, filePath)
+							results.optimized++
+							logger.debug(
+								`Optimized file ${file.id}: ${result.originalSize} -> ${result.optimizedSize} bytes (${result.sizeReduction?.toFixed(
+									1
+								)}% reduction)`
+							)
+						} else if (result.skipped) {
+							// Clean up temp file if it was created
+							try {
+								await fs.unlink(tempFilePath)
+							} catch {
+								// Ignore cleanup errors
+							}
+							results.skipped++
+							logger.debug(`Skipped file ${file.id} (already optimized or too small)`)
+						} else {
+							// Clean up temp file
+							try {
+								await fs.unlink(tempFilePath)
+							} catch {
+								// Ignore cleanup errors
+							}
+							const errorMsg = `Optimization returned false (optimized=${result.optimized}, skipped=${result.skipped}, format=${result.format})`
+							console.error(`[ERROR] Failed to optimize file ${file.id} (${file.filename}): ${errorMsg}`)
+							logger.error(`Failed to optimize file ${file.id}: ${errorMsg}`)
+							results.errors.push({
+								fileId: file.id,
+								error: errorMsg,
+							})
+						}
+					} catch (optError: any) {
+						// Clean up temp file on error
+						try {
+							await fs.unlink(tempFilePath)
+						} catch {
+							// Ignore cleanup errors
+						}
+						throw optError
+					}
+				} catch (error: any) {
+					const errorMessage = error.message || error.toString() || 'Unknown error'
+					console.error(`[ERROR] Failed to optimize file ${file.id} (${file.filename}):`, errorMessage)
+					if (error.stack) {
+						console.error(`[ERROR] Stack trace for file ${file.id}:`, error.stack)
+						logger.debug(`Error stack for file ${file.id}:`, error.stack)
+					}
+					results.errors.push({
+						fileId: file.id,
+						error: errorMessage,
+					})
+					logger.error(`Failed to optimize file ${file.id} (${file.filename}):`, errorMessage)
+				}
+			})
+
+			// Process with concurrency limit
+			const chunks = []
+			for (let j = 0; j < batchPromises.length; j += maxConcurrent) {
+				chunks.push(batchPromises.slice(j, j + maxConcurrent))
+			}
+
+			for (const chunk of chunks) {
+				await Promise.all(chunk)
+			}
+
+			logger.debug(`Processed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(imageFiles.length / batchSize)}`)
+		}
+
+		results.duration = Date.now() - startTime
+		logger.debug(
+			`Re-optimization completed: ${results.optimized} optimized, ${results.skipped} skipped, ${results.errors.length} errors in ${results.duration}ms`
+		)
+
+		return results
+	} catch (error: any) {
+		results.duration = Date.now() - startTime
+		logger.error('Error in re-optimization:', error)
+		throw error
+	}
 }

@@ -13,6 +13,7 @@ import settingsRouter from './routes/settings'
 import exportRouter from './routes/export'
 import filenamesRouter from './routes/filenames'
 import watchRouter from './routes/watch'
+import imagesRouter from './routes/images'
 import { ensureReceiptsDir } from './services/fileService'
 import { startWatchService } from './services/watchService'
 import { errorHandler } from './middleware/errorHandler'
@@ -66,6 +67,7 @@ app.use('/api/settings', settingsRouter)
 app.use('/api/export', exportRouter)
 app.use('/api/filenames', filenamesRouter)
 app.use('/api/watch', watchRouter)
+app.use('/api/images', imagesRouter)
 
 // Health check - verifies database connectivity
 app.get('/health', (req, res) => {

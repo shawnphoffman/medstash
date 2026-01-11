@@ -2,7 +2,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { logger } from '../utils/logger'
 import { createReceipt, addReceiptFile, createFlag, getAllFlags } from './dbService'
-import { saveReceiptFile, ensureReceiptDirByDate, isImageFile, isPdfFile } from './fileService'
+import { saveReceiptFile, ensureReceiptDirByDate, isImageFile, isPdfFile, markFileAsOptimized } from './fileService'
 import { dbQueries } from '../db'
 import { Flag } from '../models/receipt'
 
@@ -150,7 +150,7 @@ async function processReceipt(files: Array<{ path: string; name: string }>, sour
 				} as Express.Multer.File
 
 				// Save file to receipt storage
-				const { filename, originalFilename } = await saveReceiptFile(
+				const { filename, originalFilename, optimized } = await saveReceiptFile(
 					mockFile,
 					receipt.id,
 					receipt.date,
@@ -164,6 +164,11 @@ async function processReceipt(files: Array<{ path: string; name: string }>, sour
 
 				// Add file to database
 				addReceiptFile(receipt.id, filename, originalFilename, i)
+
+				// Mark as optimized if optimization was successful
+				if (optimized) {
+					await markFileAsOptimized(receipt.id, filename)
+				}
 
 				logger.debug(`Processed file ${file.name} for receipt ${receipt.id}`)
 			} catch (error) {

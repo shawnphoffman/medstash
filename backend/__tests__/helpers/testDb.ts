@@ -57,6 +57,8 @@ export function setupTestDb(): DatabaseType {
       original_filename TEXT NOT NULL,
       file_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      is_optimized INTEGER NOT NULL DEFAULT 0,
+      optimized_at TEXT,
       FOREIGN KEY (receipt_id) REFERENCES receipts(id) ON DELETE CASCADE
     );
 
@@ -159,11 +161,27 @@ export function createTestDbQueries(db: DatabaseType) {
     `),
     deleteReceipt: db.prepare('DELETE FROM receipts WHERE id = ?'),
     getFilesByReceiptId: db.prepare('SELECT * FROM receipt_files WHERE receipt_id = ? ORDER BY file_order'),
+    getFileById: db.prepare('SELECT * FROM receipt_files WHERE id = ?'),
     insertReceiptFile: db.prepare(`
       INSERT INTO receipt_files (receipt_id, filename, original_filename, file_order)
       VALUES (?, ?, ?, ?)
     `),
     updateReceiptFilename: db.prepare('UPDATE receipt_files SET filename = ? WHERE id = ?'),
+    updateReceiptFileOptimized: db.prepare(`
+      UPDATE receipt_files 
+      SET is_optimized = 1, optimized_at = datetime('now')
+      WHERE id = ?
+    `),
+    resetReceiptFileOptimized: db.prepare(`
+      UPDATE receipt_files 
+      SET is_optimized = 0, optimized_at = NULL
+      WHERE id = ?
+    `),
+    getUnoptimizedFiles: db.prepare(`
+      SELECT * FROM receipt_files 
+      WHERE is_optimized = 0 OR is_optimized IS NULL
+      ORDER BY created_at
+    `),
     deleteReceiptFile: db.prepare('DELETE FROM receipt_files WHERE id = ?'),
     deleteFilesByReceiptId: db.prepare('DELETE FROM receipt_files WHERE receipt_id = ?'),
     getAllFlags: db.prepare('SELECT * FROM flags ORDER BY name'),

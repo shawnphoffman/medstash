@@ -399,6 +399,60 @@ if (checkGroupsMigrationNeeded()) {
 	migrateToGroups()
 }
 
+// Check if optimization tracking migration is needed
+const checkOptimizationMigrationNeeded = () => {
+	try {
+		const receiptFilesInfo = dbInstance.prepare('PRAGMA table_info(receipt_files)').all() as Array<{
+			cid: number
+			name: string
+			type: string
+			notnull: number
+			dflt_value: any
+			pk: number
+		}>
+		const hasIsOptimized = receiptFilesInfo.some(col => col.name === 'is_optimized')
+		const hasOptimizedAt = receiptFilesInfo.some(col => col.name === 'optimized_at')
+		return !hasIsOptimized || !hasOptimizedAt
+	} catch {
+		return true
+	}
+}
+
+// Migration function to add optimization tracking columns
+const migrateOptimizationTracking = () => {
+	const transaction = dbInstance.transaction(() => {
+		const receiptFilesInfo = dbInstance.prepare('PRAGMA table_info(receipt_files)').all() as Array<{
+			cid: number
+			name: string
+			type: string
+			notnull: number
+			dflt_value: any
+			pk: number
+		}>
+		const hasIsOptimized = receiptFilesInfo.some(col => col.name === 'is_optimized')
+		const hasOptimizedAt = receiptFilesInfo.some(col => col.name === 'optimized_at')
+
+		if (!hasIsOptimized) {
+			dbInstance.exec(`
+        ALTER TABLE receipt_files ADD COLUMN is_optimized INTEGER NOT NULL DEFAULT 0;
+      `)
+		}
+
+		if (!hasOptimizedAt) {
+			dbInstance.exec(`
+        ALTER TABLE receipt_files ADD COLUMN optimized_at TEXT;
+      `)
+		}
+	})
+
+	transaction()
+}
+
+// Run optimization migration if needed
+if (checkOptimizationMigrationNeeded()) {
+	migrateOptimizationTracking()
+}
+
 // Prepared statements
 const dbQueriesObj = {
 	// Receipts
@@ -461,12 +515,36 @@ const dbQueriesObj = {
 
 	// Receipt Files
 	getFilesByReceiptId: dbInstance.prepare('SELECT * FROM receipt_files WHERE receipt_id = ? ORDER BY file_order'),
+	getFileById: dbInstance.prepare('SELECT * FROM receipt_files WHERE id = ?'),
 	insertReceiptFile: dbInstance.prepare(`
     INSERT INTO receipt_files (receipt_id, filename, original_filename, file_order)
     VALUES (?, ?, ?, ?)
   `),
 	updateReceiptFilename: dbInstance.prepare('UPDATE receipt_files SET filename = ? WHERE id = ?'),
 	updateReceiptFileOriginalFilename: dbInstance.prepare('UPDATE receipt_files SET original_filename = ? WHERE id = ?'),
+	updateReceiptFileOptimized: dbInstance.prepare(`
+    UPDATE receipt_files 
+    SET is_optimized = 1, optimized_at = datetime('now')
+    WHERE id = ?
+  `),
+	resetReceiptFileOptimized: dbInstance.prepare(`
+    UPDATE receipt_files 
+    SET is_optimized = 0, optimized_at = NULL
+    WHERE id = ?
+  `),
+	getUnoptimizedFiles: dbInstance.prepare(`
+    SELECT * FROM receipt_files 
+    WHERE is_optimized = 0 OR is_optimized IS NULL
+    ORDER BY created_at
+  `),
+	getAllImageFiles: dbInstance.prepare(`
+    SELECT * FROM receipt_files 
+    WHERE LOWER(filename) LIKE '%.jpg' 
+       OR LOWER(filename) LIKE '%.jpeg' 
+       OR LOWER(filename) LIKE '%.png' 
+       OR LOWER(filename) LIKE '%.webp'
+    ORDER BY created_at
+  `),
 	deleteReceiptFile: dbInstance.prepare('DELETE FROM receipt_files WHERE id = ?'),
 	deleteFilesByReceiptId: dbInstance.prepare('DELETE FROM receipt_files WHERE receipt_id = ?'),
 

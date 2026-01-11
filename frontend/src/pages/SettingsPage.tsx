@@ -9,6 +9,7 @@ import {
 	exportApi,
 	watchApi,
 	receiptsApi,
+	imagesApi,
 	Flag,
 	User,
 	ReceiptType,
@@ -19,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
+import { Switch } from '../components/ui/switch'
 import { ColorPicker, TAILWIND_COLORS } from '../components/ui/color-picker'
 import { FlagBadge } from '../components/FlagBadge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
@@ -37,6 +39,7 @@ import {
 	GripVertical,
 	Download,
 	FolderTree,
+	Image as ImageIcon,
 } from 'lucide-react'
 import {
 	DndContext,
@@ -328,6 +331,16 @@ export default function SettingsPage() {
 	const [processedFileCount, setProcessedFileCount] = useState<number | null>(null)
 	const [isLoadingProcessedCount, setIsLoadingProcessedCount] = useState(false)
 	const [isDeletingProcessed, setIsDeletingProcessed] = useState(false)
+	const [isOptimizing, setIsOptimizing] = useState(false)
+	const [isReoptimizing, setIsReoptimizing] = useState(false)
+	const [imageOptimizationEnabled, setImageOptimizationEnabled] = useState(true)
+	const [optimizationResult, setOptimizationResult] = useState<{
+		total: number
+		optimized: number
+		skipped: number
+		errors: Array<{ fileId: number; error: string }>
+		duration: number
+	} | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const { confirm, ConfirmDialog } = useConfirmDialog()
 	const { alert, AlertDialog } = useAlertDialog()
@@ -371,6 +384,9 @@ export default function SettingsPage() {
 			const pattern = settingsRes.data?.filenamePattern || DEFAULT_FILENAME_PATTERN
 			setFilenamePattern(pattern)
 			setOriginalPattern(pattern)
+			// Load image optimization setting (defaults to true if not set)
+			const optimizationEnabled = settingsRes.data?.imageOptimizationEnabled !== false
+			setImageOptimizationEnabled(optimizationEnabled)
 			setHasUnsavedChanges(false)
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to load settings')
@@ -1226,6 +1242,88 @@ export default function SettingsPage() {
 		}
 	}
 
+	// Handle optimize images
+	const handleOptimizeImages = async () => {
+		const confirmed = await confirm({
+			title: 'Optimize Images',
+			message: 'This will optimize all unoptimized receipt images. This may take a while depending on the number of images. Continue?',
+			variant: 'default',
+			confirmText: 'Optimize',
+			cancelText: 'Cancel',
+		})
+
+		if (!confirmed) return
+
+		setIsOptimizing(true)
+		setError(null)
+		setOptimizationResult(null)
+
+		try {
+			const result = await imagesApi.optimize()
+			if (result.data.success) {
+				setOptimizationResult(result.data)
+				if (result.data.errors.length > 0) {
+					await alert({
+						title: 'Optimization Complete',
+						message: `Optimized ${result.data.optimized} image(s), skipped ${result.data.skipped}. ${result.data.errors.length} error(s) occurred.`,
+					})
+				} else {
+					await alert({
+						title: 'Optimization Complete',
+						message: `Successfully optimized ${result.data.optimized} image(s) in ${(result.data.duration / 1000).toFixed(1)} seconds.`,
+					})
+				}
+			} else {
+				setError('Optimization failed')
+			}
+		} catch (err: any) {
+			setError(err.response?.data?.error || err.response?.data?.message || 'Failed to optimize images')
+		} finally {
+			setIsOptimizing(false)
+		}
+	}
+
+	const handleReoptimizeImages = async () => {
+		const confirmed = await confirm({
+			title: 'Re-optimize All Images',
+			message:
+				'This will re-optimize ALL receipt images, including those already optimized. This may take a while depending on the number of images. Continue?',
+			variant: 'default',
+			confirmText: 'Re-optimize',
+			cancelText: 'Cancel',
+		})
+
+		if (!confirmed) return
+
+		setIsReoptimizing(true)
+		setError(null)
+		setOptimizationResult(null)
+
+		try {
+			const result = await imagesApi.reoptimize()
+			if (result.data.success) {
+				setOptimizationResult(result.data)
+				if (result.data.errors.length > 0) {
+					await alert({
+						title: 'Re-optimization Complete',
+						message: `Re-optimized ${result.data.optimized} image(s), skipped ${result.data.skipped}. ${result.data.errors.length} error(s) occurred.`,
+					})
+				} else {
+					await alert({
+						title: 'Re-optimization Complete',
+						message: `Successfully re-optimized ${result.data.optimized} image(s) in ${(result.data.duration / 1000).toFixed(1)} seconds.`,
+					})
+				}
+			} else {
+				setError('Re-optimization failed')
+			}
+		} catch (err: any) {
+			setError(err.response?.data?.error || err.response?.data?.message || 'Failed to re-optimize images')
+		} finally {
+			setIsReoptimizing(false)
+		}
+	}
+
 	// Handle export all receipts
 	const handleExport = async () => {
 		try {
@@ -1792,6 +1890,112 @@ export default function SettingsPage() {
 							{isOrganizing ? 'Organizing...' : 'Organize Files'}
 						</Button>
 					</div>
+				</CardContent>
+			</Card>
+
+			{/* Image Optimization */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Image Optimization</CardTitle>
+					<CardDescription>Optimize receipt images to reduce file size while maintaining text legibility</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					{/* Enable/Disable Toggle */}
+					<div className="flex items-center justify-between p-3 rounded-lg border">
+						<div className="space-y-0.5">
+							<Label htmlFor="image-optimization-toggle" className="text-base font-medium cursor-pointer">
+								Enable Image Optimization
+							</Label>
+							<p className="text-sm text-muted-foreground">Automatically optimize images when uploading or importing from watch folder</p>
+						</div>
+						<Switch
+							id="image-optimization-toggle"
+							checked={imageOptimizationEnabled}
+							onCheckedChange={async checked => {
+								const enabled = checked === true
+								setImageOptimizationEnabled(enabled)
+								try {
+									await settingsApi.set('imageOptimizationEnabled', enabled)
+								} catch (err: any) {
+									setError(err.response?.data?.error || 'Failed to update setting')
+									// Revert on error
+									setImageOptimizationEnabled(!enabled)
+								}
+							}}
+						/>
+					</div>
+
+					<div className="p-3 space-y-2 rounded-lg bg-muted">
+						<div className="flex items-start gap-2">
+							<Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
+							<div className="space-y-1 text-sm">
+								<p className="font-medium">Optimization Features:</p>
+								<ul className="space-y-1 list-disc list-inside text-muted-foreground">
+									<li>JPEG optimization with 85% quality (text legible)</li>
+									<li>Progressive JPEG encoding for better compression</li>
+									<li>Automatic grayscale conversion for B&W receipts</li>
+									<li>Smart resizing for large images (max 2000x2000px)</li>
+									<li>PNG to JPEG conversion (better compression for receipts)</li>
+									<li>Only processes unoptimized images</li>
+								</ul>
+								<p className="mt-2 text-muted-foreground">
+									<strong>Note:</strong> When enabled, new uploads and watch folder files are automatically optimized. Use the buttons below
+									to manually optimize existing images.
+								</p>
+							</div>
+						</div>
+					</div>
+
+					{/* Optimization Results */}
+					{optimizationResult && (
+						<div className="p-3 space-y-2 rounded-lg bg-muted">
+							<p className="text-sm font-medium">Last Optimization Results:</p>
+							<div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
+								<div>
+									<span className="text-muted-foreground">Total:</span> <span className="font-medium">{optimizationResult.total}</span>
+								</div>
+								<div>
+									<span className="text-muted-foreground">Optimized:</span>{' '}
+									<span className="font-medium text-green-600 dark:text-green-400">{optimizationResult.optimized}</span>
+								</div>
+								<div>
+									<span className="text-muted-foreground">Skipped:</span> <span className="font-medium">{optimizationResult.skipped}</span>
+								</div>
+								<div>
+									<span className="text-muted-foreground">Duration:</span>{' '}
+									<span className="font-medium">{(optimizationResult.duration / 1000).toFixed(1)}s</span>
+								</div>
+							</div>
+							{optimizationResult.errors.length > 0 && (
+								<div className="mt-2">
+									<p className="text-sm text-destructive">
+										{optimizationResult.errors.length} error(s) occurred. Check server logs for details.
+									</p>
+								</div>
+							)}
+						</div>
+					)}
+
+					{/* Actions */}
+					{imageOptimizationEnabled && (
+						<div className="flex flex-col gap-2 sm:flex-row">
+							<Button onClick={handleOptimizeImages} disabled={isOptimizing || isReoptimizing} variant="default">
+								<ImageIcon className={`w-4 h-4 mr-1 ${isOptimizing ? 'animate-spin' : ''}`} />
+								{isOptimizing ? 'Optimizing...' : 'Optimize Images'}
+							</Button>
+							<Button onClick={handleReoptimizeImages} disabled={isOptimizing || isReoptimizing} variant="outline">
+								<RefreshCw className={`w-4 h-4 mr-1 ${isReoptimizing ? 'animate-spin' : ''}`} />
+								{isReoptimizing ? 'Re-optimizing...' : 'Re-optimize All Images'}
+							</Button>
+						</div>
+					)}
+					{!imageOptimizationEnabled && (
+						<div className="p-3 rounded-lg bg-muted">
+							<p className="text-sm text-muted-foreground">
+								Enable image optimization above to use manual optimization features.
+							</p>
+						</div>
+					)}
 				</CardContent>
 			</Card>
 

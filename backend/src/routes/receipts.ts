@@ -10,6 +10,7 @@ import {
 	deleteReceiptFile as deleteFile,
 	replaceReceiptFile,
 	migrateFilesToDateStructure,
+	markFileAsOptimized,
 } from '../services/fileService'
 import { CreateReceiptInput, UpdateReceiptInput } from '../models/receipt'
 import { dbQueries } from '../db'
@@ -231,7 +232,7 @@ router.post('/', upload.array('files', 10), handleMulterError, async (req: expre
 		if (files && files.length > 0) {
 			for (let i = 0; i < files.length; i++) {
 				const file = files[i]
-				const { filename, originalFilename } = await saveReceiptFile(
+				const { filename, originalFilename, optimized } = await saveReceiptFile(
 					file,
 					receipt.id,
 					receipt.date,
@@ -244,6 +245,11 @@ router.post('/', upload.array('files', 10), handleMulterError, async (req: expre
 				)
 
 				addReceiptFile(receipt.id, filename, originalFilename, i)
+				
+				// Mark as optimized if optimization was successful
+				if (optimized) {
+					await markFileAsOptimized(receipt.id, filename)
+				}
 			}
 		}
 
@@ -450,7 +456,7 @@ router.post('/:id/files', upload.array('files', 10), handleMulterError, async (r
 		let fileOrder = existingFiles.length
 
 		for (const file of files) {
-			const { filename, originalFilename } = await saveReceiptFile(
+			const { filename, originalFilename, optimized } = await saveReceiptFile(
 				file,
 				receipt.id,
 				date,
@@ -463,6 +469,12 @@ router.post('/:id/files', upload.array('files', 10), handleMulterError, async (r
 			)
 
 			addReceiptFile(receipt.id, filename, originalFilename, fileOrder)
+			
+			// Mark as optimized if optimization was successful
+			if (optimized) {
+				await markFileAsOptimized(receipt.id, filename)
+			}
+			
 			fileOrder++
 		}
 

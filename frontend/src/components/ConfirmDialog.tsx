@@ -1,12 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from './ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
 import { Button } from './ui/button'
 
 interface ConfirmDialogOptions {
@@ -32,19 +25,21 @@ const ConfirmDialogComponent: React.FC<{
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent>
 				<DialogHeader>
-				<DialogTitle>{options.title}</DialogTitle>
-				<DialogDescription>{options.message}</DialogDescription>
-			</DialogHeader>
-			<DialogFooter>
-				<Button variant="outline" onClick={onCancel}>
-					{options.cancelText}
-				</Button>
-				<Button variant={options.variant === 'destructive' ? 'destructive' : 'default'} onClick={onConfirm}>
-					{options.confirmText}
-				</Button>
-			</DialogFooter>
-		</DialogContent>
-	</Dialog>
+					<DialogTitle>{options.title}</DialogTitle>
+					<DialogDescription>{options.message}</DialogDescription>
+				</DialogHeader>
+				<DialogFooter>
+					<div className="flex flex-col gap-2 sm:flex-row">
+						<Button variant="outline" onClick={onCancel}>
+							{options.cancelText}
+						</Button>
+						<Button variant={options.variant === 'destructive' ? 'destructive' : 'default'} onClick={onConfirm}>
+							{options.confirmText}
+						</Button>
+					</div>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	)
 }
 
@@ -91,13 +86,7 @@ export function useConfirmDialog() {
 	return {
 		confirm,
 		ConfirmDialog: (
-			<ConfirmDialogComponent
-				open={open}
-				onOpenChange={setOpen}
-				options={options}
-				onConfirm={handleConfirm}
-				onCancel={handleCancel}
-			/>
+			<ConfirmDialogComponent open={open} onOpenChange={setOpen} options={options} onConfirm={handleConfirm} onCancel={handleCancel} />
 		),
 	}
 }
