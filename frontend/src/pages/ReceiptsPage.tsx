@@ -26,7 +26,6 @@ export default function ReceiptsPage() {
 	const [selectedReceiptIds, setSelectedReceiptIds] = useState<Set<number>>(new Set())
 	const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
 	const [isRefreshing, setIsRefreshing] = useState(false)
-	const [_lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null)
 	const [autoRefreshEnabled] = useState(true)
 
 	const loadData = useCallback(async () => {
@@ -35,7 +34,6 @@ export default function ReceiptsPage() {
 			const [receiptsRes, flagsRes] = await Promise.all([receiptsApi.getAll(selectedFlagId), flagsApi.getAll()])
 			setReceipts(receiptsRes.data)
 			setFlags(flagsRes.data)
-			setLastRefreshTime(new Date())
 			setError(null)
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to load receipts')
@@ -194,7 +192,6 @@ export default function ReceiptsPage() {
 					<h2 className="text-3xl font-bold">Receipts</h2>
 					<p className="text-muted-foreground">
 						Manage your medical receipts ({receipts.length} total)
-						{/* {lastRefreshTime && <span className="ml-2 text-xs">Last refreshed: {lastRefreshTime.toLocaleTimeString()}</span>} */}
 					</p>
 				</div>
 				<div className="flex justify-end gap-2">
