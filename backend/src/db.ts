@@ -128,25 +128,25 @@ const dbQueriesObj = {
 	updateReceiptFilename: dbInstance.prepare('UPDATE receipt_files SET filename = ? WHERE id = ?'),
 	updateReceiptFileOriginalFilename: dbInstance.prepare('UPDATE receipt_files SET original_filename = ? WHERE id = ?'),
 	updateReceiptFileOptimized: dbInstance.prepare(`
-    UPDATE receipt_files 
+    UPDATE receipt_files
     SET is_optimized = 1, optimized_at = datetime('now')
     WHERE id = ?
   `),
 	resetReceiptFileOptimized: dbInstance.prepare(`
-    UPDATE receipt_files 
+    UPDATE receipt_files
     SET is_optimized = 0, optimized_at = NULL
     WHERE id = ?
   `),
 	getUnoptimizedFiles: dbInstance.prepare(`
-    SELECT * FROM receipt_files 
+    SELECT * FROM receipt_files
     WHERE is_optimized = 0 OR is_optimized IS NULL
     ORDER BY created_at
   `),
 	getAllImageFiles: dbInstance.prepare(`
-    SELECT * FROM receipt_files 
-    WHERE LOWER(filename) LIKE '%.jpg' 
-       OR LOWER(filename) LIKE '%.jpeg' 
-       OR LOWER(filename) LIKE '%.png' 
+    SELECT * FROM receipt_files
+    WHERE LOWER(filename) LIKE '%.jpg'
+       OR LOWER(filename) LIKE '%.jpeg'
+       OR LOWER(filename) LIKE '%.png'
        OR LOWER(filename) LIKE '%.webp'
     ORDER BY created_at
   `),

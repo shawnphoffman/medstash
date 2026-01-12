@@ -1,7 +1,15 @@
 import express from 'express'
 import multer from 'multer'
 import path from 'path'
-import { getAllReceipts, getReceiptById, createReceipt, updateReceipt, deleteReceipt, addReceiptFile, getSetting } from '../services/dbService'
+import {
+	getAllReceipts,
+	getReceiptById,
+	createReceipt,
+	updateReceipt,
+	deleteReceipt,
+	addReceiptFile,
+	getSetting,
+} from '../services/dbService'
 import {
 	saveReceiptFile,
 	deleteReceiptFiles,
@@ -245,7 +253,7 @@ router.post('/', upload.array('files', 10), handleMulterError, async (req: expre
 				)
 
 				addReceiptFile(receipt.id, filename, originalFilename, i)
-				
+
 				// Mark as optimized if optimization was successful
 				if (optimized) {
 					await markFileAsOptimized(receipt.id, filename)
@@ -469,12 +477,12 @@ router.post('/:id/files', upload.array('files', 10), handleMulterError, async (r
 			)
 
 			addReceiptFile(receipt.id, filename, originalFilename, fileOrder)
-			
+
 			// Mark as optimized if optimization was successful
 			if (optimized) {
 				await markFileAsOptimized(receipt.id, filename)
 			}
-			
+
 			fileOrder++
 		}
 
@@ -730,9 +738,10 @@ router.post('/bulk-update', async (req, res) => {
 		}
 
 		// Process flags - parse flag IDs if provided
-		const parsedFlagIds = flag_ids !== undefined && flag_ids !== null && Array.isArray(flag_ids) && flag_ids.length > 0
-			? flag_ids.filter((id: any) => typeof id === 'number' && !isNaN(id))
-			: undefined
+		const parsedFlagIds =
+			flag_ids !== undefined && flag_ids !== null && Array.isArray(flag_ids) && flag_ids.length > 0
+				? flag_ids.filter((id: any) => typeof id === 'number' && !isNaN(id))
+				: undefined
 
 		// Update each receipt
 		const errors: Array<{ id: number; error: string }> = []
@@ -742,7 +751,7 @@ router.post('/bulk-update', async (req, res) => {
 			try {
 				// Determine flag IDs for this receipt
 				let receiptFlagIds: number[] | undefined = undefined
-				
+
 				if (parsedFlagIds && parsedFlagIds.length > 0) {
 					if (flag_operation === 'append') {
 						// For append: merge existing flags with new flags for this specific receipt
