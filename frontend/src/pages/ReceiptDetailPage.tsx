@@ -126,14 +126,14 @@ export default function ReceiptDetailPage() {
 				if (!id || allReceipts.length === 0) return
 				const currentIndex = allReceipts.findIndex(r => r.id === parseInt(id))
 
-				if (e.key === 'ArrowLeft' && currentIndex > 0) {
-					e.preventDefault()
-					const previousReceipt = allReceipts[currentIndex - 1]
-					navigate(`/receipts/${previousReceipt.id}`)
-				} else if (e.key === 'ArrowRight' && currentIndex >= 0 && currentIndex < allReceipts.length - 1) {
+				if (e.key === 'ArrowLeft' && currentIndex >= 0 && currentIndex < allReceipts.length - 1) {
 					e.preventDefault()
 					const nextReceipt = allReceipts[currentIndex + 1]
 					navigate(`/receipts/${nextReceipt.id}`)
+				} else if (e.key === 'ArrowRight' && currentIndex > 0) {
+					e.preventDefault()
+					const previousReceipt = allReceipts[currentIndex - 1]
+					navigate(`/receipts/${previousReceipt.id}`)
 				}
 			}
 		}
@@ -519,18 +519,24 @@ export default function ReceiptDetailPage() {
 						Back to Receipts
 					</Button>
 					<div className="flex items-center gap-1">
-						<Button variant="outline" size="icon" onClick={handlePrevious} disabled={!hasPrevious} title="Previous receipt">
+						<Button variant="outline" size="icon" onClick={handleNext} disabled={!hasNext} title="Next receipt">
 							<ChevronLeft className="w-4 h-4" />
 						</Button>
-						<Button variant="outline" size="icon" onClick={handleNext} disabled={!hasNext} title="Next receipt">
+						<Button variant="outline" size="icon" onClick={handlePrevious} disabled={!hasPrevious} title="Previous receipt">
 							<ChevronRight className="w-4 h-4" />
 						</Button>
 					</div>
 				</div>
-				<Button variant="destructive" onClick={handleDeleteReceipt}>
-					<Trash2 className="w-4 h-4 mr-1" />
-					Delete Receipt
-				</Button>
+
+				<div className="flex gap-2">
+					<Button variant="destructive" onClick={handleDeleteReceipt}>
+						<Trash2 className="w-4 h-4 mr-1" />
+						Delete
+					</Button>
+					<Button type="submit" form="receipt-form" disabled={saving}>
+						{saving ? 'Saving...' : 'Save'}
+					</Button>
+				</div>
 			</div>
 
 			<div className="flex flex-col max-w-full gap-6 lg:flex-row">
@@ -542,7 +548,7 @@ export default function ReceiptDetailPage() {
 							<CardDescription>Update receipt information and manage files</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+							<form id="receipt-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 								{/* Basic Info */}
 								<div className="grid grid-cols-2 gap-4">
 									<div>
@@ -893,10 +899,7 @@ export default function ReceiptDetailPage() {
 
 								{error && <div className="p-4 rounded-md bg-destructive/10 text-destructive">{error}</div>}
 
-								<div className="flex gap-4">
-									<Button type="submit" disabled={saving} className="flex-1">
-										{saving ? 'Saving...' : 'Save Changes'}
-									</Button>
+								<div className="flex flex-col justify-end gap-4 sm:flex-row">
 									<Button
 										type="button"
 										variant="outline"
@@ -909,6 +912,9 @@ export default function ReceiptDetailPage() {
 									>
 										Cancel
 									</Button>
+									<Button type="submit" disabled={saving}>
+										{saving ? 'Saving...' : 'Save'}
+									</Button>
 								</div>
 							</form>
 						</CardContent>
@@ -917,7 +923,7 @@ export default function ReceiptDetailPage() {
 
 				{/* Preview Sidebar - Only on widescreens */}
 				{(receipt.files.length > 0 || newFiles.length > 0) && (
-					<div className="flex-shrink-0 hidden md:block w-96">
+					<div className="flex-shrink-0">
 						<Card>
 							<CardHeader>
 								<CardTitle>File Previews</CardTitle>
