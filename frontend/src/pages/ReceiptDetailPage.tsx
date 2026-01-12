@@ -503,7 +503,7 @@ export default function ReceiptDetailPage() {
 				<p className="text-muted-foreground">Receipt not found</p>
 				<Button onClick={() => navigate('/')} className="mt-4" variant="outline">
 					<ArrowLeft className="w-4 h-4 mr-1" />
-					Back to Receipts
+					Back
 				</Button>
 			</div>
 		)
@@ -516,7 +516,7 @@ export default function ReceiptDetailPage() {
 				<div className="flex items-center gap-2">
 					<Button variant="outline" onClick={() => navigate('/')}>
 						<ArrowLeft className="w-4 h-4 mr-1" />
-						Back to Receipts
+						Back
 					</Button>
 					<div className="flex items-center gap-1">
 						<Button variant="outline" size="icon" onClick={handleNext} disabled={!hasNext} title="Next receipt">
