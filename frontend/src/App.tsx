@@ -44,7 +44,7 @@ function Navigation() {
 				<div className="flex items-center justify-between">
 					<Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80" onClick={closeMobileMenu}>
 						<img src="/logo.png" alt="MedStash" className="size-9" />
-						<h1 className="text-2xl font-bold cursor-pointer">MedStash</h1>
+						<h1 className="max-[400px]:hidden text-2xl font-bold cursor-pointer">MedStash</h1>
 					</Link>
 
 					{/* Desktop Navigation */}

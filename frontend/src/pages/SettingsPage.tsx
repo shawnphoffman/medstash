@@ -1870,15 +1870,13 @@ export default function SettingsPage() {
 					)}
 
 					{/* Actions */}
-					<div className="flex flex-col gap-2 sm:flex-row">
-						<Button onClick={handleSavePattern} disabled={!!patternError || filenamePattern === originalPattern}>
-							<Save className="w-4 h-4 mr-1" />
-							Save Pattern
-						</Button>
+					<div className="flex flex-col justify-end gap-2 sm:flex-row">
+						{/*  */}
 						<Button variant="outline" onClick={handleRenameAll} disabled={!!patternError || isRenaming}>
 							<RefreshCw className={`w-4 h-4 mr-1 ${isRenaming ? 'animate-spin' : ''}`} />
 							{isRenaming ? 'Renaming...' : 'Rename All Files'}
 						</Button>
+						{/*  */}
 						<Button
 							variant="outline"
 							size="sm"
@@ -1888,6 +1886,11 @@ export default function SettingsPage() {
 						>
 							<FolderTree className={`w-4 h-4 mr-1 ${isOrganizing ? 'animate-spin' : ''}`} />
 							{isOrganizing ? 'Organizing...' : 'Organize Files'}
+						</Button>
+						{/*  */}
+						<Button onClick={handleSavePattern} disabled={!!patternError || filenamePattern === originalPattern} variant="outline">
+							<Save className="w-4 h-4 mr-1" />
+							Save Pattern
 						</Button>
 					</div>
 				</CardContent>
@@ -1901,7 +1904,7 @@ export default function SettingsPage() {
 				</CardHeader>
 				<CardContent className="space-y-4">
 					{/* Enable/Disable Toggle */}
-					<div className="flex items-center justify-between p-3 rounded-lg border">
+					<div className="flex items-center justify-between p-3 border rounded-lg">
 						<div className="space-y-0.5">
 							<Label htmlFor="image-optimization-toggle" className="text-base font-medium cursor-pointer">
 								Enable Image Optimization
@@ -1978,14 +1981,14 @@ export default function SettingsPage() {
 
 					{/* Actions */}
 					{imageOptimizationEnabled && (
-						<div className="flex flex-col gap-2 sm:flex-row">
-							<Button onClick={handleOptimizeImages} disabled={isOptimizing || isReoptimizing} variant="default">
-								<ImageIcon className={`w-4 h-4 mr-1 ${isOptimizing ? 'animate-spin' : ''}`} />
-								{isOptimizing ? 'Optimizing...' : 'Optimize Images'}
-							</Button>
+						<div className="flex flex-col justify-end gap-2 sm:flex-row">
 							<Button onClick={handleReoptimizeImages} disabled={isOptimizing || isReoptimizing} variant="outline">
 								<RefreshCw className={`w-4 h-4 mr-1 ${isReoptimizing ? 'animate-spin' : ''}`} />
 								{isReoptimizing ? 'Re-optimizing...' : 'Re-optimize All Images'}
+							</Button>
+							<Button onClick={handleOptimizeImages} disabled={isOptimizing || isReoptimizing} variant="outline">
+								<ImageIcon className={`w-4 h-4 mr-1 ${isOptimizing ? 'animate-spin' : ''}`} />
+								{isOptimizing ? 'Optimizing...' : 'Optimize Images'}
 							</Button>
 						</div>
 					)}
@@ -2004,7 +2007,7 @@ export default function SettingsPage() {
 					<CardDescription>Download all receipts and files as a ZIP archive</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<div className="flex flex-col gap-2 sm:flex-row">
+					<div className="flex flex-col justify-end gap-2 sm:flex-row">
 						<Button onClick={handleExport} variant="outline">
 							<Download className="w-4 h-4 mr-1" />
 							Export All Receipts

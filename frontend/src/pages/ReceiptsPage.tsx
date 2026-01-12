@@ -393,7 +393,7 @@ export default function ReceiptsPage() {
 											</td>
 											<td className="px-4 py-3">
 												<TooltipProvider>
-													<div className="flex flex-wrap gap-1">
+													<div className="flex gap-1">
 														{receipt.flags.map(flag => (
 															<Tooltip key={flag.id}>
 																<TooltipTrigger asChild>

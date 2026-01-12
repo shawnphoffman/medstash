@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import {
@@ -22,7 +22,7 @@ import { Textarea } from '../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '../components/ui/select'
 import { DatePicker } from '../components/DatePicker'
 import { getBadgeClassName, getBorderClassName } from '../components/ui/color-picker'
-import { Upload, X, File, Camera } from 'lucide-react'
+import { Upload, X, File } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 interface UploadFormData {
@@ -48,7 +48,6 @@ export default function UploadPage() {
 	const [receiptTypeGroups, setReceiptTypeGroups] = useState<ReceiptTypeGroup[]>([])
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
-	const cameraInputRef = useRef<HTMLInputElement>(null)
 
 	const {
 		register,
@@ -155,10 +154,6 @@ export default function UploadPage() {
 		},
 		[generatePreview]
 	)
-
-	const handleCameraCapture = useCallback(() => {
-		cameraInputRef.current?.click()
-	}, [])
 
 	const removeFile = (index: number) => {
 		// Clean up preview URL if it exists
@@ -281,7 +276,7 @@ export default function UploadPage() {
 	}
 
 	return (
-		<div className="w-full px-4 -mx-4">
+		<div className="w-full sm:px-4">
 			<div className="flex flex-col max-w-full gap-6 lg:flex-row">
 				{/* Main Form */}
 				<div className="flex-1 min-w-0">
@@ -310,15 +305,6 @@ export default function UploadPage() {
 										)}
 									>
 										<input type="file" multiple onChange={onFileInput} className="hidden" id="file-input" accept="image/*,.pdf" />
-										<input
-											type="file"
-											ref={cameraInputRef}
-											onChange={onFileInput}
-											className="hidden"
-											id="camera-input"
-											accept="image/*"
-											capture="environment"
-										/>
 										<label htmlFor="file-input" className="cursor-pointer">
 											<Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
 											<p className="text-sm text-muted-foreground">Drag and drop files here, or click to select</p>
@@ -326,10 +312,6 @@ export default function UploadPage() {
 										</label>
 									</div>
 									<div className="flex gap-2 mt-4">
-										<Button type="button" variant="outline" onClick={handleCameraCapture} className="flex-1 lg:hidden">
-											<Camera className="w-4 h-4 mr-1" />
-											Take Photo
-										</Button>
 										<Button
 											type="button"
 											variant="outline"
@@ -596,7 +578,7 @@ export default function UploadPage() {
 
 				{/* Preview Sidebar - Only on widescreens */}
 				{files.length > 0 && (
-					<div className="flex-shrink-0 hidden md:block w-120">
+					<div className="flex-shrink-0">
 						<Card>
 							<CardHeader>
 								<CardTitle>File Previews</CardTitle>

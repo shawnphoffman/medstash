@@ -180,7 +180,7 @@ export default function BulkUploadPage() {
 	}
 
 	return (
-		<div className="w-full px-4 -mx-4">
+		<div className="w-full sm:px-4">
 			<div className="flex flex-col max-w-full gap-6">
 				<Card>
 					<CardHeader>
@@ -269,11 +269,11 @@ export default function BulkUploadPage() {
 
 							{error && <div className="p-4 rounded-md bg-destructive/10 text-destructive">{error}</div>}
 
-							<div className="flex gap-2">
+							<div className="flex flex-col justify-end gap-2 sm:flex-row">
 								<Button type="button" variant="outline" onClick={() => navigate('/upload')} disabled={loading}>
 									Cancel
 								</Button>
-								<Button type="button" onClick={handleUpload} disabled={loading || files.length === 0} className="flex-1">
+								<Button type="button" onClick={handleUpload} disabled={loading || files.length === 0} className="">
 									{loading
 										? `Uploading ${files.length} receipt${files.length > 1 ? 's' : ''}...`
 										: `Create ${files.length} Receipt${files.length > 1 ? 's' : ''}`}

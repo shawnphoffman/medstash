@@ -67,56 +67,12 @@ describe('ReceiptDetailPage', () => {
 		vi.clearAllMocks()
 	})
 
-	it('should render camera button for adding files', async () => {
-		render(<ReceiptDetailPage />)
-
-		await waitFor(() => {
-			expect(screen.getByRole('button', { name: /take photo/i })).toBeInTheDocument()
-		})
-	})
-
 	it('should render select files button for adding files', async () => {
 		render(<ReceiptDetailPage />)
 
 		await waitFor(() => {
 			expect(screen.getByRole('button', { name: /select files/i })).toBeInTheDocument()
 		})
-	})
-
-	it('should trigger camera input when camera button is clicked for adding files', async () => {
-		const user = userEvent.setup()
-		render(<ReceiptDetailPage />)
-
-		await waitFor(() => {
-			expect(screen.getByRole('button', { name: /take photo/i })).toBeInTheDocument()
-		})
-
-		const cameraButton = screen.getByRole('button', { name: /take photo/i })
-		const cameraInput = document.getElementById('add-camera-input') as HTMLInputElement
-
-		expect(cameraInput).toBeInTheDocument()
-		expect(cameraInput).toHaveAttribute('accept', 'image/*')
-		expect(cameraInput).toHaveAttribute('capture', 'environment')
-
-		// Mock click on the input
-		const clickSpy = vi.spyOn(cameraInput, 'click')
-		await user.click(cameraButton)
-
-		expect(clickSpy).toHaveBeenCalled()
-	})
-
-	it('should have camera input with correct attributes for adding files', async () => {
-		render(<ReceiptDetailPage />)
-
-		await waitFor(() => {
-			expect(screen.getByRole('button', { name: /take photo/i })).toBeInTheDocument()
-		})
-
-		const cameraInput = document.getElementById('add-camera-input') as HTMLInputElement
-		expect(cameraInput).toBeInTheDocument()
-		expect(cameraInput).toHaveAttribute('accept', 'image/*')
-		expect(cameraInput).toHaveAttribute('capture', 'environment')
-		expect(cameraInput.type).toBe('file')
 	})
 
 	it('should trigger file input when select files button is clicked', async () => {
@@ -140,7 +96,7 @@ describe('ReceiptDetailPage', () => {
 		expect(clickSpy).toHaveBeenCalled()
 	})
 
-	it('should render receipt with files and camera functionality', async () => {
+	it('should render receipt with files', async () => {
 		const receipt = createReceiptFixture({
 			files: [
 				{
@@ -162,12 +118,5 @@ describe('ReceiptDetailPage', () => {
 		await waitFor(() => {
 			expect(screen.getAllByText('test-file.jpg').length).toBeGreaterThan(0)
 		})
-
-		// Verify camera button exists for adding files
-		expect(screen.getByRole('button', { name: /take photo/i })).toBeInTheDocument()
-		// Verify camera input exists for adding files
-		const cameraInput = document.getElementById('add-camera-input') as HTMLInputElement
-		expect(cameraInput).toBeInTheDocument()
-		expect(cameraInput).toHaveAttribute('capture', 'environment')
 	})
 })
