@@ -344,10 +344,16 @@ export default function SettingsPage() {
 	const [error, setError] = useState<string | null>(null)
 	const { confirm, ConfirmDialog } = useConfirmDialog()
 	const { alert, AlertDialog } = useAlertDialog()
+	const [quickVendors, setQuickVendors] = useState<Array<{ vendor: string; count: number }>>([])
+	const [excludedQuickVendors, setExcludedQuickVendors] = useState<string[]>([])
+	const [customQuickVendors, setCustomQuickVendors] = useState<string[]>([])
+	// const [newCustomVendor, setNewCustomVendor] = useState('')
+	const [isLoadingQuickVendors, setIsLoadingQuickVendors] = useState(false)
 
 	useEffect(() => {
 		loadData()
 		loadProcessedCount()
+		loadQuickVendors()
 	}, [])
 
 	const loadProcessedCount = async () => {
@@ -387,6 +393,12 @@ export default function SettingsPage() {
 			// Load image optimization setting (defaults to true if not set)
 			const optimizationEnabled = settingsRes.data?.imageOptimizationEnabled !== false
 			setImageOptimizationEnabled(optimizationEnabled)
+			// Load excluded quick vendors
+			const excluded = settingsRes.data?.excludedQuickVendors || []
+			setExcludedQuickVendors(Array.isArray(excluded) ? excluded : [])
+			// Load custom quick vendors
+			const custom = settingsRes.data?.customQuickVendors || []
+			setCustomQuickVendors(Array.isArray(custom) ? custom : [])
 			setHasUnsavedChanges(false)
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to load settings')
@@ -394,6 +406,82 @@ export default function SettingsPage() {
 			setLoading(false)
 		}
 	}
+
+	const loadQuickVendors = async () => {
+		try {
+			setIsLoadingQuickVendors(true)
+			const response = await receiptsApi.getFrequentVendors()
+			setQuickVendors(response.data)
+		} catch (err: any) {
+			console.error('Failed to load quick vendors:', err)
+		} finally {
+			setIsLoadingQuickVendors(false)
+		}
+	}
+
+	const handleExcludeVendor = async (vendor: string) => {
+		try {
+			const newExcluded = [...excludedQuickVendors, vendor]
+			await settingsApi.set('excludedQuickVendors', newExcluded)
+			setExcludedQuickVendors(newExcluded)
+			// Refresh quick vendors list
+			await loadQuickVendors()
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to exclude vendor')
+		}
+	}
+
+	const handleRemoveExclusion = async (vendor: string) => {
+		try {
+			const newExcluded = excludedQuickVendors.filter(v => v.toLowerCase() !== vendor.toLowerCase())
+			await settingsApi.set('excludedQuickVendors', newExcluded)
+			setExcludedQuickVendors(newExcluded)
+			// Refresh quick vendors list
+			await loadQuickVendors()
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to remove exclusion')
+		}
+	}
+
+	// const handleAddCustomVendor = async () => {
+	// 	if (!newCustomVendor.trim()) {
+	// 		setError('Vendor name is required')
+	// 		return
+	// 	}
+	// 	const vendorName = newCustomVendor.trim()
+	// 	// Check for duplicates (case-insensitive)
+	// 	if (customQuickVendors.some(v => v.toLowerCase() === vendorName.toLowerCase())) {
+	// 		setError('This vendor is already in your custom list')
+	// 		return
+	// 	}
+	// 	// Check if it's already in excluded list
+	// 	if (excludedQuickVendors.some(v => v.toLowerCase() === vendorName.toLowerCase())) {
+	// 		setError('This vendor is excluded. Remove the exclusion first.')
+	// 		return
+	// 	}
+	// 	try {
+	// 		const newCustom = [...customQuickVendors, vendorName]
+	// 		await settingsApi.set('customQuickVendors', newCustom)
+	// 		setCustomQuickVendors(newCustom)
+	// 		setNewCustomVendor('')
+	// 		// Refresh quick vendors list
+	// 		await loadQuickVendors()
+	// 	} catch (err: any) {
+	// 		setError(err.response?.data?.error || 'Failed to add custom vendor')
+	// 	}
+	// }
+
+	// const handleRemoveCustomVendor = async (vendor: string) => {
+	// 	try {
+	// 		const newCustom = customQuickVendors.filter(v => v.toLowerCase() !== vendor.toLowerCase())
+	// 		await settingsApi.set('customQuickVendors', newCustom)
+	// 		setCustomQuickVendors(newCustom)
+	// 		// Refresh quick vendors list
+	// 		await loadQuickVendors()
+	// 	} catch (err: any) {
+	// 		setError(err.response?.data?.error || 'Failed to remove custom vendor')
+	// 	}
+	// }
 
 	const loadFlags = async () => {
 		try {
@@ -1397,7 +1485,7 @@ export default function SettingsPage() {
 			{/* Processed Files */}
 			<Card>
 				<CardHeader>
-					<CardTitle>Processed Files</CardTitle>
+					<CardTitle>Watched Folder</CardTitle>
 					<CardDescription>Manage files in the processed folder from the watch service</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -1491,6 +1579,113 @@ export default function SettingsPage() {
 							))
 						)}
 					</div>
+				</CardContent>
+			</Card>
+
+			{/* Quick Vendors Management */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Quick Vendors</CardTitle>
+					<CardDescription>
+						Manage frequently used vendors that appear as quick selection buttons. Exclude vendors to remove them from the quick list.
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					{isLoadingQuickVendors ? (
+						<p className="py-4 text-sm text-center text-muted-foreground">Loading vendors...</p>
+					) : (
+						<>
+							{/* Current Quick Vendors */}
+							<div>
+								<div className="flex items-center justify-between mb-2">
+									<Label>Quick Vendors ({quickVendors.length})</Label>
+									<Button variant="outline" size="sm" onClick={loadQuickVendors} disabled={isLoadingQuickVendors}>
+										<RefreshCw className={`w-4 h-4 mr-1 ${isLoadingQuickVendors ? 'animate-spin' : ''}`} />
+										Refresh
+									</Button>
+								</div>
+								{quickVendors.length === 0 ? (
+									<p className="py-4 text-sm text-center text-muted-foreground">No vendors available</p>
+								) : (
+									<div className="space-y-1">
+										{quickVendors.map((item, index) => {
+											const isCustom = customQuickVendors.some(v => v.toLowerCase() === item.vendor.toLowerCase())
+											return (
+												<div key={index} className="flex items-center justify-between px-3 py-1 border rounded-lg">
+													<div className="flex items-center flex-1 min-w-0 gap-2">
+														<span className="font-medium truncate">{item.vendor}</span>
+														{isCustom ? (
+															<span className="text-xs text-muted-foreground">(custom)</span>
+														) : (
+															<span className="text-xs text-muted-foreground">
+																({item.count}
+																<span className="hidden sm:inline"> receipt{item.count !== 1 ? 's' : ''}</span>)
+															</span>
+														)}
+													</div>
+													<Button size="sm" variant="outline" onClick={() => handleExcludeVendor(item.vendor)} className="flex-shrink-0">
+														<X className="w-4 h-4 mr-1" />
+														Exclude
+													</Button>
+												</div>
+											)
+										})}
+									</div>
+								)}
+							</div>
+
+							{/* Custom Vendors */}
+							{/* <div>
+								<Label>Custom Vendors</Label>
+								<div className="flex flex-col gap-2 mt-2 sm:flex-row">
+									<Input
+										placeholder="Enter vendor name"
+										value={newCustomVendor}
+										onChange={e => setNewCustomVendor(e.target.value)}
+										onKeyDown={e => e.key === 'Enter' && handleAddCustomVendor()}
+										className="flex-1"
+									/>
+									<Button onClick={handleAddCustomVendor}>
+										<Plus className="w-4 h-4 mr-1" />
+										Add Custom Vendor
+									</Button>
+								</div>
+								{customQuickVendors.length === 0 ? (
+									<p className="py-2 text-sm text-center text-muted-foreground">No custom vendors added</p>
+								) : (
+									<div className="mt-2 space-y-1">
+										{customQuickVendors.map((vendor, index) => (
+											<div key={index} className="flex items-center justify-between px-3 py-2 border rounded-lg bg-primary/5">
+												<span className="font-medium truncate">{vendor}</span>
+												<Button size="sm" variant="outline" onClick={() => handleRemoveCustomVendor(vendor)} className="flex-shrink-0">
+													<Trash2 className="w-4 h-4 mr-1" />
+													Remove
+												</Button>
+											</div>
+										))}
+									</div>
+								)}
+							</div> */}
+
+							{/* Excluded Vendors */}
+							{excludedQuickVendors.length > 0 && (
+								<div>
+									<Label>Excluded Vendors ({excludedQuickVendors.length})</Label>
+									<div className="mt-2 space-y-1">
+										{excludedQuickVendors.map((vendor, index) => (
+											<div key={index} className="flex items-center justify-between px-3 py-1 border rounded-lg bg-muted/50">
+												<span className="font-medium truncate">{vendor}</span>
+												<Button size="sm" variant="outline" onClick={() => handleRemoveExclusion(vendor)} className="flex-shrink-0">
+													<RotateCcw className="w-4 h-4 mr-1" />
+													Include
+												</Button>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+						</>
+					)}
 				</CardContent>
 			</Card>
 

@@ -282,6 +282,7 @@ export const receiptsApi = {
     filesMoved: number;
     errors: Array<{ receiptId: number; error: string }>;
   }>('/receipts/migrate-files'),
+  getFrequentVendors: () => api.get<Array<{ vendor: string; count: number }>>('/receipts/vendors/frequent'),
 };
 
 // Flags API

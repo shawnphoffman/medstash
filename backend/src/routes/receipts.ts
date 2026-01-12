@@ -1,7 +1,7 @@
 import express from 'express'
 import multer from 'multer'
 import path from 'path'
-import { getAllReceipts, getReceiptById, createReceipt, updateReceipt, deleteReceipt, addReceiptFile } from '../services/dbService'
+import { getAllReceipts, getReceiptById, createReceipt, updateReceipt, deleteReceipt, addReceiptFile, getSetting } from '../services/dbService'
 import {
 	saveReceiptFile,
 	deleteReceiptFiles,
@@ -789,6 +789,76 @@ router.post('/migrate-files', async (req, res) => {
 	} catch (error) {
 		logger.error('Error migrating files:', error)
 		res.status(500).json({ error: 'Failed to migrate files' })
+	}
+})
+
+// GET /api/receipts/vendors/frequent - Get top 10 most frequent vendors (excluding excluded ones)
+router.get('/vendors/frequent', (req, res) => {
+	try {
+		// Get all vendors with counts
+		const allVendors = dbQueries.getFrequentVendors.all() as Array<{ vendor: string; count: number }>
+
+		// Get excluded vendors from settings
+		const excludedVendorsSetting = getSetting('excludedQuickVendors')
+		let excludedVendors: string[] = []
+		if (excludedVendorsSetting) {
+			try {
+				excludedVendors = JSON.parse(excludedVendorsSetting)
+				if (!Array.isArray(excludedVendors)) {
+					excludedVendors = []
+				}
+			} catch {
+				excludedVendors = []
+			}
+		}
+
+		// Normalize excluded vendors to lowercase for case-insensitive comparison
+		const excludedVendorsLower = excludedVendors.map(v => v.toLowerCase().trim())
+
+		// Filter out excluded vendors (case-insensitive)
+		const filteredVendors = allVendors.filter(v => {
+			const vendorLower = v.vendor.toLowerCase().trim()
+			return !excludedVendorsLower.includes(vendorLower)
+		})
+
+		// Get custom vendors from settings
+		const customVendorsSetting = getSetting('customQuickVendors')
+		let customVendors: string[] = []
+		if (customVendorsSetting) {
+			try {
+				customVendors = JSON.parse(customVendorsSetting)
+				if (!Array.isArray(customVendors)) {
+					customVendors = []
+				}
+			} catch {
+				customVendors = []
+			}
+		}
+
+		// Create a set of vendor names (lowercase) that are already in frequent vendors
+		const frequentVendorNamesLower = new Set(filteredVendors.map(v => v.vendor.toLowerCase().trim()))
+
+		// Add custom vendors that aren't already in frequent vendors (case-insensitive)
+		const customVendorsToAdd: Array<{ vendor: string; count: number }> = []
+		for (const customVendor of customVendors) {
+			const customVendorLower = customVendor.toLowerCase().trim()
+			// Skip if already in frequent vendors or excluded
+			if (!frequentVendorNamesLower.has(customVendorLower) && !excludedVendorsLower.includes(customVendorLower)) {
+				customVendorsToAdd.push({ vendor: customVendor.trim(), count: 0 })
+			}
+		}
+
+		// Merge frequent vendors with custom vendors
+		// Prioritize frequent vendors, then add custom vendors
+		const mergedVendors = [...filteredVendors, ...customVendorsToAdd]
+
+		// Return top 10 (or all if fewer than 10)
+		const topVendors = mergedVendors.slice(0, 10)
+
+		res.json(topVendors)
+	} catch (error) {
+		logger.error('Error fetching frequent vendors:', error)
+		res.status(500).json({ error: 'Failed to fetch frequent vendors' })
 	}
 })
 

@@ -175,6 +175,15 @@ const dbQueriesObj = {
 	getSetting: dbInstance.prepare('SELECT value FROM settings WHERE key = ?'),
 	setSetting: dbInstance.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)'),
 	getAllSettings: dbInstance.prepare('SELECT * FROM settings'),
+
+	// Vendors
+	getFrequentVendors: dbInstance.prepare(`
+		SELECT vendor, COUNT(*) as count
+		FROM receipts
+		WHERE vendor IS NOT NULL AND vendor != ''
+		GROUP BY vendor
+		ORDER BY count DESC, vendor ASC
+	`),
 }
 
 // Export dbQueries - TypeScript can't generate declaration files for complex Statement types

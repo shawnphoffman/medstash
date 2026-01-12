@@ -48,6 +48,7 @@ export default function UploadPage() {
 	const [receiptTypeGroups, setReceiptTypeGroups] = useState<ReceiptTypeGroup[]>([])
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	const [quickVendors, setQuickVendors] = useState<Array<{ vendor: string; count: number }>>([])
 
 	const {
 		register,
@@ -94,7 +95,18 @@ export default function UploadPage() {
 			}
 		}
 		loadData()
+		loadQuickVendors()
 	}, [setValue])
+
+	const loadQuickVendors = async () => {
+		try {
+			const response = await receiptsApi.getFrequentVendors()
+			setQuickVendors(response.data)
+		} catch (err: any) {
+			// Silently fail - quick vendors are optional
+			console.error('Failed to load quick vendors:', err)
+		}
+	}
 
 	// Generate preview for a file
 	const generatePreview = useCallback((file: File, index: number) => {
@@ -529,6 +541,24 @@ export default function UploadPage() {
 								<div>
 									<Label htmlFor="vendor">Provider Name</Label>
 									<Input id="vendor" {...register('vendor')} placeholder="CVS Pharmacy" />
+									{quickVendors.length > 0 && (
+										<div className="mt-2">
+											<div className="flex flex-wrap gap-2">
+												{quickVendors.map((item, index) => (
+													<Button
+														key={index}
+														type="button"
+														variant="outline"
+														size="sm"
+														onClick={() => setValue('vendor', item.vendor, { shouldValidate: true })}
+														className="text-xs"
+													>
+														{item.vendor}
+													</Button>
+												))}
+											</div>
+										</div>
+									)}
 								</div>
 
 								<div>

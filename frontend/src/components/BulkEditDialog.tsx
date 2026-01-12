@@ -50,6 +50,7 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 	const [receiptTypes, setReceiptTypes] = useState<ReceiptType[]>([])
 	const [receiptTypeGroups, setReceiptTypeGroups] = useState<ReceiptTypeGroup[]>([])
 	const [flags, setFlags] = useState<Flag[]>([])
+	const [quickVendors, setQuickVendors] = useState<Array<{ vendor: string; count: number }>>([])
 
 	// Load data when dialog opens
 	useEffect(() => {
@@ -68,16 +69,18 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 
 	const loadData = async () => {
 		try {
-			const [usersRes, receiptTypesRes, groupsRes, flagsRes] = await Promise.all([
+			const [usersRes, receiptTypesRes, groupsRes, flagsRes, vendorsRes] = await Promise.all([
 				usersApi.getAll(),
 				receiptTypesApi.getAll(),
 				receiptTypeGroupsApi.getAll(),
 				flagsApi.getAll(),
+				receiptsApi.getFrequentVendors().catch(() => ({ data: [] })),
 			])
 			setUsers(usersRes.data)
 			setReceiptTypes(receiptTypesRes.data)
 			setReceiptTypeGroups(groupsRes.data)
 			setFlags(flagsRes.data)
+			setQuickVendors(vendorsRes.data)
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to load data')
 		}
@@ -263,6 +266,24 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 					<div>
 						<Label htmlFor="bulk-vendor">Vendor</Label>
 						<Input id="bulk-vendor" value={vendor} onChange={e => setVendor(e.target.value)} placeholder="Leave empty to keep existing" />
+						{quickVendors.length > 0 && (
+							<div className="mt-2">
+								<div className="flex flex-wrap gap-2">
+									{quickVendors.map((item, index) => (
+										<Button
+											key={index}
+											type="button"
+											variant="outline"
+											size="sm"
+											onClick={() => setVendor(item.vendor)}
+											className="text-xs"
+										>
+											{item.vendor}
+										</Button>
+									))}
+								</div>
+							</div>
+						)}
 					</div>
 
 					{/* Date */}

@@ -230,14 +230,14 @@ export default function ReceiptsPage() {
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="all">
-									<div className="flex items-center gap-2">
-										<FlagIcon className="size-4 text-muted-foreground" />
-										<span>No Filter (All/None)</span>
+									<div className="flex items-center gap-2 mr-2">
+										{/* <FlagIcon className="size-4 text-muted-foreground" /> */}
+										<span>No Filter</span>
 									</div>
 								</SelectItem>
 								{flags.map(flag => (
 									<SelectItem key={flag.id} value={flag.id.toString()}>
-										<div className="flex items-center gap-2">
+										<div className="flex items-center gap-2 mr-2">
 											<FlagIcon className="size-4" style={flag.color ? { color: flag.color } : undefined} />
 											<span>{flag.name}</span>
 										</div>

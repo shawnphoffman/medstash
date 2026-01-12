@@ -6,7 +6,7 @@ import { logger } from '../utils/logger'
 const router = express.Router()
 
 // Whitelist of allowed setting keys for security
-const ALLOWED_SETTING_KEYS = ['filenamePattern', 'imageOptimizationEnabled'] as const
+const ALLOWED_SETTING_KEYS = ['filenamePattern', 'imageOptimizationEnabled', 'excludedQuickVendors', 'customQuickVendors'] as const
 type AllowedSettingKey = (typeof ALLOWED_SETTING_KEYS)[number]
 
 /**
@@ -99,6 +99,26 @@ router.put('/:key', (req, res) => {
 		} else if (key === 'imageOptimizationEnabled') {
 			if (typeof value !== 'boolean') {
 				return res.status(400).json({ error: 'imageOptimizationEnabled must be a boolean' })
+			}
+		} else if (key === 'excludedQuickVendors') {
+			if (!Array.isArray(value)) {
+				return res.status(400).json({ error: 'excludedQuickVendors must be an array' })
+			}
+			// Validate each item is a non-empty string
+			for (const item of value) {
+				if (typeof item !== 'string' || item.trim() === '') {
+					return res.status(400).json({ error: 'excludedQuickVendors must be an array of non-empty strings' })
+				}
+			}
+		} else if (key === 'customQuickVendors') {
+			if (!Array.isArray(value)) {
+				return res.status(400).json({ error: 'customQuickVendors must be an array' })
+			}
+			// Validate each item is a non-empty string
+			for (const item of value) {
+				if (typeof item !== 'string' || item.trim() === '') {
+					return res.status(400).json({ error: 'customQuickVendors must be an array of non-empty strings' })
+				}
 			}
 		}
 

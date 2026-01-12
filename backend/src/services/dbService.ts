@@ -349,7 +349,7 @@ export function getSetting(key: string): string | null {
 }
 
 // Whitelist of allowed setting keys for security (defense in depth)
-const ALLOWED_SETTING_KEYS = ['filenamePattern', 'imageOptimizationEnabled'] as const
+const ALLOWED_SETTING_KEYS = ['filenamePattern', 'imageOptimizationEnabled', 'excludedQuickVendors', 'customQuickVendors'] as const
 
 /**
  * Validate setting key is safe and in whitelist
