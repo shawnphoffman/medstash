@@ -31,6 +31,7 @@ vi.mock('../../lib/api', () => {
 	return {
 		receiptsApi: {
 			getById: vi.fn().mockResolvedValue({ data: createReceiptFixture() }),
+			getAll: vi.fn().mockResolvedValue({ data: [createReceiptFixture()] }),
 			update: vi.fn().mockResolvedValue({ data: createReceiptFixture() }),
 			addFiles: vi.fn().mockResolvedValue({ data: createReceiptFixture() }),
 			replaceFile: vi.fn().mockResolvedValue({ data: createReceiptFixture() }),

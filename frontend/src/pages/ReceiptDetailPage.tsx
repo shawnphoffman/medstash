@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { DatePicker } from '../components/DatePicker'
 import { Badge } from '../components/ui/badge'
 import { getBadgeClassName, getBorderClassName } from '../components/ui/color-picker'
-import { ArrowLeft, Download, Trash2, Upload, X, File, Camera } from 'lucide-react'
+import { ArrowLeft, Download, Trash2, Upload, X, File, Camera, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useConfirmDialog } from '../components/ConfirmDialog'
 
@@ -45,6 +45,7 @@ export default function ReceiptDetailPage() {
 	const navigate = useNavigate()
 	const { toast } = useToast()
 	const [receipt, setReceipt] = useState<Receipt | null>(null)
+	const [allReceipts, setAllReceipts] = useState<Receipt[]>([])
 	const [flags, setFlags] = useState<Flag[]>([])
 	const [users, setUsers] = useState<User[]>([])
 	const [receiptTypes, setReceiptTypes] = useState<ReceiptType[]>([])
@@ -85,13 +86,74 @@ export default function ReceiptDetailPage() {
 		}
 	}, [id])
 
+	// Find current receipt index in sorted list - use id from params to avoid stale data
+	const currentReceiptIndex = id && allReceipts.length > 0 ? allReceipts.findIndex(r => r.id === parseInt(id)) : -1
+
+	const hasPrevious = currentReceiptIndex > 0
+	const hasNext = currentReceiptIndex >= 0 && currentReceiptIndex < allReceipts.length - 1
+
+	const handlePrevious = useCallback(() => {
+		if (!id || allReceipts.length === 0) return
+		const currentIndex = allReceipts.findIndex(r => r.id === parseInt(id))
+		if (currentIndex > 0) {
+			const previousReceipt = allReceipts[currentIndex - 1]
+			navigate(`/receipts/${previousReceipt.id}`)
+		}
+	}, [id, allReceipts, navigate])
+
+	const handleNext = useCallback(() => {
+		if (!id || allReceipts.length === 0) return
+		const currentIndex = allReceipts.findIndex(r => r.id === parseInt(id))
+		if (currentIndex >= 0 && currentIndex < allReceipts.length - 1) {
+			const nextReceipt = allReceipts[currentIndex + 1]
+			navigate(`/receipts/${nextReceipt.id}`)
+		}
+	}, [id, allReceipts, navigate])
+
+	// Keyboard navigation with arrow keys
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			// Check if user is in a form input
+			const activeElement = document.activeElement
+			const isInInput =
+				activeElement &&
+				(activeElement.tagName === 'INPUT' ||
+					activeElement.tagName === 'TEXTAREA' ||
+					activeElement.tagName === 'SELECT' ||
+					activeElement.getAttribute('contenteditable') === 'true')
+
+			// Only handle arrow keys if not in an input
+			if (!isInInput) {
+				// Recalculate index on each keypress to avoid stale data
+				if (!id || allReceipts.length === 0) return
+				const currentIndex = allReceipts.findIndex(r => r.id === parseInt(id))
+
+				if (e.key === 'ArrowLeft' && currentIndex > 0) {
+					e.preventDefault()
+					const previousReceipt = allReceipts[currentIndex - 1]
+					navigate(`/receipts/${previousReceipt.id}`)
+				} else if (e.key === 'ArrowRight' && currentIndex >= 0 && currentIndex < allReceipts.length - 1) {
+					e.preventDefault()
+					const nextReceipt = allReceipts[currentIndex + 1]
+					navigate(`/receipts/${nextReceipt.id}`)
+				}
+			}
+		}
+
+		window.addEventListener('keydown', handleKeyDown)
+		return () => {
+			window.removeEventListener('keydown', handleKeyDown)
+		}
+	}, [id, allReceipts, navigate])
+
 	const loadData = async () => {
 		if (!id) return
 
 		try {
 			setLoading(true)
-			const [receiptRes, flagsRes, usersRes, receiptTypesRes, groupsRes] = await Promise.all([
+			const [receiptRes, allReceiptsRes, flagsRes, usersRes, receiptTypesRes, groupsRes] = await Promise.all([
 				receiptsApi.getById(parseInt(id)),
+				receiptsApi.getAll(),
 				flagsApi.getAll(),
 				usersApi.getAll(),
 				receiptTypesApi.getAll(),
@@ -100,6 +162,15 @@ export default function ReceiptDetailPage() {
 
 			const receiptData = receiptRes.data
 			setReceipt(receiptData)
+
+			// Sort all receipts by date descending (newest first) to match receipts page default
+			const sortedReceipts = [...allReceiptsRes.data].sort((a, b) => {
+				const aDate = new Date(a.date).getTime()
+				const bDate = new Date(b.date).getTime()
+				return bDate - aDate
+			})
+			setAllReceipts(sortedReceipts)
+
 			setFlags(flagsRes.data)
 			setUsers(usersRes.data)
 			setReceiptTypes(receiptTypesRes.data)
@@ -350,6 +421,8 @@ export default function ReceiptDetailPage() {
 			// Mark file as failed if it's a 404 (file not found)
 			if (err.response?.status === 404) {
 				setFailedFilePreviews(prev => new Set(prev).add(fileId))
+				// Don't show toast for missing files - the preview indication is enough
+				return
 			}
 
 			toast({
@@ -450,10 +523,20 @@ export default function ReceiptDetailPage() {
 		<div className="w-full px-4 -mx-4">
 			{ConfirmDialog}
 			<div className="flex items-center justify-between mb-6">
-				<Button variant="ghost" onClick={() => navigate('/')}>
-					<ArrowLeft className="w-4 h-4 mr-1" />
-					Back to Receipts
-				</Button>
+				<div className="flex items-center gap-2">
+					<Button variant="ghost" onClick={() => navigate('/')}>
+						<ArrowLeft className="w-4 h-4 mr-1" />
+						Back to Receipts
+					</Button>
+					<div className="flex items-center gap-1">
+						<Button variant="outline" size="icon" onClick={handlePrevious} disabled={!hasPrevious} title="Previous receipt">
+							<ChevronLeft className="w-4 h-4" />
+						</Button>
+						<Button variant="outline" size="icon" onClick={handleNext} disabled={!hasNext} title="Next receipt">
+							<ChevronRight className="w-4 h-4" />
+						</Button>
+					</div>
+				</div>
 				<Button variant="destructive" onClick={handleDeleteReceipt}>
 					<Trash2 className="w-4 h-4 mr-1" />
 					Delete Receipt
@@ -928,11 +1011,6 @@ export default function ReceiptDetailPage() {
 															className="object-contain w-full h-auto max-h-96"
 															onError={() => {
 																setFailedFilePreviews(prev => new Set(prev).add(file.id))
-																toast({
-																	title: 'Preview Failed',
-																	description: `Unable to load preview for ${file.original_filename}. The file may not exist or may have been deleted.`,
-																	variant: 'destructive',
-																})
 															}}
 														/>
 													) : previewUrl && isPdf && !failedFilePreviews.has(file.id) ? (
