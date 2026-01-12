@@ -13,6 +13,7 @@ vi.mock('../../lib/api', () => {
 	return {
 		receiptsApi: {
 			create: vi.fn().mockResolvedValue({ data: {} }),
+			getFrequentVendors: vi.fn().mockResolvedValue({ data: [] }),
 		},
 		flagsApi: {
 			getAll: vi.fn().mockResolvedValue({ data: [createFlagFixture()] }),

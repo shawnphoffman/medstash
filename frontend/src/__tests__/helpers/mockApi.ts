@@ -14,7 +14,11 @@ export function mockApi() {
     addFiles: vi.fn(),
     downloadFile: vi.fn(),
     deleteFile: vi.fn(),
+    replaceFile: vi.fn(),
     updateFlags: vi.fn(),
+    bulkUpdate: vi.fn(),
+    migrateFiles: vi.fn(),
+    getFrequentVendors: vi.fn().mockResolvedValue({ data: [] }),
   };
 
   const mockFlagsApi = {

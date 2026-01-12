@@ -36,6 +36,7 @@ vi.mock('../../lib/api', () => {
 			addFiles: vi.fn().mockResolvedValue({ data: createReceiptFixture() }),
 			replaceFile: vi.fn().mockResolvedValue({ data: createReceiptFixture() }),
 			downloadFile: vi.fn().mockRejectedValue({ response: { status: 404 } }),
+			getFrequentVendors: vi.fn().mockResolvedValue({ data: [] }),
 		},
 		flagsApi: {
 			getAll: vi.fn().mockResolvedValue({ data: [createFlagFixture()] }),
