@@ -50,7 +50,7 @@ export default function ReceiptDetailPage() {
 	const [users, setUsers] = useState<User[]>([])
 	const [receiptTypes, setReceiptTypes] = useState<ReceiptType[]>([])
 	const [receiptTypeGroups, setReceiptTypeGroups] = useState<ReceiptTypeGroup[]>([])
-	const [loading, setLoading] = useState(true)
+	const [_loading, setLoading] = useState(true)
 	const [saving, setSaving] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [newFiles, setNewFiles] = useState<File[]>([])
@@ -503,15 +503,15 @@ export default function ReceiptDetailPage() {
 		}
 	}
 
-	if (loading) {
-		return <div className="py-8 text-center">Loading receipt...</div>
-	}
+	// if (loading) {
+	// 	return <div className="py-8 text-center">Loading receipt...</div>
+	// }
 
 	if (!receipt) {
 		return (
 			<div className="py-8 text-center">
 				<p className="text-muted-foreground">Receipt not found</p>
-				<Button onClick={() => navigate('/')} className="mt-4">
+				<Button onClick={() => navigate('/')} className="mt-4" variant="outline">
 					<ArrowLeft className="w-4 h-4 mr-1" />
 					Back to Receipts
 				</Button>
@@ -524,7 +524,7 @@ export default function ReceiptDetailPage() {
 			{ConfirmDialog}
 			<div className="flex items-center justify-between mb-6">
 				<div className="flex items-center gap-2">
-					<Button variant="ghost" onClick={() => navigate('/')}>
+					<Button variant="outline" onClick={() => navigate('/')}>
 						<ArrowLeft className="w-4 h-4 mr-1" />
 						Back to Receipts
 					</Button>
@@ -548,7 +548,7 @@ export default function ReceiptDetailPage() {
 				<div className="flex-1 min-w-0">
 					<Card>
 						<CardHeader>
-							<CardTitle>Edit Receipt</CardTitle>
+							<CardTitle>Edit Receipt ({id})</CardTitle>
 							<CardDescription>Update receipt information and manage files</CardDescription>
 						</CardHeader>
 						<CardContent>
