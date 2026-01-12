@@ -161,7 +161,7 @@ export interface BulkUpdateReceiptInput {
 	user_id?: number
 	receipt_type_id?: number
 	flag_ids?: number[]
-	flag_operation?: 'append' | 'replace'
+	flag_operation?: 'append' | 'replace' | 'remove_all'
 }
 
 export interface CreateFlagInput {

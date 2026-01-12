@@ -43,7 +43,7 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 	const [userId, setUserId] = useState<number | undefined>(undefined)
 	const [receiptTypeId, setReceiptTypeId] = useState<number | undefined>(undefined)
 	const [selectedFlagIds, setSelectedFlagIds] = useState<number[]>([])
-	const [flagOperation, setFlagOperation] = useState<'append' | 'replace'>('replace')
+	const [flagOperation, setFlagOperation] = useState<'append' | 'replace' | 'remove_all'>('replace')
 
 	// Data for dropdowns
 	const [users, setUsers] = useState<User[]>([])
@@ -107,7 +107,11 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 		if (receiptTypeId !== undefined) {
 			updateData.receipt_type_id = receiptTypeId
 		}
-		if (selectedFlagIds.length > 0) {
+		if (flagOperation === 'remove_all') {
+			// Remove all flags by sending empty array with replace operation
+			updateData.flag_ids = []
+			updateData.flag_operation = 'replace'
+		} else if (selectedFlagIds.length > 0) {
 			updateData.flag_ids = selectedFlagIds
 			updateData.flag_operation = flagOperation
 		}
@@ -149,6 +153,10 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 	}
 
 	const toggleFlag = (flagId: number) => {
+		if (flagOperation === 'remove_all') {
+			// Don't allow flag selection when remove_all is selected
+			return
+		}
 		setSelectedFlagIds(prev => {
 			if (prev.includes(flagId)) {
 				return prev.filter(id => id !== flagId)
@@ -156,6 +164,14 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 				return [...prev, flagId]
 			}
 		})
+	}
+
+	const handleFlagOperationChange = (operation: 'append' | 'replace' | 'remove_all') => {
+		setFlagOperation(operation)
+		if (operation === 'remove_all') {
+			// Clear selected flags when switching to remove_all
+			setSelectedFlagIds([])
+		}
 	}
 
 	const handleDelete = async () => {
@@ -375,7 +391,7 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 											<input
 												type="radio"
 												checked={flagOperation === 'replace'}
-												onChange={() => setFlagOperation('replace')}
+												onChange={() => handleFlagOperationChange('replace')}
 												className="w-4 h-4"
 											/>
 											<span className="text-sm">Replace</span>
@@ -384,10 +400,19 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 											<input
 												type="radio"
 												checked={flagOperation === 'append'}
-												onChange={() => setFlagOperation('append')}
+												onChange={() => handleFlagOperationChange('append')}
 												className="w-4 h-4"
 											/>
 											<span className="text-sm">Append</span>
+										</label>
+										<label className="flex items-center gap-2 cursor-pointer">
+											<input
+												type="radio"
+												checked={flagOperation === 'remove_all'}
+												onChange={() => handleFlagOperationChange('remove_all')}
+												className="w-4 h-4"
+											/>
+											<span className="text-sm">Remove All</span>
 										</label>
 									</div>
 								</div>
@@ -399,6 +424,7 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 											variant="outline"
 											size="sm"
 											onClick={() => toggleFlag(flag.id)}
+											disabled={flagOperation === 'remove_all'}
 											className={
 												flag.color
 													? cn(selectedFlagIds.includes(flag.id) && getBadgeClassName(flag.color), getBorderClassName(flag.color))
@@ -412,7 +438,9 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 								<p className="text-xs text-muted-foreground">
 									{flagOperation === 'replace'
 										? 'Selected flags will replace all existing flags'
-										: 'Selected flags will be added to existing flags'}
+										: flagOperation === 'append'
+											? 'Selected flags will be added to existing flags'
+											: 'All flags will be removed from selected receipts'}
 								</p>
 							</div>
 						</div>

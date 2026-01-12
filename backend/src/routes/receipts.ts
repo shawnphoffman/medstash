@@ -738,9 +738,12 @@ router.post('/bulk-update', async (req, res) => {
 		}
 
 		// Process flags - parse flag IDs if provided
-		const parsedFlagIds =
-			flag_ids !== undefined && flag_ids !== null && Array.isArray(flag_ids) && flag_ids.length > 0
-				? flag_ids.filter((id: any) => typeof id === 'number' && !isNaN(id))
+		// Check if flag_ids is explicitly provided (even if empty array for "remove all")
+		const flagIdsProvided = flag_ids !== undefined && flag_ids !== null && Array.isArray(flag_ids)
+		const parsedFlagIds = flagIdsProvided && flag_ids.length > 0
+			? flag_ids.filter((id: any) => typeof id === 'number' && !isNaN(id))
+			: flagIdsProvided && flag_ids.length === 0
+				? [] // Empty array explicitly provided for "remove all"
 				: undefined
 
 		// Update each receipt
@@ -752,8 +755,9 @@ router.post('/bulk-update', async (req, res) => {
 				// Determine flag IDs for this receipt
 				let receiptFlagIds: number[] | undefined = undefined
 
-				if (parsedFlagIds && parsedFlagIds.length > 0) {
-					if (flag_operation === 'append') {
+				if (parsedFlagIds !== undefined) {
+					// flag_ids was explicitly provided (could be empty array)
+					if (flag_operation === 'append' && parsedFlagIds.length > 0) {
 						// For append: merge existing flags with new flags for this specific receipt
 						const existingFlags = dbQueries.getFlagsByReceiptId.all(receiptId) as Array<{ id: number }>
 						const existingFlagIds = existingFlags.map(f => f.id)
@@ -761,7 +765,7 @@ router.post('/bulk-update', async (req, res) => {
 						const merged = new Set([...existingFlagIds, ...parsedFlagIds])
 						receiptFlagIds = Array.from(merged)
 					} else {
-						// For replace (default): use only the new flags
+						// For replace (default): use the provided flags (could be empty array to remove all)
 						receiptFlagIds = parsedFlagIds
 					}
 				}
