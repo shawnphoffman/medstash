@@ -15,6 +15,40 @@ A dead simple, local-only receipt storage system for long-term HSA recordkeeping
 - Docker deployment
 - Dark mode
 
+## Screenshots
+
+#### Receipts Page
+<table>
+<tr>
+<td><img src="docs/screenshots/receipts-page_light.png" alt="Receipts Page (Light Mode)" width="100%"></td>
+<td><img src="docs/screenshots/receipts-page.png" alt="Receipts Page (Dark Mode)" width="100%"></td>
+</tr>
+</table>
+
+#### Upload Page
+<table>
+<tr>
+<td><img src="docs/screenshots/upload-page_light.png" alt="Upload Page (Light Mode)" width="100%"></td>
+<td><img src="docs/screenshots/upload-page.png" alt="Upload Page (Dark Mode)" width="100%"></td>
+</tr>
+</table>
+
+#### Settings Page
+<table>
+<tr>
+<td><img src="docs/screenshots/settings-page_light.png" alt="Settings Page (Light Mode)" width="100%"></td>
+<td><img src="docs/screenshots/settings-page.png" alt="Settings Page (Dark Mode)" width="100%"></td>
+</tr>
+</table>
+
+#### Receipt Detail Page
+<table>
+<tr>
+<td><img src="docs/screenshots/receipt-detail-page_light.png" alt="Receipt Detail Page (Light Mode)" width="100%"></td>
+<td><img src="docs/screenshots/receipt-detail-page.png" alt="Receipt Detail Page (Dark Mode)" width="100%"></td>
+</tr>
+</table>
+
 ## Deployment
 
 ### Docker Compose
