@@ -1,4 +1,6 @@
 # MedStash
+> [!IMPORTANT]
+> This project started as a vibe-coding experiment but is slowly becoming more stable. Don't use without backups or with critical data. Do not expose publicly.
 
 A dead simple, local-only receipt storage system for long-term HSA recordkeeping. Files stored on your filesystem, metadata in SQLite. No vendor lock-in.
 
