@@ -40,3 +40,5 @@ lerna-debug.log*
 # Data
 data/
 testing/
+
+IGNORE.md

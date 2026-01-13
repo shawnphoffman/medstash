@@ -19,6 +19,8 @@ import { cn } from './lib/utils'
 import { ErrorProvider, useErrorContext } from './contexts/ErrorContext'
 import { REPOSITORY_URL } from './lib/version'
 import { DEFAULT_RECEIPT_TYPE_GROUPS, DEFAULT_UNGROUPED_TYPES } from './lib/defaults'
+import { usePullToRefresh } from './hooks/usePullToRefresh'
+import { PullToRefreshIndicator } from './components/PullToRefreshIndicator'
 
 function Navigation() {
 	const location = useLocation()
@@ -148,6 +150,12 @@ function AppContent() {
 	const [isChecking, setIsChecking] = useState(true)
 	const { error, setError } = useErrorContext()
 
+	// Enable pull-to-refresh for iOS home screen web apps
+	const { isPulling, progress, shouldRefresh } = usePullToRefresh({
+		enabled: true,
+		hardRefresh: true,
+	})
+
 	// Set up API error handler
 	useEffect(() => {
 		setApiErrorHandler((type, message) => {
@@ -228,6 +236,7 @@ function AppContent() {
 			}}
 		>
 			<div className="min-h-screen bg-background">
+				<PullToRefreshIndicator isPulling={isPulling} progress={progress} shouldRefresh={shouldRefresh} />
 				<Navigation />
 				<main className="container px-4 py-8 mx-auto">
 					<Suspense
