@@ -553,7 +553,7 @@ export default function ReceiptDetailPage() {
 
 			<div className="flex flex-col max-w-full gap-6 lg:flex-row">
 				{/* Main Form */}
-				<div className="flex-1 min-w-0">
+				<div className="flex-1 min-w-[50%]">
 					<Card>
 						<CardHeader>
 							<CardTitle>Edit Receipt ({id})</CardTitle>
@@ -953,7 +953,7 @@ export default function ReceiptDetailPage() {
 
 				{/* Preview Sidebar - Only on widescreens */}
 				{(receipt.files.length > 0 || newFiles.length > 0) && (
-					<div className="flex-shrink-0">
+					<div className="lg:max-w-[40%]">
 						<Card>
 							<CardHeader>
 								<CardTitle>File Previews</CardTitle>
