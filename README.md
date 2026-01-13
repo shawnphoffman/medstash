@@ -1,4 +1,4 @@
-# MedStash
+# MedStash - HSA Receipt Storage
 > [!IMPORTANT]
 > This project started as a vibe-coding experiment but is slowly becoming more stable. Don't use without backups or with critical data. Do not expose publicly.
 
@@ -6,14 +6,13 @@ A dead simple, local-only receipt storage system for long-term HSA recordkeeping
 
 ## Features
 
+- Files stored directly on your filesystem so no vendor lock-in
 - Multiple files per receipt (PDF and images)
-- Custom flags for categorization
-- Files stored directly on your filesystem
 - SQLite database for metadata
-- Automatic image optimization
+- Custom flags for categorization (Optional)
+- Automatic image optimization (Optional)
 - Bulk export functionality
 - Docker deployment
-- Dark mode
 
 ## Screenshots
 
@@ -51,32 +50,8 @@ A dead simple, local-only receipt storage system for long-term HSA recordkeeping
 
 ## Deployment
 
-### Docker Compose
-
-```bash
-docker compose up -d
-```
-
-Access at `http://localhost:3020`
-
-### Portainer
-
-1. Create a new Stack
-2. Copy contents of `docker-compose.yml`
-3. Deploy
-
-### Image Versions
-
-Images are available at `ghcr.io/shawnphoffman/medstash`
-
-- `:latest` - Latest from main branch
-- `:v1.0.0` - Version tags
-- `:main-{sha}` - Commit SHA tags
-
-Use a specific version:
-```bash
-MEDSTASH_IMAGE_TAG=v1.0.0 docker compose up
-```
+1. Copy contents of `docker-compose.yml`
+2. Deploy
 
 ## Configuration
 
@@ -84,7 +59,7 @@ MEDSTASH_IMAGE_TAG=v1.0.0 docker compose up
 
 See `env.example` for all available environment variables. Key variables:
 
-- `PORT` - Server port (default: `3000`)
+- `PORT` - Server port
 - `ALLOWED_ORIGINS` - CORS allowed origins, comma-separated (optional, if not set all origins are allowed)
 - `UPLOAD_DIR` - Temporary upload directory (default: `/tmp/medstash-uploads`)
 
