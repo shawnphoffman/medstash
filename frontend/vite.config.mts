@@ -12,7 +12,7 @@ export default defineConfig({
     port: 3010,
     proxy: {
       '/api': {
-        target: 'http://backend:3001',
+        target: 'http://backend:3011',
         changeOrigin: true,
       },
     },

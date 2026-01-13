@@ -1,13 +1,13 @@
 services:
-  backend:
+  medstash-backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
-      - "3001:3001"
+      - "3011:3011"
     environment:
       - NODE_ENV=development
-      - PORT=3001
+      - PORT=3011
       - DB_DIR=/data
       - RECEIPTS_DIR=/data/receipts
       # Logging: Set LOG_LEVEL to ERROR, WARN, or DEBUG (default: DEBUG)
@@ -31,7 +31,7 @@ services:
         - action: rebuild
           path: ./backend/tsconfig.json
 
-  frontend:
+  medstash-frontend:
     image: node:20-alpine
     working_dir: /app
     ports:
@@ -39,10 +39,10 @@ services:
     volumes:
       - ./frontend:/app
     environment:
-      - VITE_API_URL=http://localhost:3001/api
+      - VITE_API_URL=http://localhost:3011/api
     command: sh -c "npm install && npm run dev -- --host"
     depends_on:
-      - backend
+      - medstash-backend
     restart: unless-stopped
     develop:
       watch:
@@ -64,7 +64,5 @@ services:
         - action: sync
           path: ./frontend/components.json
           target: /app/components.json
-        - action: rebuild
-          path: ./frontend/package.json
 
 

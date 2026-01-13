@@ -1,11 +1,32 @@
 services:
-  medstash:
+  medstash-local:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
-      - "3020:3000"
+      - ${MEDSTASH_PORT:-3020}:3000
     volumes:
       - ${MEDSTASH_DATA_DIR:-./data}:/data
-    restart: unless-stopped
+    environment:
+      # CORS: Optional - Set this to restrict allowed origins (comma-separated)
+      # Example: - ALLOWED_ORIGINS=http://your-ip:3020,http://medstash.local
+      # If not set, all origins will be allowed
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+      # Logging: Set LOG_LEVEL to ERROR, WARN, or DEBUG (default: DEBUG)
+      # ERROR: Only error messages
+      # WARN: Error and warning messages
+      # DEBUG: All messages (errors, warnings, and debug info)
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      # Watch Folder: Path to watch folder for auto-import (default: /data/watch)
+      # Files placed in this folder will be automatically imported as receipts
+      - WATCH_FOLDER=${WATCH_FOLDER:-/data/watch}
+      # Watch Interval: How often to scan the watch folder in minutes (default: 30)
+      - WATCH_INTERVAL=${WATCH_INTERVAL:-30}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 

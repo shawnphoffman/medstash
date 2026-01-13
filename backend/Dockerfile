@@ -43,8 +43,8 @@ COPY --from=builder /app/dist ./dist
 # Copy migrations directory (needed at runtime)
 COPY migrations ./migrations
 
-# Expose port
-EXPOSE 3001
+# Expose port (default 3000, configurable via PORT env var)
+EXPOSE 3000
 
 # Start server
 CMD ["npm", "start"]

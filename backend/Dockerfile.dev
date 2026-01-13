@@ -1,0 +1,30 @@
+# Development Dockerfile - includes dev dependencies for hot reload
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install build dependencies needed for better-sqlite3 compilation
+RUN apk add --no-cache --virtual .build-deps \
+    python3 \
+    make \
+    g++
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install ALL dependencies (including dev dependencies for tsx, typescript, etc.)
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi && \
+    npm cache clean --force
+
+# Keep build dependencies (needed for potential native module recompilation)
+# Note: In dev, we keep these for flexibility
+
+# Copy migrations directory (needed at runtime)
+COPY migrations ./migrations
+
+# Expose port
+EXPOSE 3011
+
+# Default command (can be overridden in docker-compose)
+CMD ["npm", "run", "dev"]
