@@ -19,6 +19,7 @@ import {
 	replaceReceiptFile,
 	migrateFilesToDateStructure,
 	markFileAsOptimized,
+	findReceiptFilePath,
 } from '../services/fileService'
 import { CreateReceiptInput, UpdateReceiptInput } from '../models/receipt'
 import { dbQueries } from '../db'
@@ -519,7 +520,6 @@ router.get('/:id/files/:fileId', async (req, res) => {
 		}
 
 		// Try to find the file path (with fallback to search alternative locations)
-		const { findReceiptFilePath } = await import('../services/fileService')
 		const filePath = await findReceiptFilePath(receiptId, file.filename)
 
 		if (!filePath) {
@@ -568,7 +568,7 @@ router.get('/:id/files/:fileId', async (req, res) => {
 				})
 			}
 		}
-	} catch (error) {
+	} catch (error: any) {
 		logger.error('Error downloading file:', error)
 		if (!res.headersSent) {
 			res.status(500).json({ error: 'Failed to download file' })

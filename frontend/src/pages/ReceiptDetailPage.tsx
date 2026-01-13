@@ -202,8 +202,10 @@ export default function ReceiptDetailPage() {
 			// Generate preview URLs for existing files
 			if (receiptData.files.length > 0 && id) {
 				const previews = new Map<number, string>()
+				// Use VITE_API_URL if set, otherwise use relative path (for Vite proxy)
+				const apiBase = import.meta.env.VITE_API_URL || '/api'
 				receiptData.files.forEach(file => {
-					const previewUrl = `/api/receipts/${id}/files/${file.id}`
+					const previewUrl = `${apiBase}/receipts/${id}/files/${file.id}`
 					previews.set(file.id, previewUrl)
 				})
 				setExistingFilePreviews(previews)
@@ -456,7 +458,8 @@ export default function ReceiptDetailPage() {
 			})
 
 			// Regenerate preview URL
-			const previewUrl = `/api/receipts/${id}/files/${fileId}`
+			const apiBase = import.meta.env.VITE_API_URL || '/api'
+			const previewUrl = `${apiBase}/receipts/${id}/files/${fileId}`
 			setExistingFilePreviews(prev => {
 				const newMap = new Map(prev)
 				newMap.set(fileId, previewUrl)
@@ -1005,6 +1008,33 @@ export default function ReceiptDetailPage() {
 																<File className="w-12 h-12 mx-auto mb-2 text-destructive" />
 																<p className="text-sm text-destructive">File not available</p>
 																<p className="mb-4 text-xs text-muted-foreground">The file may have been deleted or moved</p>
+																{(() => {
+																	// Calculate expected path based on receipt structure
+																	// Structure: {receiptsDir}/{sanitizedUser}/{year}/{month}/{day}/{filename}
+																	// Use same sanitization as backend (sanitizeFilename)
+																	const sanitizeFilename = (input: string): string => {
+																		if (!input || input.trim().length === 0) return 'unknown'
+																		return input
+																			.toLowerCase()
+																			.trim()
+																			.replace(/\s+/g, '-')
+																			.replace(/[^a-z0-9\-_]/g, '')
+																			.replace(/-+/g, '-')
+																			.replace(/^-|-$/g, '')
+																			.substring(0, 50)
+																	}
+																	const dateParts = receipt.date.split('T')[0].split('-')
+																	const year = dateParts[0] || 'unknown'
+																	const month = dateParts[1]?.padStart(2, '0') || '01'
+																	const day = dateParts[2]?.padStart(2, '0') || '01'
+																	const sanitizedUser = sanitizeFilename(receipt.user || 'unknown')
+																	const expectedPath = `${sanitizedUser}/${year}/${month}/${day}/${file.filename}`
+																	return (
+																		<p className="mb-2 text-xs font-mono text-muted-foreground break-all px-2">
+																			Expected: {expectedPath}
+																		</p>
+																	)
+																})()}
 																<input
 																	type="file"
 																	ref={el => {

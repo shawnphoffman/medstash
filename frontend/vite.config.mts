@@ -12,7 +12,8 @@ export default defineConfig({
     port: 3010,
     proxy: {
       '/api': {
-        target: 'http://backend:3011',
+        // Use localhost for local development, backend hostname for Docker
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:3011',
         changeOrigin: true,
       },
     },
