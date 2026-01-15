@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Calendar } from './ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { Button } from './ui/button'
-import { ChevronDown } from 'lucide-react'
+import { Input } from './ui/input'
+import { Calendar as CalendarIcon } from 'lucide-react'
 
 interface DatePickerProps {
 	value?: string // YYYY-MM-DD format
@@ -12,12 +13,37 @@ interface DatePickerProps {
 	className?: string
 }
 
-export function DatePicker({ value, onChange, id, placeholder = 'Select date', className }: DatePickerProps) {
+const parseDateString = (dateString: string) => {
+	const [year, month, day] = dateString.split('-').map(Number)
+	if (!year || !month || !day) return undefined
+	const date = new Date(year, month - 1, day)
+	if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+		return undefined
+	}
+	return date
+}
+
+const formatDateString = (date: Date) => {
+	const year = date.getFullYear()
+	const month = `${date.getMonth() + 1}`.padStart(2, '0')
+	const day = `${date.getDate()}`.padStart(2, '0')
+	return `${year}-${month}-${day}`
+}
+
+export function DatePicker({ value, onChange, id, placeholder = 'YYYY-MM-DD', className }: DatePickerProps) {
 	const [open, setOpen] = useState(false)
+	const [inputValue, setInputValue] = useState(value || '')
+
+	useEffect(() => {
+		setInputValue(value || '')
+	}, [value])
+
+	const selectedDate = useMemo(() => (value ? parseDateString(value) : undefined), [value])
 
 	const handleSelect = (date: Date | undefined) => {
 		if (date) {
-			const dateString = date.toISOString().split('T')[0]
+			const dateString = formatDateString(date)
+			setInputValue(dateString)
 			onChange(dateString)
 			setOpen(false)
 		}
@@ -25,22 +51,58 @@ export function DatePicker({ value, onChange, id, placeholder = 'Select date', c
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<Button
-					variant="outline"
+			<div className="relative w-full">
+				<Input
 					id={id}
-					className={`justify-between w-full font-normal text-muted-foreground hover:bg-transparent ${
-						value ? 'text-foreground' : 'text-muted-foreground hover:text-muted-foreground'
-					} ${className || ''}`}
-				>
-					{value ? new Date(value).toLocaleDateString() : placeholder}
-					<ChevronDown className="w-4 h-4 opacity-50" />
-				</Button>
-			</PopoverTrigger>
+					placeholder={placeholder}
+					value={inputValue}
+					onChange={event => {
+						const nextValue = event.target.value
+						setInputValue(nextValue)
+						if (nextValue === '') {
+							onChange('')
+							return
+						}
+						if (/^\d{4}-\d{2}-\d{2}$/.test(nextValue)) {
+							const parsed = parseDateString(nextValue)
+							if (parsed) {
+								const normalized = formatDateString(parsed)
+								setInputValue(normalized)
+								onChange(normalized)
+							}
+						}
+					}}
+					onBlur={() => {
+						if (!inputValue) return
+						const parsed = parseDateString(inputValue)
+						if (!parsed) {
+							setInputValue(value || '')
+							return
+						}
+						const normalized = formatDateString(parsed)
+						if (normalized !== inputValue) {
+							setInputValue(normalized)
+							onChange(normalized)
+						}
+					}}
+					className={`pr-10 ${className || ''}`}
+				/>
+				<PopoverTrigger asChild>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="absolute right-1 top-1/2 -translate-y-1/2"
+						aria-label="Open calendar"
+					>
+						<CalendarIcon className="w-4 h-4 text-muted-foreground" />
+					</Button>
+				</PopoverTrigger>
+			</div>
 			<PopoverContent className="w-auto p-0" align="start">
 				<Calendar
 					mode="single"
-					selected={value ? new Date(value) : undefined}
+					selected={selectedDate}
 					onSelect={handleSelect}
 					initialFocus
 				/>
