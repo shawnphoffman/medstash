@@ -27,13 +27,6 @@ export function validateDate(dateString: string): { valid: boolean; error?: stri
 		return { valid: false, error: 'Invalid date' }
 	}
 
-	// Check if date is not in the future (reasonable for receipts)
-	const today = new Date()
-	today.setHours(23, 59, 59, 999) // End of today
-	if (date > today) {
-		return { valid: false, error: 'Date cannot be in the future' }
-	}
-
 	return { valid: true }
 }
 

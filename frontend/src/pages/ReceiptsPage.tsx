@@ -62,7 +62,14 @@ export default function ReceiptsPage() {
 	}, [autoRefreshEnabled, loadData])
 
 	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString()
+		const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateString)
+		const parsedDate = isDateOnly
+			? (() => {
+					const [year, month, day] = dateString.split('-').map(Number)
+					return new Date(year, month - 1, day)
+				})()
+			: new Date(dateString)
+		return parsedDate.toLocaleDateString()
 	}
 
 	const formatCurrency = (amount: number) => {
