@@ -16,21 +16,13 @@ export const DEFAULT_RECEIPT_TYPE_GROUPS: DefaultReceiptTypeGroup[] = [
 	{
 		name: 'Medical Expenses',
 		display_order: 0,
-		types: ['Doctor Visits', 'Hospital Services', 'Prescription Medications', 'Medical Equipment', 'Over-the-Counter Medications'],
+		types: ['Doctor Visits', 'Hospital Services', 'Prescription Medications', 'Over-the-Counter Medications'],
 	},
-	{ name: 'Dental Expenses', display_order: 1, types: ['Routine Care', 'Major Procedures'] },
-	{ name: 'Vision Expenses', display_order: 2, types: ['Eye Exams', 'Eyewear', 'Surgical Procedures'] },
+	{ name: 'Dental Expenses', display_order: 1, types: ['Routine Dental', 'Major Dental'] },
+	{ name: 'Vision Expenses', display_order: 2, types: ['Eye Exams', 'Eyewear', 'Contact Lenses'] },
 ]
 
 /**
  * Default ungrouped receipt types
- * (previously in "Other Eligible Expenses" group)
  */
-export const DEFAULT_UNGROUPED_TYPES: string[] = [
-	// 'Vaccinations',
-	// 'Physical Exams',
-	'Family Planning',
-	'Mental Health Services',
-	'Other',
-	// 'Health-Related Travel',
-]
+export const DEFAULT_UNGROUPED_TYPES: string[] = ['Family Planning', 'Mental Health Services', 'Other']
