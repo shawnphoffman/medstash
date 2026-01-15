@@ -263,14 +263,14 @@ export default function ReceiptsPage() {
 					<CardContent className="p-0">
 						<div className={cn('overflow-x-auto transition-opacity duration-200', isRefreshing && 'opacity-75')}>
 							<table className="w-full">
-								<thead>
+								<thead className="text-base md:text-sm">
 									<tr className="border-b bg-muted/50">
-										<th className="w-12 px-4 py-3 text-sm font-medium text-left">
+										<th className="w-12 px-4 py-4 font-medium text-left sm:py-3">
 											<Checkbox checked={selectAllChecked} onCheckedChange={handleSelectAll} onClick={e => e.stopPropagation()} />
 										</th>
-										{isDevelopment && <th className="px-4 py-3 text-sm font-medium text-left text-muted-foreground">ID</th>}
+										{isDevelopment && <th className="px-4 py-4 font-medium text-left text-muted-foreground sm:py-3">ID</th>}
 										<th
-											className="px-4 py-3 text-sm font-medium text-left transition-colors cursor-pointer hover:bg-muted"
+											className="px-4 py-4 font-medium text-left transition-colors cursor-pointer hover:bg-muted sm:py-3"
 											onClick={e => {
 												e.stopPropagation()
 												handleSort('date')
@@ -282,19 +282,19 @@ export default function ReceiptsPage() {
 											</div>
 										</th>
 										<th
-											className="px-4 py-3 text-sm font-medium text-left transition-colors cursor-pointer hover:bg-muted"
+											className="px-4 py-4 font-medium text-left transition-colors cursor-pointer hover:bg-muted sm:py-3"
 											onClick={e => {
 												e.stopPropagation()
 												handleSort('vendor')
 											}}
 										>
-											<div className="flex items-center gap-2">
+											<div className="flex items-center gap-2 min-w-24">
 												Vendor
 												{getSortIcon('vendor')}
 											</div>
 										</th>
 										<th
-											className="px-4 py-3 text-sm font-medium text-left transition-colors cursor-pointer hover:bg-muted"
+											className="px-4 py-4 font-medium text-left transition-colors cursor-pointer hover:bg-muted sm:py-3"
 											onClick={e => {
 												e.stopPropagation()
 												handleSort('type')
@@ -306,7 +306,7 @@ export default function ReceiptsPage() {
 											</div>
 										</th>
 										<th
-											className="px-4 py-3 text-sm font-medium text-left transition-colors cursor-pointer hover:bg-muted"
+											className="px-4 py-4 font-medium text-left transition-colors cursor-pointer hover:bg-muted sm:py-3"
 											onClick={e => {
 												e.stopPropagation()
 												handleSort('user')
@@ -318,7 +318,7 @@ export default function ReceiptsPage() {
 											</div>
 										</th>
 										<th
-											className="px-4 py-3 text-sm font-medium text-left transition-colors cursor-pointer hover:bg-muted"
+											className="px-4 py-4 font-medium text-left transition-colors cursor-pointer hover:bg-muted sm:py-3"
 											onClick={e => {
 												e.stopPropagation()
 												handleSort('amount')
@@ -329,10 +329,10 @@ export default function ReceiptsPage() {
 												{getSortIcon('amount')}
 											</div>
 										</th>
-										<th className="px-4 py-3 text-sm font-medium text-left">Files</th>
-										<th className="px-4 py-3 text-sm font-medium text-left">Flags</th>
+										<th className="px-4 py-4 font-medium text-left sm:py-3">Files</th>
+										<th className="px-4 py-4 font-medium text-left sm:py-3">Flags</th>
 										<th
-											className="px-4 py-3 text-sm font-medium text-left transition-colors cursor-pointer hover:bg-muted"
+											className="px-4 py-4 font-medium text-left transition-colors cursor-pointer hover:bg-muted sm:py-3"
 											onClick={e => {
 												e.stopPropagation()
 												handleSort('created_at')
@@ -344,7 +344,7 @@ export default function ReceiptsPage() {
 											</div>
 										</th>
 										<th
-											className="px-4 py-3 text-sm font-medium text-left transition-colors cursor-pointer hover:bg-muted"
+											className="px-4 py-4 font-medium text-left transition-colors cursor-pointer hover:bg-muted sm:py-3"
 											onClick={e => {
 												e.stopPropagation()
 												handleSort('updated_at')
@@ -357,7 +357,7 @@ export default function ReceiptsPage() {
 										</th>
 									</tr>
 								</thead>
-								<tbody>
+								<tbody className="text-base md:text-sm">
 									{sortedReceipts.map(receipt => (
 										<tr
 											key={receipt.id}
@@ -368,7 +368,7 @@ export default function ReceiptsPage() {
 											)}
 										>
 											<td
-												className="px-4 py-3"
+												className="px-4 py-4 sm:py-3"
 												onClick={e => {
 													e.stopPropagation()
 												}}
@@ -379,19 +379,19 @@ export default function ReceiptsPage() {
 													onClick={e => e.stopPropagation()}
 												/>
 											</td>
-											{isDevelopment && <td className="px-4 py-3 font-mono text-sm text-muted-foreground">{receipt.id}</td>}
-											<td className="px-4 py-3 text-sm">{formatDate(receipt.date)}</td>
-											<td className="px-4 py-3 text-sm font-medium">{receipt.vendor}</td>
-											<td className="px-4 py-3 text-sm">{receipt.type}</td>
-											<td className="px-4 py-3 text-sm">{receipt.user}</td>
-											<td className="px-4 py-3 text-sm font-medium">{formatCurrency(receipt.amount)}</td>
-											<td className="px-4 py-3 text-sm">
+											{isDevelopment && <td className="px-4 py-4 font-mono text-muted-foreground sm:py-3">{receipt.id}</td>}
+											<td className="px-4 py-4 sm:py-3">{formatDate(receipt.date)}</td>
+											<td className="px-4 py-4 font-medium whitespace-nowrap sm:py-3">{receipt.vendor}</td>
+											<td className="px-4 py-4 sm:py-3 whitespace-nowrap">{receipt.type}</td>
+											<td className="px-4 py-4 sm:py-3">{receipt.user}</td>
+											<td className="px-4 py-4 font-medium sm:py-3">{formatCurrency(receipt.amount)}</td>
+											<td className="px-4 py-4 sm:py-3">
 												<div className="flex items-center gap-1">
 													<File className="size-4 text-muted-foreground" />
 													<span>{receipt.files.length}</span>
 												</div>
 											</td>
-											<td className="px-4 py-3">
+											<td className="px-4 py-4 sm:py-3">
 												<TooltipProvider>
 													<div className="flex gap-1">
 														{receipt.flags.map(flag => (
@@ -407,8 +407,8 @@ export default function ReceiptsPage() {
 													</div>
 												</TooltipProvider>
 											</td>
-											<td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(receipt.created_at)}</td>
-											<td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(receipt.updated_at)}</td>
+											<td className="px-4 py-4 text-muted-foreground sm:py-3">{formatDate(receipt.created_at)}</td>
+											<td className="px-4 py-4 text-muted-foreground sm:py-3">{formatDate(receipt.updated_at)}</td>
 										</tr>
 									))}
 								</tbody>
