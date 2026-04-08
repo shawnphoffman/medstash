@@ -658,19 +658,16 @@ export async function replaceReceiptFile(
  * Delete a receipt file from disk
  */
 export async function deleteReceiptFile(receiptId: number, filename: string): Promise<void> {
-	const { getReceiptById } = await import('./dbService')
-	const receipt = getReceiptById(receiptId)
-	if (!receipt) {
-		logger.warn(`Receipt ${receiptId} not found, cannot delete file`)
+	// Use findReceiptFilePath to locate the file in either date-based or old ID-based directories
+	const filePath = await findReceiptFilePath(receiptId, filename)
+	if (!filePath) {
+		logger.debug(`File ${filename} for receipt ${receiptId} not found on disk, nothing to delete`)
 		return
 	}
 
-	const receiptDir = getReceiptDirByDate(receipt.user || 'unknown', receipt.date)
-	const filePath = path.join(receiptDir, filename)
 	try {
 		await fs.unlink(filePath)
 	} catch (error: any) {
-		// File might not exist, that's okay - only log unexpected errors
 		if (error?.code !== 'ENOENT') {
 			logger.warn(`Failed to delete file ${filePath}:`, error)
 		}
@@ -773,25 +770,36 @@ export async function findReceiptFilePath(receiptId: number, filename: string): 
 		return null
 	}
 
-	// Try expected location first
+	// Try expected date-based location first
 	const expectedPath = getReceiptFilePathByDate(receipt.user || 'unknown', receipt.date, filename)
 	try {
 		await fs.access(expectedPath)
 		return expectedPath
 	} catch {
-		// File not found in expected location - try to find it by receipt ID pattern
-		// Extract file order from filename if possible (look for [receiptId-fileOrder] pattern)
-		const orderMatch = filename.match(/\[(\d+)-(\d+)\]/)
-		const fileOrder = orderMatch ? parseInt(orderMatch[2], 10) : undefined
-		
-		const foundPath = await findFileByReceiptIdPattern(receiptId, fileOrder)
-		if (foundPath) {
-			logger.warn(`File ${filename} for receipt ${receiptId} found in alternative location: ${foundPath}. Database may be out of sync.`)
-			return foundPath
-		}
-		
-		return null
+		// Not found in date-based dir
 	}
+
+	// Fallback: check old ID-based directory structure ({receiptsDir}/{receiptId}/{filename})
+	const oldIdBasedPath = path.join(getReceiptsDir(), String(receiptId), filename)
+	try {
+		await fs.access(oldIdBasedPath)
+		logger.warn(`File ${filename} for receipt ${receiptId} found in old ID-based directory. Run file migration to fix.`)
+		return oldIdBasedPath
+	} catch {
+		// Not found in old structure either
+	}
+
+	// Last resort: search by receipt ID pattern in filename across all directories
+	const orderMatch = filename.match(/\[(\d+)-(\d+)\]/)
+	const fileOrder = orderMatch ? parseInt(orderMatch[2], 10) : undefined
+
+	const foundPath = await findFileByReceiptIdPattern(receiptId, fileOrder)
+	if (foundPath) {
+		logger.warn(`File ${filename} for receipt ${receiptId} found in alternative location: ${foundPath}. Database may be out of sync.`)
+		return foundPath
+	}
+
+	return null
 }
 
 /**
@@ -852,31 +860,8 @@ async function findFileByReceiptIdPattern(receiptId: number, fileOrder?: number)
  * Check if file exists, with fallback to search by receipt ID pattern
  */
 export async function fileExists(receiptId: number, filename: string): Promise<boolean> {
-	const { getReceiptById } = await import('./dbService')
-	const receipt = getReceiptById(receiptId)
-	if (!receipt) {
-		return false
-	}
-
-	const filePath = getReceiptFilePathByDate(receipt.user || 'unknown', receipt.date, filename)
-	try {
-		await fs.access(filePath)
-		return true
-	} catch {
-		// File not found in expected location - try to find it by receipt ID pattern
-		// Extract file order from filename if possible (look for [receiptId-fileOrder] pattern)
-		const orderMatch = filename.match(/\[(\d+)-(\d+)\]/)
-		const fileOrder = orderMatch ? parseInt(orderMatch[2], 10) : undefined
-		
-		const foundPath = await findFileByReceiptIdPattern(receiptId, fileOrder)
-		if (foundPath) {
-			logger.warn(`File ${filename} for receipt ${receiptId} found in alternative location: ${foundPath}. Database may be out of sync.`)
-			// Optionally, we could update the database here, but that's risky without user confirmation
-			return true
-		}
-		
-		return false
-	}
+	const foundPath = await findReceiptFilePath(receiptId, filename)
+	return foundPath !== null
 }
 
 /**
