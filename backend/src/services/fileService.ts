@@ -432,20 +432,8 @@ export async function optimizeImageAdvanced(
 	// Optimization was successful and reduced file size
 	const optimized = true
 
-	// Mark file as optimized in database if fileId provided
-	// Only mark if optimization was successful (don't mark on errors)
-	if (fileId !== undefined && optimized) {
-		try {
-			const dbQueries = getDbQueries()
-			if (dbQueries) {
-				dbQueries.updateReceiptFileOptimized.run(fileId)
-				logger.debug(`Marked file ${fileId} as optimized`)
-			}
-		} catch (error) {
-			logger.warn(`Failed to mark file ${fileId} as optimized:`, error)
-			// Don't throw - optimization succeeded, just marking failed
-		}
-	}
+	// NOTE: DB marking removed — callers should mark as optimized after confirming
+	// the file is properly in place (e.g., after fs.rename succeeds)
 
 	const duration = Date.now() - startTime
 	logger.debug(`Optimized image: ${originalSize} -> ${optimizedSize} bytes (${sizeReduction.toFixed(1)}% reduction) in ${duration}ms`)
@@ -1407,6 +1395,8 @@ export async function optimizeExistingImages(options?: { batchSize?: number; max
 						if (result.optimized && !result.skipped) {
 							// Replace original with optimized version
 							await fs.rename(tempFilePath, filePath)
+							// Mark as optimized only after file replacement succeeds
+							dbQueries.updateReceiptFileOptimized.run(file.id)
 							results.optimized++
 							logger.debug(
 								`Optimized file ${file.id}: ${result.originalSize} -> ${result.optimizedSize} bytes (${result.sizeReduction?.toFixed(
@@ -1599,6 +1589,8 @@ export async function reoptimizeAllImages(options?: { batchSize?: number; maxCon
 						if (result.optimized && !result.skipped) {
 							// Replace original with optimized version
 							await fs.rename(tempFilePath, filePath)
+							// Mark as optimized only after file replacement succeeds
+							dbQueries.updateReceiptFileOptimized.run(file.id)
 							results.optimized++
 							logger.debug(
 								`Optimized file ${file.id}: ${result.originalSize} -> ${result.optimizedSize} bytes (${result.sizeReduction?.toFixed(
