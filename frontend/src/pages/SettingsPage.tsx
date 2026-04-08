@@ -17,6 +17,7 @@ import {
 } from '../lib/api'
 import { DEFAULT_RECEIPT_TYPE_GROUPS, DEFAULT_UNGROUPED_TYPES } from '../lib/defaults'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -328,6 +329,16 @@ export default function SettingsPage() {
 	const [patternError, setPatternError] = useState<string | null>(null)
 	const [isRenaming, setIsRenaming] = useState(false)
 	const [isOrganizing, setIsOrganizing] = useState(false)
+	const [renamePreview, setRenamePreview] = useState<{
+		totalFiles: number
+		wouldRename: number
+		previews: Array<{ receiptId: number; currentFilename: string; newFilename: string }>
+	} | null>(null)
+	const [organizePreview, setOrganizePreview] = useState<{
+		totalFiles: number
+		wouldMove: number
+		previews: Array<{ currentPath: string; newPath: string }>
+	} | null>(null)
 	const [processedFileCount, setProcessedFileCount] = useState<number | null>(null)
 	const [isLoadingProcessedCount, setIsLoadingProcessedCount] = useState(false)
 	const [isDeletingProcessed, setIsDeletingProcessed] = useState(false)
@@ -1244,12 +1255,12 @@ export default function SettingsPage() {
 			setOriginalPattern(filenamePattern)
 			setPatternError(null)
 
-			// Check if pattern changed and prompt for rename
+			// Check if pattern changed and prompt for rename via preview
 			if (filenamePattern !== originalPattern) {
 				const shouldRename = await confirm({
 					message: 'Pattern saved successfully. Would you like to rename all existing files to match the new pattern?',
 					title: 'Rename Files?',
-					confirmText: 'Yes, Rename',
+					confirmText: 'Yes, Preview Changes',
 					cancelText: 'No, Skip',
 				})
 				if (shouldRename) {
@@ -1261,7 +1272,7 @@ export default function SettingsPage() {
 		}
 	}
 
-	// Handle rename all files
+	// Handle rename all files — step 1: show preview
 	const handleRenameAll = async () => {
 		const error = validatePattern(filenamePattern)
 		if (error) {
@@ -1269,14 +1280,25 @@ export default function SettingsPage() {
 			return
 		}
 
-		const confirmed = await confirm({
-			message: 'Are you sure you want to rename all existing files? This action cannot be undone.',
-			variant: 'destructive',
-		})
-		if (!confirmed) {
-			return
+		try {
+			setIsRenaming(true)
+			setError(null)
+			const result = await filenamesApi.dryRunRenameAll()
+			if (result.data.wouldRename === 0) {
+				await alert({ title: 'No Changes', message: 'All files already match the current pattern.' })
+				return
+			}
+			setRenamePreview(result.data)
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to preview rename')
+		} finally {
+			setIsRenaming(false)
 		}
+	}
 
+	// Handle rename all files — step 2: execute after preview confirmed
+	const handleConfirmRename = async () => {
+		setRenamePreview(null)
 		try {
 			setIsRenaming(true)
 			setError(null)
@@ -1297,21 +1319,31 @@ export default function SettingsPage() {
 		}
 	}
 
-	// Handle organize files (migrate to new directory structure)
+	// Handle organize files — step 1: show preview
 	const handleOrganizeFiles = async () => {
-		const confirmed = await confirm({
-			message:
-				'This will move all receipt files from the old directory structure to the new user/date structure. This action cannot be undone. Continue?',
-			variant: 'destructive',
-		})
-		if (!confirmed) {
-			return
-		}
-
 		try {
 			setIsOrganizing(true)
 			setError(null)
-			const result = await receiptsApi.migrateFiles()
+			const result = await filenamesApi.dryRunMigrateFiles()
+			if (result.data.wouldMove === 0) {
+				await alert({ title: 'No Changes', message: 'All files are already in the correct directory structure.' })
+				return
+			}
+			setOrganizePreview(result.data)
+		} catch (err: any) {
+			setError(err.response?.data?.error || 'Failed to preview file organization')
+		} finally {
+			setIsOrganizing(false)
+		}
+	}
+
+	// Handle organize files — step 2: execute after preview confirmed
+	const handleConfirmOrganize = async () => {
+		setOrganizePreview(null)
+		try {
+			setIsOrganizing(true)
+			setError(null)
+			const result = await filenamesApi.migrateFiles()
 			if (result.data.errors.length > 0) {
 				const errorCount = result.data.errors.length
 				const successCount = result.data.filesMoved
@@ -1475,6 +1507,77 @@ export default function SettingsPage() {
 		<div className="max-w-4xl mx-auto space-y-6">
 			{ConfirmDialog}
 			{AlertDialog}
+
+			{/* Rename Preview Dialog */}
+			<Dialog open={renamePreview !== null} onOpenChange={open => !open && setRenamePreview(null)}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Rename Preview</DialogTitle>
+						<DialogDescription>
+							{renamePreview?.wouldRename} of {renamePreview?.totalFiles} files will be renamed.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-2 max-h-64 overflow-y-auto">
+						{renamePreview?.previews.slice(0, 5).map((p, i) => (
+							<div key={i} className="p-2 rounded bg-muted text-sm space-y-1">
+								<div className="text-muted-foreground line-through">{p.currentFilename}</div>
+								<div className="font-medium">{p.newFilename}</div>
+							</div>
+						))}
+						{(renamePreview?.wouldRename ?? 0) > 5 && (
+							<p className="text-sm text-muted-foreground text-center">
+								...and {(renamePreview?.wouldRename ?? 0) - 5} more
+							</p>
+						)}
+					</div>
+					<DialogFooter>
+						<div className="flex flex-col gap-2 sm:flex-row">
+							<Button variant="outline" onClick={() => setRenamePreview(null)}>
+								Cancel
+							</Button>
+							<Button variant="destructive" onClick={handleConfirmRename}>
+								Rename {renamePreview?.wouldRename} Files
+							</Button>
+						</div>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Organize Preview Dialog */}
+			<Dialog open={organizePreview !== null} onOpenChange={open => !open && setOrganizePreview(null)}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Organize Files Preview</DialogTitle>
+						<DialogDescription>
+							{organizePreview?.wouldMove} of {organizePreview?.totalFiles} files will be moved.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-2 max-h-64 overflow-y-auto">
+						{organizePreview?.previews.slice(0, 5).map((p, i) => (
+							<div key={i} className="p-2 rounded bg-muted text-sm space-y-1">
+								<div className="text-muted-foreground line-through">{p.currentPath}</div>
+								<div className="font-medium">{p.newPath}</div>
+							</div>
+						))}
+						{(organizePreview?.wouldMove ?? 0) > 5 && (
+							<p className="text-sm text-muted-foreground text-center">
+								...and {(organizePreview?.wouldMove ?? 0) - 5} more
+							</p>
+						)}
+					</div>
+					<DialogFooter>
+						<div className="flex flex-col gap-2 sm:flex-row">
+							<Button variant="outline" onClick={() => setOrganizePreview(null)}>
+								Cancel
+							</Button>
+							<Button variant="destructive" onClick={handleConfirmOrganize}>
+								Move {organizePreview?.wouldMove} Files
+							</Button>
+						</div>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
 			<div>
 				<h2 className="text-3xl font-bold">Settings</h2>
 				<p className="text-muted-foreground">Manage flags and application settings</p>
