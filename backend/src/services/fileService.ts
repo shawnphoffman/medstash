@@ -678,6 +678,37 @@ export async function deleteReceiptFile(receiptId: number, filename: string): Pr
 }
 
 /**
+ * Delete all files for a receipt using pre-fetched receipt data.
+ * Use this when the receipt may have already been deleted from the DB.
+ */
+export async function deleteReceiptFilesByData(receipt: { id: number; user: string; date: string; files: { filename: string }[] }): Promise<void> {
+	const receiptDir = getReceiptDirByDate(receipt.user || 'unknown', receipt.date)
+
+	for (const file of receipt.files) {
+		const filePath = path.join(receiptDir, file.filename)
+		try {
+			await fs.unlink(filePath)
+			logger.debug(`Deleted file: ${filePath}`)
+		} catch (error: any) {
+			if (error?.code !== 'ENOENT') {
+				logger.warn(`Failed to delete file ${filePath}:`, error)
+			}
+		}
+	}
+
+	// Try to remove directory if empty
+	try {
+		const entries = await fs.readdir(receiptDir)
+		if (entries.length === 0) {
+			await fs.rmdir(receiptDir)
+		}
+	} catch {
+		// Directory might not be empty or might not exist
+	}
+}
+
+/**
+ * @deprecated Use deleteReceiptFilesByData instead — this function fails if called after the receipt is deleted from DB.
  * Delete all files for a receipt
  * Note: With the new structure, files are in date-based directories shared by multiple receipts.
  * This function only deletes files that belong to this specific receipt.

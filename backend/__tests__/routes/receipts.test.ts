@@ -165,6 +165,21 @@ vi.mock('../../src/services/fileService', async () => {
 				console.warn(`Failed to delete file ${filePath}:`, error)
 			}
 		},
+		deleteReceiptFilesByData: async (receipt: { id: number; user: string; date: string; files: { filename: string }[] }) => {
+			try {
+				const receiptDir = getReceiptDirByDate(receipt.user || 'unknown', receipt.date)
+				for (const file of receipt.files) {
+					const filePath = pathMod.join(receiptDir, file.filename)
+					try {
+						await fsMod.unlink(filePath)
+					} catch (error) {
+						// File might not exist, that's okay
+					}
+				}
+			} catch (error) {
+				console.warn(`Failed to delete receipt files:`, error)
+			}
+		},
 		deleteReceiptFiles: async (receiptId: number) => {
 			// Get receipt files from database and delete them individually
 			try {
