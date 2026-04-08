@@ -3,6 +3,8 @@
 /**
  * Version bumping script with git integration
  * Uses npm version but handles uncommitted changes gracefully
+ *
+ * NOTE: Releases are now automated via release-please. This script is kept as a fallback for manual use.
  */
 
 const { execSync } = require('child_process')
