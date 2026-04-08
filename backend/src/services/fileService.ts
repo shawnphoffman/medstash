@@ -893,17 +893,21 @@ export async function renameReceiptFiles(
 	amount: number,
 	type: string,
 	flags?: Flag[]
-): Promise<Array<{ fileId: number; oldFilename: string; newFilename: string }>> {
+): Promise<{
+	results: Array<{ fileId: number; oldFilename: string; newFilename: string }>;
+	errors: Array<{ fileId: number; oldFilename: string; attemptedFilename: string; error: string }>;
+}> {
 	const { getReceiptById } = await import('./dbService')
 	const oldReceipt = getReceiptById(receiptId)
 	if (!oldReceipt) {
 		logger.warn(`Receipt ${receiptId} not found, cannot rename files`)
-		return []
+		return { results: [], errors: [] }
 	}
 
 	const oldReceiptDir = getReceiptDirByDate(oldReceipt.user || 'unknown', oldReceipt.date)
 	const newReceiptDir = getReceiptDirByDate(user, date)
 	const renameResults: Array<{ fileId: number; oldFilename: string; newFilename: string }> = []
+	const renameErrors: Array<{ fileId: number; oldFilename: string; attemptedFilename: string; error: string }> = []
 
 	// Ensure new directory exists
 	await ensureReceiptDirByDate(user, date)
@@ -989,12 +993,12 @@ export async function renameReceiptFiles(
 				}
 			} catch (error) {
 				logger.error(`Failed to rename file ${file.filename} to ${newFilename}:`, error)
-				// Still update database to new filename for consistency, even if move failed
-				// This ensures the database matches the new naming pattern
-				renameResults.push({
+				// Do NOT update database — file still has old name on disk
+				renameErrors.push({
 					fileId: file.id,
 					oldFilename: file.filename,
-					newFilename: newFilename,
+					attemptedFilename: newFilename,
+					error: error instanceof Error ? error.message : 'Unknown error',
 				})
 			}
 		} else {
@@ -1008,7 +1012,7 @@ export async function renameReceiptFiles(
 		}
 	}
 
-	return renameResults
+	return { results: renameResults, errors: renameErrors }
 }
 
 /**
@@ -1043,7 +1047,7 @@ export async function renameAllReceiptFiles(): Promise<{
 
 			results.totalFiles += files.length
 
-			const renameResults = await renameReceiptFiles(
+			const { results: renameResults, errors: renameFileErrors } = await renameReceiptFiles(
 				receipt.id,
 				files,
 				receipt.date,
@@ -1054,11 +1058,19 @@ export async function renameAllReceiptFiles(): Promise<{
 				receipt.flags
 			)
 
-			// Update database with new filenames
+			// Update database only for successfully renamed files
 			const { dbQueries } = await import('../db')
 			for (const result of renameResults) {
 				dbQueries.updateReceiptFilename.run(result.newFilename, result.fileId)
 				results.renamed++
+			}
+
+			// Track per-file rename errors
+			for (const err of renameFileErrors) {
+				results.errors.push({
+					receiptId: receipt.id,
+					error: `File ${err.oldFilename}: ${err.error}`,
+				})
 			}
 		} catch (error: any) {
 			results.errors.push({

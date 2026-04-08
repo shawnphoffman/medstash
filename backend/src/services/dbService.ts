@@ -247,7 +247,7 @@ export async function updateReceipt(
 			// Get updated flags after the update
 			const updatedFlags = dbQueries.getFlagsByReceiptId.all(id) as Flag[]
 
-			const renameResults = await renameReceiptFiles(
+			const { results: renameResults, errors: renameErrors } = await renameReceiptFiles(
 				id,
 				files,
 				updated.date,
@@ -258,9 +258,13 @@ export async function updateReceipt(
 				updatedFlags
 			)
 
-			// Update database records with new filenames
+			// Update database only for successfully renamed files
 			for (const result of renameResults) {
 				dbQueries.updateReceiptFilename.run(result.newFilename, result.fileId)
+			}
+
+			if (renameErrors.length > 0) {
+				logger.warn(`${renameErrors.length} file(s) failed to rename for receipt ${id}`)
 			}
 		} catch (error) {
 			logger.error('Error renaming receipt files:', error)

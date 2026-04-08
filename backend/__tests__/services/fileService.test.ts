@@ -505,9 +505,10 @@ describe('fileService', () => {
         [] // No flags
       );
 
-      expect(renameResults).toHaveLength(1);
-      expect(renameResults[0].oldFilename).toBe(oldFilename);
-      expect(renameResults[0].newFilename).not.toBe(oldFilename);
+      expect(renameResults.results).toHaveLength(1);
+      expect(renameResults.errors).toHaveLength(0);
+      expect(renameResults.results[0].oldFilename).toBe(oldFilename);
+      expect(renameResults.results[0].newFilename).not.toBe(oldFilename);
 
       // Update receipt in database to reflect new user and date
       // This is needed because fileExists looks up receipt from database
@@ -534,7 +535,7 @@ describe('fileService', () => {
       dbQueries.updateReceipt.run(janeUserId, prescriptionTypeId, 200.00, 'New Clinic', '', 'Test Description', '2024-01-16', null, receiptId);
       
       // Update filename in database
-      dbQueries.updateReceiptFilename.run(renameResults[0].newFilename, fileId);
+      dbQueries.updateReceiptFilename.run(renameResults.results[0].newFilename, fileId);
 
       // Old file should not exist (check in old directory)
       // Use the helper to construct the old directory path
@@ -546,7 +547,7 @@ describe('fileService', () => {
       expect(oldStillExists).toBe(false);
 
       // New file should exist (check using fileExists which uses updated receipt data)
-      const newExists = await fileService.fileExists(receiptId, renameResults[0].newFilename);
+      const newExists = await fileService.fileExists(receiptId, renameResults.results[0].newFilename);
       expect(newExists).toBe(true);
     });
 
@@ -602,11 +603,12 @@ describe('fileService', () => {
         flags
       );
 
-      expect(renameResults).toHaveLength(1);
+      expect(renameResults.results).toHaveLength(1);
+      expect(renameResults.errors).toHaveLength(0);
       // With pattern that includes flags, the filename should change
-      expect(renameResults[0].newFilename).toBeDefined();
-      expect(renameResults[0].newFilename).not.toBe(result.filename);
-      expect(renameResults[0].newFilename).toContain('reimbursed');
+      expect(renameResults.results[0].newFilename).toBeDefined();
+      expect(renameResults.results[0].newFilename).not.toBe(result.filename);
+      expect(renameResults.results[0].newFilename).toContain('reimbursed');
     });
 
     it('should not rename if filename unchanged', async () => {
@@ -654,8 +656,9 @@ describe('fileService', () => {
         []
       );
 
-      // Should return empty array since filename didn't change
-      expect(renameResults).toHaveLength(0);
+      // Should return empty results since filename didn't change
+      expect(renameResults.results).toHaveLength(0);
+      expect(renameResults.errors).toHaveLength(0);
     });
   });
 });
