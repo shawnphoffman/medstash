@@ -190,5 +190,8 @@ const dbQueriesObj = {
 // Using type assertion to allow declaration file generation
 // Runtime behavior is unchanged, this only affects .d.ts generation
 export const dbQueries = dbQueriesObj as Record<string, any>
+export function getDb(): DatabaseType {
+	return dbInstance
+}
 export { dbInstance as db }
 export default dbInstance

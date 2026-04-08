@@ -1,4 +1,14 @@
-import { dbQueries, db } from '../db'
+import { dbQueries, getDb } from '../db'
+
+/**
+ * Helper to run a function within a transaction.
+ * Uses getDb() to get the current db instance, ensuring test mocks work correctly.
+ */
+function withTransaction<T>(fn: () => T): T {
+	const db = getDb()
+	const runInTransaction = db.transaction(fn)
+	return runInTransaction()
+}
 import { logger } from '../utils/logger'
 import {
 	Receipt,
@@ -132,7 +142,6 @@ export function createReceipt(receiptData: CreateReceiptInput, flagIds: number[]
 	const notes = receiptData.notes || null
 
 	const result = dbQueries.insertReceipt.run(userId, receiptTypeId, amount, vendor, provider_address, description, date, notes)
-
 	const receiptId = result.lastInsertRowid as number
 
 	// Add flags
@@ -141,7 +150,6 @@ export function createReceipt(receiptData: CreateReceiptInput, flagIds: number[]
 			dbQueries.insertReceiptFlag.run(receiptId, flagId)
 		}
 	}
-
 	return getReceiptById(receiptId)!
 }
 
@@ -220,6 +228,7 @@ export async function updateReceipt(
 		file_order: number
 	}>
 
+	// Update receipt and flags
 	dbQueries.updateReceipt.run(
 		updated.user_id,
 		updated.receipt_type_id,
@@ -232,7 +241,6 @@ export async function updateReceipt(
 		id
 	)
 
-	// Update flags if provided (before renaming so we have the correct flags)
 	if (flagIds !== undefined) {
 		dbQueries.deleteReceiptFlags.run(id)
 		for (const flagId of flagIds) {
@@ -557,21 +565,23 @@ export function moveReceiptTypeToGroup(typeId: number, groupId: number | null, d
  * Updates multiple receipt types at once with their new group_id and display_order values
  */
 export function bulkUpdateReceiptTypes(updates: Array<{ id: number; group_id: number | null; display_order: number }>): ReceiptType[] {
-	const updatedTypes: ReceiptType[] = []
+	return withTransaction(() => {
+		const updatedTypes: ReceiptType[] = []
 
-	for (const update of updates) {
-		const existing = dbQueries.getReceiptTypeById.get(update.id) as ReceiptType | null
-		if (!existing) {
-			logger.warn(`Receipt type ${update.id} not found, skipping`)
-			continue
+		for (const update of updates) {
+			const existing = dbQueries.getReceiptTypeById.get(update.id) as ReceiptType | null
+			if (!existing) {
+				logger.warn(`Receipt type ${update.id} not found, skipping`)
+				continue
+			}
+
+			dbQueries.updateReceiptTypeGroupId.run(update.group_id, update.display_order, update.id)
+			const updated = dbQueries.getReceiptTypeById.get(update.id) as ReceiptType
+			updatedTypes.push(updated)
 		}
 
-		dbQueries.updateReceiptTypeGroupId.run(update.group_id, update.display_order, update.id)
-		const updated = dbQueries.getReceiptTypeById.get(update.id) as ReceiptType
-		updatedTypes.push(updated)
-	}
-
-	return updatedTypes
+		return updatedTypes
+	})
 }
 
 /**
@@ -596,7 +606,7 @@ export function deleteReceiptType(id: number): boolean {
 		}
 
 		// Update all receipts to use the replacement type
-		const updateReceiptType = db.prepare('UPDATE receipts SET receipt_type_id = ? WHERE receipt_type_id = ?')
+		const updateReceiptType = getDb().prepare('UPDATE receipts SET receipt_type_id = ? WHERE receipt_type_id = ?')
 		updateReceiptType.run(replacementType.id, id)
 	}
 
@@ -620,7 +630,7 @@ export function resetReceiptTypesToDefaults(
 	// Ensure ungroupedTypes is defined
 	const finalUngroupedTypes = ungroupedTypes || ['Other']
 
-	const transaction = db.transaction(() => {
+	return withTransaction(() => {
 		// Step 1: Find a temporary replacement type for receipts (before we delete everything)
 		const allTypes = dbQueries.getAllReceiptTypes.all() as ReceiptType[]
 		let tempReplacementTypeId: number | null = null
@@ -637,27 +647,27 @@ export function resetReceiptTypesToDefaults(
 		// Step 2: Update ALL receipts to use the temporary replacement type
 		// This prevents foreign key constraint issues when we delete types
 		if (tempReplacementTypeId) {
-			const updateAllReceipts = db.prepare('UPDATE receipts SET receipt_type_id = ?')
+			const updateAllReceipts = getDb().prepare('UPDATE receipts SET receipt_type_id = ?')
 			updateAllReceipts.run(tempReplacementTypeId)
 		}
 
 		// Step 3: Ungroup all types to avoid foreign key issues
-		const ungroupAllTypes = db.prepare('UPDATE receipt_types SET group_id = NULL')
+		const ungroupAllTypes = getDb().prepare('UPDATE receipt_types SET group_id = NULL')
 		ungroupAllTypes.run()
 
 		// Step 4: Delete all types EXCEPT the temporary one (to avoid foreign key constraint)
 		// We'll reuse or delete the temporary one after creating new types
 		if (tempReplacementTypeId) {
-			const deleteAllTypesExceptTemp = db.prepare('DELETE FROM receipt_types WHERE id != ?')
+			const deleteAllTypesExceptTemp = getDb().prepare('DELETE FROM receipt_types WHERE id != ?')
 			deleteAllTypesExceptTemp.run(tempReplacementTypeId)
 		} else {
 			// If no types exist, just delete all
-			const deleteAllTypes = db.prepare('DELETE FROM receipt_types')
+			const deleteAllTypes = getDb().prepare('DELETE FROM receipt_types')
 			deleteAllTypes.run()
 		}
 
 		// Step 5: Delete all groups
-		const deleteAllGroups = db.prepare('DELETE FROM receipt_type_groups')
+		const deleteAllGroups = getDb().prepare('DELETE FROM receipt_type_groups')
 		deleteAllGroups.run()
 
 		// Step 6: Create new groups
@@ -723,7 +733,7 @@ export function resetReceiptTypesToDefaults(
 		if (finalTypes.length > 0) {
 			const otherType = finalTypes.find(t => t.name.toLowerCase() === 'other')
 			const defaultTypeId = otherType ? otherType.id : finalTypes[0].id
-			const updateAllReceiptsToDefault = db.prepare('UPDATE receipts SET receipt_type_id = ?')
+			const updateAllReceiptsToDefault = getDb().prepare('UPDATE receipts SET receipt_type_id = ?')
 			updateAllReceiptsToDefault.run(defaultTypeId)
 		}
 
@@ -733,13 +743,11 @@ export function resetReceiptTypesToDefaults(
 			const receiptsUsingTempType = dbQueries.getReceiptsByReceiptType.all(tempReplacementTypeId) as Receipt[]
 			if (receiptsUsingTempType.length === 0) {
 				// No receipts are using it, safe to delete
-				const deleteTempType = db.prepare('DELETE FROM receipt_types WHERE id = ?')
+				const deleteTempType = getDb().prepare('DELETE FROM receipt_types WHERE id = ?')
 				deleteTempType.run(tempReplacementTypeId)
 			}
 		}
 
 		return { groups: createdGroups, types: createdTypes }
 	})
-
-	return transaction()
 }

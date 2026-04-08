@@ -14,6 +14,7 @@ vi.mock('../../src/db', async () => {
 	return {
 		dbQueries: testQueries,
 		db: testDb,
+		getDb: () => testDb,
 		default: testDb,
 	}
 })
@@ -31,8 +32,30 @@ vi.mock('../../src/services/fileService', async () => {
 		return pathMod.join(getTestReceiptsDir(), receiptId.toString())
 	}
 
+	const { sanitizeFilename } = await import('../../src/utils/filename')
+
+	const getReceiptDirByDate = (user: string, date: string) => {
+		const sanitizedUser = sanitizeFilename(user || 'unknown')
+		const dateStr = date.split('T')[0]
+		const parts = dateStr.split('-')
+		const year = parts[0] || '2024'
+		const month = (parts[1] || '01').padStart(2, '0')
+		const day = (parts[2] || '01').padStart(2, '0')
+		return pathMod.join(getTestReceiptsDir(), sanitizedUser, year, month, day)
+	}
+
 	const ensureReceiptDir = async (receiptId: number) => {
 		const receiptDir = getReceiptDir(receiptId)
+		try {
+			await fsMod.access(receiptDir)
+		} catch {
+			await fsMod.mkdir(receiptDir, { recursive: true })
+		}
+		return receiptDir
+	}
+
+	const ensureReceiptDirByDate = async (user: string, date: string) => {
+		const receiptDir = getReceiptDirByDate(user, date)
 		try {
 			await fsMod.access(receiptDir)
 		} catch {
@@ -51,7 +74,10 @@ vi.mock('../../src/services/fileService', async () => {
 			}
 		},
 		getReceiptDir,
+		getReceiptDirByDate,
 		ensureReceiptDir,
+		ensureReceiptDirByDate,
+		markFileAsOptimized: async () => {},
 		isImageFile: (filename: string) => {
 			const ext = pathMod.extname(filename).toLowerCase()
 			return ['.jpg', '.jpeg', '.png', '.webp'].includes(ext)
