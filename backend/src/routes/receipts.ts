@@ -21,6 +21,7 @@ import {
 	migrateFilesToDateStructure,
 	markFileAsOptimized,
 	findReceiptFilePath,
+	getReceiptDirByDate,
 } from '../services/fileService'
 import { CreateReceiptInput, UpdateReceiptInput } from '../models/receipt'
 import { dbQueries } from '../db'
@@ -638,11 +639,30 @@ router.put('/:id/files/:fileId', upload.single('file'), handleMulterError, async
 			return res.status(400).json({ error: 'No file provided' })
 		}
 
-		// Delete old file from disk (if it exists)
+		// Write new file to temp location first to avoid data loss if write fails
+		const tempFilename = `${file.filename}.replacing.${Date.now()}`
+		let originalFilename: string
+		try {
+			const result = await replaceReceiptFile(req.file, receiptId, tempFilename)
+			originalFilename = result.originalFilename
+		} catch (writeError) {
+			// Clean up temp file if it was partially written
+			try {
+				const tempPath = await findReceiptFilePath(receiptId, tempFilename)
+				if (tempPath) await fs.unlink(tempPath)
+			} catch { /* ignore cleanup errors */ }
+			throw writeError
+		}
+
+		// Temp file written successfully — now safe to delete old file
 		await deleteFile(receiptId, file.filename)
 
-		// Replace with new file, keeping the same filename
-		const { originalFilename } = await replaceReceiptFile(req.file, receiptId, file.filename)
+		// Rename temp to final filename
+		const receiptDir = getReceiptDirByDate(receipt.user || 'unknown', receipt.date)
+		await fs.rename(
+			path.join(receiptDir, tempFilename),
+			path.join(receiptDir, file.filename)
+		)
 
 		// Update original_filename to the new file's original name
 		dbQueries.updateReceiptFileOriginalFilename.run(originalFilename, fileId)
