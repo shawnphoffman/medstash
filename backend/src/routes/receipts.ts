@@ -236,11 +236,13 @@ router.post('/', upload.array('files', 10), handleMulterError, async (req: expre
 			flag_ids: parsedFlagIds,
 		}
 
-		// Create receipt
+		// Save all files to disk first before any DB operations
+		const savedFiles: Array<{ filename: string; originalFilename: string; optimized: boolean; index: number }> = []
+
+		// We need a temporary receipt to generate filenames — create it first
 		const receipt = createReceipt(receiptData, receiptData.flag_ids)
 
-		// Process files
-		if (files && files.length > 0) {
+		try {
 			for (let i = 0; i < files.length; i++) {
 				const file = files[i]
 				const { filename, originalFilename, optimized } = await saveReceiptFile(
@@ -254,13 +256,26 @@ router.post('/', upload.array('files', 10), handleMulterError, async (req: expre
 					i,
 					receipt.flags
 				)
+				savedFiles.push({ filename, originalFilename, optimized, index: i })
+			}
+		} catch (error) {
+			// Clean up any files that were saved before the failure
+			for (const saved of savedFiles) {
+				try {
+					const dir = getReceiptDirByDate(receipt.user, receipt.date)
+					await fs.unlink(path.join(dir, saved.filename))
+				} catch { /* ignore cleanup errors */ }
+			}
+			// Also delete the receipt from DB since files couldn't all be saved
+			deleteReceipt(receipt.id)
+			throw error
+		}
 
-				addReceiptFile(receipt.id, filename, originalFilename, i)
-
-				// Mark as optimized if optimization was successful
-				if (optimized) {
-					await markFileAsOptimized(receipt.id, filename)
-				}
+		// All files saved successfully — add file records to DB
+		for (const saved of savedFiles) {
+			addReceiptFile(receipt.id, saved.filename, saved.originalFilename, saved.index)
+			if (saved.optimized) {
+				await markFileAsOptimized(receipt.id, saved.filename)
 			}
 		}
 
