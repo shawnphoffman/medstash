@@ -9,10 +9,11 @@ const ReceiptDetailPage = lazy(() => import('./pages/ReceiptDetailPage'))
 const UploadPage = lazy(() => import('./pages/UploadPage'))
 const BulkUploadPage = lazy(() => import('./pages/BulkUploadPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
-import { Receipt, Upload, Settings, HelpCircle, Github, Menu, X } from 'lucide-react'
+import { Receipt, Upload, Settings, HelpCircle, Github, Menu, X, Heart } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { ThemeToggle } from './components/ThemeToggle'
 import UserSetupDialog from './components/UserSetupDialog'
+import SupportDialog from './components/SupportDialog'
 import { Toaster } from './components/ui/toaster'
 import { usersApi, receiptTypesApi, receiptTypeGroupsApi, setApiErrorHandler } from './lib/api'
 import { cn } from './lib/utils'
@@ -147,6 +148,7 @@ function Navigation() {
 
 function AppContent() {
 	const [showUserSetup, setShowUserSetup] = useState(false)
+	const [showSupport, setShowSupport] = useState(false)
 	const [isChecking, setIsChecking] = useState(true)
 	const { error, setError } = useErrorContext()
 
@@ -259,7 +261,21 @@ function AppContent() {
 						</Routes>
 					</Suspense>
 				</main>
+				<footer className="border-t bg-background/80 backdrop-blur-sm">
+					<div className="container flex items-center justify-center px-4 py-3 mx-auto">
+						<Button
+							variant="ghost"
+							size="sm"
+							className="gap-2 text-muted-foreground hover:text-foreground"
+							onClick={() => setShowSupport(true)}
+						>
+							<Heart className="w-4 h-4 text-amber-500" />
+							Support MedStash
+						</Button>
+					</div>
+				</footer>
 				<UserSetupDialog open={showUserSetup} onComplete={handleUserSetupComplete} />
+				<SupportDialog open={showSupport} onOpenChange={setShowSupport} />
 				<Toaster />
 			</div>
 		</BrowserRouter>
