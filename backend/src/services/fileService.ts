@@ -4,7 +4,7 @@ import path from 'path'
 import { generateReceiptFilename, sanitizeFilename } from '../utils/filename'
 import { ReceiptFile, Flag } from '../models/receipt'
 import { logger } from '../utils/logger'
-import { getSetting } from './dbService'
+import { getSetting, logFileOperation } from './dbService'
 
 // Get receipts directory dynamically to support test environments
 function getReceiptsDir(): string {
@@ -562,6 +562,8 @@ export async function saveReceiptFile(
 		await fs.unlink(file.path)
 	}
 
+	logFileOperation({ receiptId, operation: 'create', newPath: filePath })
+
 	return { filename, originalFilename, optimized }
 }
 
@@ -655,9 +657,11 @@ export async function deleteReceiptFile(receiptId: number, filename: string): Pr
 
 	try {
 		await fs.unlink(filePath)
+		logFileOperation({ receiptId, operation: 'delete', oldPath: filePath })
 	} catch (error: any) {
 		if (error?.code !== 'ENOENT') {
 			logger.warn(`Failed to delete file ${filePath}:`, error)
+			logFileOperation({ receiptId, operation: 'delete', oldPath: filePath, status: 'error', errorMessage: error?.message })
 		}
 	}
 }
@@ -674,6 +678,7 @@ export async function deleteReceiptFilesByData(receipt: { id: number; user: stri
 		try {
 			await fs.unlink(filePath)
 			logger.debug(`Deleted file: ${filePath}`)
+			logFileOperation({ receiptId: receipt.id, operation: 'delete', oldPath: filePath })
 		} catch (error: any) {
 			if (error?.code !== 'ENOENT') {
 				logger.warn(`Failed to delete file ${filePath}:`, error)
@@ -958,6 +963,7 @@ export async function renameReceiptFiles(
 
 					// Move/rename the file (fs.rename works across directories)
 					await fs.rename(oldFilePath, newFilePath)
+					logFileOperation({ receiptId, fileId: file.id, operation: 'rename', oldPath: oldFilePath, newPath: newFilePath })
 					renameResults.push({
 						fileId: file.id,
 						oldFilename: file.filename,

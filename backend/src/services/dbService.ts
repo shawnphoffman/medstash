@@ -751,3 +751,36 @@ export function resetReceiptTypesToDefaults(
 		return { groups: createdGroups, types: createdTypes }
 	})
 }
+
+/**
+ * Log a file operation for audit purposes
+ */
+export function logFileOperation(params: {
+	receiptId?: number
+	fileId?: number
+	operation: string
+	oldPath?: string
+	newPath?: string
+	status?: 'success' | 'error'
+	errorMessage?: string
+}): void {
+	try {
+		const db = getDb()
+		const stmt = db.prepare(`
+			INSERT INTO file_operations (receipt_id, file_id, operation, old_path, new_path, status, error_message)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`)
+		stmt.run(
+			params.receiptId ?? null,
+			params.fileId ?? null,
+			params.operation,
+			params.oldPath ?? null,
+			params.newPath ?? null,
+			params.status ?? 'success',
+			params.errorMessage ?? null
+		)
+	} catch (error) {
+		// Don't let audit logging failures break the actual operation
+		logger.debug('Failed to log file operation:', error)
+	}
+}
