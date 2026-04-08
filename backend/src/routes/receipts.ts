@@ -13,6 +13,7 @@ import {
 import {
 	saveReceiptFile,
 	deleteReceiptFiles,
+	deleteReceiptFilesByData,
 	getReceiptFilePath,
 	fileExists,
 	deleteReceiptFile as deleteFile,
@@ -411,13 +412,18 @@ router.delete('/:id', async (req, res) => {
 		if (isNaN(id)) {
 			return res.status(400).json({ error: 'Invalid receipt ID: must be a number' })
 		}
-		const deleted = deleteReceipt(id)
-		if (!deleted) {
+
+		// Fetch receipt with files BEFORE deleting from DB
+		const receipt = getReceiptById(id)
+		if (!receipt) {
 			return res.status(404).json({ error: 'Receipt not found' })
 		}
 
-		// Delete files from filesystem
-		await deleteReceiptFiles(id)
+		// Delete from DB first (cascades receipt_files records)
+		deleteReceipt(id)
+
+		// Now delete files from disk using the pre-fetched data
+		await deleteReceiptFilesByData(receipt)
 
 		res.status(204).send()
 	} catch (error) {
