@@ -337,6 +337,11 @@ export const exportApi = {
 	},
 }
 
+export interface ExportResult {
+	blob: Blob
+	missingFileCount: number
+}
+
 // Filenames API
 export const filenamesApi = {
 	renameAll: () =>
@@ -345,7 +350,7 @@ export const filenamesApi = {
 			totalReceipts: number
 			totalFiles: number
 			renamed: number
-			errors: Array<{ receiptId: number; error: string }>
+			errors: Array<{ receiptId: number; filename: string; error: string }>
 		}>('/filenames/rename-all'),
 	dryRunRenameAll: () =>
 		api.post<{
@@ -360,7 +365,7 @@ export const filenamesApi = {
 			success: boolean
 			totalFiles: number
 			filesMoved: number
-			errors: Array<{ file: string; error: string }>
+			errors: Array<{ receiptId: number; filename: string; error: string }>
 		}>('/filenames/migrate-files'),
 	dryRunMigrateFiles: () =>
 		api.post<{
@@ -406,7 +411,7 @@ export const imagesApi = {
 			total: number
 			optimized: number
 			skipped: number
-			errors: Array<{ fileId: number; error: string }>
+			errors: Array<{ fileId: number; filename: string; error: string }>
 			duration: number
 		}>('/images/optimize', options || {}),
 	reoptimize: (options?: { batchSize?: number; maxConcurrent?: number }) =>
@@ -415,7 +420,7 @@ export const imagesApi = {
 			total: number
 			optimized: number
 			skipped: number
-			errors: Array<{ fileId: number; error: string }>
+			errors: Array<{ fileId: number; filename: string; error: string }>
 			duration: number
 		}>('/images/reoptimize', options || {}),
 }

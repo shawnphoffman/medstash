@@ -1002,7 +1002,7 @@ export async function renameAllReceiptFiles(): Promise<{
 	totalReceipts: number
 	totalFiles: number
 	renamed: number
-	errors: Array<{ receiptId: number; error: string }>
+	errors: Array<{ receiptId: number; filename: string; error: string }>
 }> {
 	const { getAllReceipts } = await import('./dbService')
 	const receipts = getAllReceipts()
@@ -1010,7 +1010,7 @@ export async function renameAllReceiptFiles(): Promise<{
 		totalReceipts: receipts.length,
 		totalFiles: 0,
 		renamed: 0,
-		errors: [] as Array<{ receiptId: number; error: string }>,
+		errors: [] as Array<{ receiptId: number; filename: string; error: string }>,
 	}
 
 	for (const receipt of receipts) {
@@ -1048,12 +1048,14 @@ export async function renameAllReceiptFiles(): Promise<{
 			for (const err of renameFileErrors) {
 				results.errors.push({
 					receiptId: receipt.id,
-					error: `File ${err.oldFilename}: ${err.error}`,
+					filename: err.oldFilename,
+					error: err.error,
 				})
 			}
 		} catch (error: any) {
 			results.errors.push({
 				receiptId: receipt.id,
+				filename: receipt.files?.[0]?.filename || 'unknown',
 				error: error.message || 'Unknown error',
 			})
 		}
@@ -1262,7 +1264,7 @@ export async function migrateFilesToDateStructure(): Promise<{
 	totalReceipts: number
 	totalFiles: number
 	filesMoved: number
-	errors: Array<{ receiptId: number; error: string }>
+	errors: Array<{ receiptId: number; filename: string; error: string }>
 }> {
 	const { getAllReceipts, getReceiptById } = await import('./dbService')
 	const receipts = getAllReceipts()
@@ -1270,7 +1272,7 @@ export async function migrateFilesToDateStructure(): Promise<{
 		totalReceipts: receipts.length,
 		totalFiles: 0,
 		filesMoved: 0,
-		errors: [] as Array<{ receiptId: number; error: string }>,
+		errors: [] as Array<{ receiptId: number; filename: string; error: string }>,
 	}
 
 	const receiptsDir = getReceiptsDir()
@@ -1298,6 +1300,7 @@ export async function migrateFilesToDateStructure(): Promise<{
 		if (!receipt) {
 			results.errors.push({
 				receiptId,
+				filename: dirName,
 				error: 'Receipt not found in database',
 			})
 			continue
@@ -1320,6 +1323,7 @@ export async function migrateFilesToDateStructure(): Promise<{
 		} catch (error) {
 			results.errors.push({
 				receiptId,
+				filename: dirName,
 				error: `Failed to create new directory: ${error instanceof Error ? error.message : 'Unknown error'}`,
 			})
 			continue
@@ -1334,6 +1338,7 @@ export async function migrateFilesToDateStructure(): Promise<{
 		} catch (error) {
 			results.errors.push({
 				receiptId,
+				filename: dirName,
 				error: `Error reading old directory: ${error instanceof Error ? error.message : 'Unknown error'}`,
 			})
 			continue
@@ -1368,7 +1373,8 @@ export async function migrateFilesToDateStructure(): Promise<{
 			} catch (error) {
 				results.errors.push({
 					receiptId,
-					error: `Failed to move file ${filename}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+					filename,
+					error: `Failed to move file: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				})
 			}
 		}
@@ -1396,7 +1402,7 @@ export async function optimizeExistingImages(options?: { batchSize?: number; max
 	total: number
 	optimized: number
 	skipped: number
-	errors: Array<{ fileId: number; error: string }>
+	errors: Array<{ fileId: number; filename: string; error: string }>
 	duration: number
 }> {
 	const startTime = Date.now()
@@ -1407,7 +1413,7 @@ export async function optimizeExistingImages(options?: { batchSize?: number; max
 		total: 0,
 		optimized: 0,
 		skipped: 0,
-		errors: [] as Array<{ fileId: number; error: string }>,
+		errors: [] as Array<{ fileId: number; filename: string; error: string }>,
 		duration: 0,
 	}
 
@@ -1451,6 +1457,7 @@ export async function optimizeExistingImages(options?: { batchSize?: number; max
 						console.error(`[ERROR] Failed to optimize file ${file.id} (${file.filename}): ${errorMsg}`)
 						results.errors.push({
 							fileId: file.id,
+							filename: file.filename,
 							error: errorMsg,
 						})
 						return
@@ -1520,6 +1527,7 @@ export async function optimizeExistingImages(options?: { batchSize?: number; max
 							logger.error(`Failed to optimize file ${file.id}: ${errorMsg}`)
 							results.errors.push({
 								fileId: file.id,
+								filename: file.filename,
 								error: errorMsg,
 							})
 						}
@@ -1541,6 +1549,7 @@ export async function optimizeExistingImages(options?: { batchSize?: number; max
 					}
 					results.errors.push({
 						fileId: file.id,
+						filename: file.filename,
 						error: errorMessage,
 					})
 					logger.error(`Failed to optimize file ${file.id} (${file.filename}):`, errorMessage)
@@ -1582,7 +1591,7 @@ export async function reoptimizeAllImages(options?: { batchSize?: number; maxCon
 	total: number
 	optimized: number
 	skipped: number
-	errors: Array<{ fileId: number; error: string }>
+	errors: Array<{ fileId: number; filename: string; error: string }>
 	duration: number
 }> {
 	const startTime = Date.now()
@@ -1593,7 +1602,7 @@ export async function reoptimizeAllImages(options?: { batchSize?: number; maxCon
 		total: 0,
 		optimized: 0,
 		skipped: 0,
-		errors: [] as Array<{ fileId: number; error: string }>,
+		errors: [] as Array<{ fileId: number; filename: string; error: string }>,
 		duration: 0,
 	}
 
@@ -1647,6 +1656,7 @@ export async function reoptimizeAllImages(options?: { batchSize?: number; maxCon
 						console.error(`[ERROR] Failed to optimize file ${file.id} (${file.filename}): ${errorMsg}`)
 						results.errors.push({
 							fileId: file.id,
+							filename: file.filename,
 							error: errorMsg,
 						})
 						return
@@ -1714,6 +1724,7 @@ export async function reoptimizeAllImages(options?: { batchSize?: number; maxCon
 							logger.error(`Failed to optimize file ${file.id}: ${errorMsg}`)
 							results.errors.push({
 								fileId: file.id,
+								filename: file.filename,
 								error: errorMsg,
 							})
 						}
@@ -1735,6 +1746,7 @@ export async function reoptimizeAllImages(options?: { batchSize?: number; maxCon
 					}
 					results.errors.push({
 						fileId: file.id,
+						filename: file.filename,
 						error: errorMessage,
 					})
 					logger.error(`Failed to optimize file ${file.id} (${file.filename}):`, errorMessage)

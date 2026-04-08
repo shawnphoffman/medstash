@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useToast } from '../components/ui/use-toast'
 import {
 	flagsApi,
 	settingsApi,
@@ -41,6 +42,8 @@ import {
 	Download,
 	FolderTree,
 	Image as ImageIcon,
+	ChevronDown,
+	ChevronRight,
 } from 'lucide-react'
 import {
 	DndContext,
@@ -286,6 +289,7 @@ function UngroupedSection({
 }
 
 export default function SettingsPage() {
+	const { toast } = useToast()
 	const [flags, setFlags] = useState<Flag[]>([])
 	const [users, setUsers] = useState<User[]>([])
 	const [receiptTypes, setReceiptTypes] = useState<ReceiptType[]>([])
@@ -349,10 +353,12 @@ export default function SettingsPage() {
 		total: number
 		optimized: number
 		skipped: number
-		errors: Array<{ fileId: number; error: string }>
+		errors: Array<{ fileId: number; filename: string; error: string }>
 		duration: number
 	} | null>(null)
 	const [error, setError] = useState<string | null>(null)
+	const [bulkErrors, setBulkErrors] = useState<Array<{ id: string; filename: string; error: string }>>([])
+	const [bulkErrorsExpanded, setBulkErrorsExpanded] = useState(false)
 	const { confirm, ConfirmDialog } = useConfirmDialog()
 	const { alert, AlertDialog } = useAlertDialog()
 	const [quickVendors, setQuickVendors] = useState<Array<{ vendor: string; count: number }>>([])
@@ -1302,9 +1308,16 @@ export default function SettingsPage() {
 		try {
 			setIsRenaming(true)
 			setError(null)
+			setBulkErrors([])
+			setBulkErrorsExpanded(false)
 			const result = await filenamesApi.renameAll()
 			if (result.data.errors.length > 0) {
-				setError(`Renamed ${result.data.renamed} of ${result.data.totalFiles} files. Some errors occurred.`)
+				setError(`Renamed ${result.data.renamed} of ${result.data.totalFiles} files. ${result.data.errors.length} error(s) occurred.`)
+				setBulkErrors(result.data.errors.map(e => ({
+					id: `receipt-${e.receiptId}`,
+					filename: e.filename,
+					error: e.error,
+				})))
 			} else {
 				setError(null)
 				await alert({
@@ -1343,11 +1356,18 @@ export default function SettingsPage() {
 		try {
 			setIsOrganizing(true)
 			setError(null)
+			setBulkErrors([])
+			setBulkErrorsExpanded(false)
 			const result = await filenamesApi.migrateFiles()
 			if (result.data.errors.length > 0) {
 				const errorCount = result.data.errors.length
 				const successCount = result.data.filesMoved
 				setError(`Moved ${successCount} of ${result.data.totalFiles} files. ${errorCount} error(s) occurred.`)
+				setBulkErrors(result.data.errors.map(e => ({
+					id: `receipt-${e.receiptId}`,
+					filename: e.filename,
+					error: e.error,
+				})))
 			} else {
 				setError(null)
 				await alert({
@@ -1376,6 +1396,8 @@ export default function SettingsPage() {
 
 		setIsOptimizing(true)
 		setError(null)
+		setBulkErrors([])
+		setBulkErrorsExpanded(false)
 		setOptimizationResult(null)
 
 		try {
@@ -1385,7 +1407,7 @@ export default function SettingsPage() {
 				if (result.data.errors.length > 0) {
 					await alert({
 						title: 'Optimization Complete',
-						message: `Optimized ${result.data.optimized} image(s), skipped ${result.data.skipped}. ${result.data.errors.length} error(s) occurred.`,
+						message: `Optimized ${result.data.optimized} image(s), skipped ${result.data.skipped}. ${result.data.errors.length} error(s) occurred. See details below.`,
 					})
 				} else {
 					await alert({
@@ -1417,6 +1439,8 @@ export default function SettingsPage() {
 
 		setIsReoptimizing(true)
 		setError(null)
+		setBulkErrors([])
+		setBulkErrorsExpanded(false)
 		setOptimizationResult(null)
 
 		try {
@@ -1426,7 +1450,7 @@ export default function SettingsPage() {
 				if (result.data.errors.length > 0) {
 					await alert({
 						title: 'Re-optimization Complete',
-						message: `Re-optimized ${result.data.optimized} image(s), skipped ${result.data.skipped}. ${result.data.errors.length} error(s) occurred.`,
+						message: `Re-optimized ${result.data.optimized} image(s), skipped ${result.data.skipped}. ${result.data.errors.length} error(s) occurred. See details below.`,
 					})
 				} else {
 					await alert({
@@ -1455,6 +1479,16 @@ export default function SettingsPage() {
 			document.body.appendChild(link)
 			link.click()
 			link.remove()
+
+			// Check for missing files via response header
+			const missingFileCount = parseInt(response.headers['x-export-missing-files'] || '0', 10)
+			if (missingFileCount > 0) {
+				toast({
+					variant: 'destructive',
+					title: 'Export completed with warnings',
+					description: `${missingFileCount} file${missingFileCount === 1 ? ' was' : 's were'} missing from disk and not included in the export. Check manifest.json in the ZIP for details.`,
+				})
+			}
 		} catch (err: any) {
 			setError(err.response?.data?.error || 'Failed to export')
 		}
@@ -1583,7 +1617,35 @@ export default function SettingsPage() {
 				<p className="text-muted-foreground">Manage flags and application settings</p>
 			</div>
 
-			{error && <div className="p-4 rounded-md bg-destructive/10 text-destructive">{error}</div>}
+			{error && (
+				<div className="p-4 rounded-md bg-destructive/10 text-destructive">
+					<p>{error}</p>
+					{bulkErrors.length > 0 && (
+						<div className="mt-2">
+							<button
+								type="button"
+								className="flex items-center gap-1 text-sm font-medium underline-offset-2 hover:underline"
+								onClick={() => setBulkErrorsExpanded(prev => !prev)}
+							>
+								{bulkErrorsExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+								{bulkErrorsExpanded ? 'Hide' : 'Show'} {bulkErrors.length} error detail{bulkErrors.length !== 1 ? 's' : ''}
+							</button>
+							{bulkErrorsExpanded && (
+								<ul className="mt-2 space-y-1 text-sm">
+									{bulkErrors.map((err, idx) => (
+										<li key={idx} className="pl-4 border-l-2 border-destructive/30">
+											<span className="font-medium">{err.filename}</span>
+											{err.id && <span className="text-muted-foreground"> ({err.id})</span>}
+											<span className="text-muted-foreground">: </span>
+											{err.error}
+										</li>
+									))}
+								</ul>
+							)}
+						</div>
+					)}
+				</div>
+			)}
 
 			{/* Processed Files */}
 			<Card>
@@ -2269,9 +2331,25 @@ export default function SettingsPage() {
 							</div>
 							{optimizationResult.errors.length > 0 && (
 								<div className="mt-2">
-									<p className="text-sm text-destructive">
-										{optimizationResult.errors.length} error(s) occurred. Check server logs for details.
-									</p>
+									<button
+										type="button"
+										className="flex items-center gap-1 text-sm font-medium text-destructive underline-offset-2 hover:underline"
+										onClick={() => setBulkErrorsExpanded(prev => !prev)}
+									>
+										{bulkErrorsExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+										{bulkErrorsExpanded ? 'Hide' : 'Show'} {optimizationResult.errors.length} error{optimizationResult.errors.length !== 1 ? 's' : ''}
+									</button>
+									{bulkErrorsExpanded && (
+										<ul className="mt-2 space-y-1 text-sm">
+											{optimizationResult.errors.map((err, idx) => (
+												<li key={idx} className="pl-4 border-l-2 border-destructive/30">
+													<span className="font-medium">{err.filename}</span>
+													<span className="text-muted-foreground"> (file #{err.fileId}): </span>
+													{err.error}
+												</li>
+											))}
+										</ul>
+									)}
 								</div>
 							)}
 						</div>
