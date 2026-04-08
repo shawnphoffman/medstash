@@ -13,9 +13,34 @@ router.get('/', async (req, res) => {
   try {
     const receipts = getAllReceipts();
 
-    // Set headers for zip download
+    // Pre-scan files to determine which are missing before streaming begins
+    let totalFilesExpected = 0;
+    let totalFilesIncluded = 0;
+    const missingFiles: Array<{ receiptId: number; filename: string; originalFilename: string }> = [];
+    const fileExistsMap = new Map<string, boolean>();
+
+    for (const receipt of receipts) {
+      for (const file of receipt.files) {
+        totalFilesExpected++;
+        const filePath = getReceiptFilePath(receipt.id, file.filename);
+        const exists = fs.existsSync(filePath);
+        fileExistsMap.set(`${receipt.id}:${file.filename}`, exists);
+        if (exists) {
+          totalFilesIncluded++;
+        } else {
+          missingFiles.push({
+            receiptId: receipt.id,
+            filename: file.filename,
+            originalFilename: file.original_filename,
+          });
+        }
+      }
+    }
+
+    // Set headers before streaming (must be set before archive.pipe)
     res.attachment('medstash-export.zip');
     res.contentType('application/zip');
+    res.setHeader('X-Export-Missing-Files', missingFiles.length.toString());
 
     const archive = archiver('zip', {
       zlib: { level: 9 }, // Maximum compression
@@ -57,14 +82,27 @@ router.get('/', async (req, res) => {
 
       // Add all files for this receipt
       for (const file of receipt.files) {
-        const filePath = getReceiptFilePath(receipt.id, file.filename);
-        if (fs.existsSync(filePath)) {
+        if (fileExistsMap.get(`${receipt.id}:${file.filename}`)) {
+          const filePath = getReceiptFilePath(receipt.id, file.filename);
           archive.file(filePath, {
             name: path.join(receiptDir, file.original_filename),
           });
         }
       }
     }
+
+    // Add integrity manifest to the archive
+    const manifest = {
+      exportedAt: new Date().toISOString(),
+      totalReceipts: receipts.length,
+      totalFilesExpected,
+      totalFilesIncluded,
+      missingFiles,
+    };
+
+    archive.append(JSON.stringify(manifest, null, 2), {
+      name: 'manifest.json',
+    });
 
     // Finalize the archive
     await archive.finalize();

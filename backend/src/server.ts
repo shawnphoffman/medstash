@@ -53,6 +53,7 @@ app.use(
 			  }
 			: true, // If ALLOWED_ORIGINS is not set, allow all origins
 		credentials: true,
+		exposedHeaders: ['X-Export-Missing-Files'],
 	})
 )
 app.use(express.json())
