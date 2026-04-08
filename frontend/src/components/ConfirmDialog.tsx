@@ -26,7 +26,7 @@ const ConfirmDialogComponent: React.FC<{
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>{options.title}</DialogTitle>
-					<DialogDescription>{options.message}</DialogDescription>
+					<DialogDescription className="whitespace-pre-line">{options.message}</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>
 					<div className="flex flex-col gap-2 sm:flex-row">

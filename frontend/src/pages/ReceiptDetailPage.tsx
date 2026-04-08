@@ -310,6 +310,22 @@ export default function ReceiptDetailPage() {
 	const onSubmit = async (data: ReceiptFormData) => {
 		if (!id) return
 
+		// If there are files marked for deletion, confirm before proceeding
+		if (filesToDelete.size > 0 && receipt) {
+			const fileNames = receipt.files
+				.filter(f => filesToDelete.has(f.id))
+				.map(f => f.original_filename)
+			const fileList = fileNames.map(name => `\u2022 ${name}`).join('\n')
+			const confirmed = await confirm({
+				title: 'Confirm File Deletion',
+				message: `The following files will be permanently deleted:\n\n${fileList}\n\nThis cannot be undone. Continue?`,
+				confirmText: 'Delete Files & Save',
+				cancelText: 'Cancel',
+				variant: 'destructive',
+			})
+			if (!confirmed) return
+		}
+
 		setSaving(true)
 		setError(null)
 
@@ -483,9 +499,26 @@ export default function ReceiptDetailPage() {
 		}
 	}
 
-	const handleReplaceFileInput = (fileId: number, e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleReplaceFileInput = async (fileId: number, e: React.ChangeEvent<HTMLInputElement>) => {
 		if (e.target.files && e.target.files.length > 0) {
 			const file = e.target.files[0]
+			const existingFile = receipt?.files.find(f => f.id === fileId)
+			const oldName = existingFile?.original_filename || 'the existing file'
+
+			const confirmed = await confirm({
+				title: 'Confirm File Replacement',
+				message: `Replace '${oldName}' with '${file.name}'? The original file will be permanently removed.`,
+				confirmText: 'Replace',
+				cancelText: 'Cancel',
+				variant: 'destructive',
+			})
+
+			if (!confirmed) {
+				// Reset input so the same file can be selected again
+				e.target.value = ''
+				return
+			}
+
 			handleReplaceFile(fileId, file)
 			// Reset input so the same file can be selected again
 			e.target.value = ''
