@@ -11,6 +11,7 @@ vi.mock('../../src/db', async () => {
   return {
     dbQueries: testQueries,
     db: testDb,
+    getDb: () => testDb,
     default: testDb,
   };
 });
