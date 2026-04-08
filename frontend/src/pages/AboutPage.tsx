@@ -1,4 +1,6 @@
+import { Heart } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
+import { SupportContent } from '../components/SupportDialog'
 import { VERSION, APP_NAME, DESCRIPTION, AUTHOR, LICENSE, REPOSITORY_URL } from '../lib/version'
 
 export default function AboutPage() {
@@ -33,6 +35,21 @@ export default function AboutPage() {
 						<p className="text-sm font-medium text-muted-foreground">Author</p>
 						<p>{AUTHOR}</p>
 					</div>
+				</CardContent>
+			</Card>
+
+			<Card>
+				<CardHeader>
+					<CardTitle className="flex items-center gap-2">
+						<Heart className="w-5 h-5 text-amber-500" />
+						Support MedStash
+					</CardTitle>
+					<CardDescription>
+						MedStash is free and open source. If it saves you time, consider supporting these causes.
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<SupportContent />
 				</CardContent>
 			</Card>
 		</div>
