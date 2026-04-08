@@ -18,7 +18,6 @@ import {
 	fileExists,
 	deleteReceiptFile as deleteFile,
 	replaceReceiptFile,
-	migrateFilesToDateStructure,
 	markFileAsOptimized,
 	findReceiptFilePath,
 	getReceiptDirByDate,
@@ -829,20 +828,6 @@ router.post('/bulk-update', async (req, res) => {
 	} catch (error: any) {
 		logger.error('Error in bulk update:', error)
 		res.status(500).json({ error: error.message || 'Failed to update receipts' })
-	}
-})
-
-// POST /api/receipts/migrate-files - Migrate files from old structure to new user/date structure
-router.post('/migrate-files', async (req, res) => {
-	try {
-		const results = await migrateFilesToDateStructure()
-		res.json({
-			message: 'File migration completed',
-			...results,
-		})
-	} catch (error) {
-		logger.error('Error migrating files:', error)
-		res.status(500).json({ error: 'Failed to migrate files' })
 	}
 })
 

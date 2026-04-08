@@ -279,14 +279,6 @@ export const receiptsApi = {
 			...data,
 		})
 	},
-	migrateFiles: () =>
-		api.post<{
-			message: string
-			totalReceipts: number
-			totalFiles: number
-			filesMoved: number
-			errors: Array<{ receiptId: number; error: string }>
-		}>('/receipts/migrate-files'),
 	getFrequentVendors: () => api.get<Array<{ vendor: string; count: number }>>('/receipts/vendors/frequent'),
 }
 
@@ -355,6 +347,28 @@ export const filenamesApi = {
 			renamed: number
 			errors: Array<{ receiptId: number; error: string }>
 		}>('/filenames/rename-all'),
+	dryRunRenameAll: () =>
+		api.post<{
+			dryRun: true
+			totalReceipts: number
+			totalFiles: number
+			wouldRename: number
+			previews: Array<{ receiptId: number; currentFilename: string; newFilename: string }>
+		}>('/filenames/rename-all?dryRun=true'),
+	migrateFiles: () =>
+		api.post<{
+			success: boolean
+			totalFiles: number
+			filesMoved: number
+			errors: Array<{ file: string; error: string }>
+		}>('/filenames/migrate-files'),
+	dryRunMigrateFiles: () =>
+		api.post<{
+			dryRun: true
+			totalFiles: number
+			wouldMove: number
+			previews: Array<{ currentPath: string; newPath: string }>
+		}>('/filenames/migrate-files?dryRun=true'),
 }
 
 // Watch API

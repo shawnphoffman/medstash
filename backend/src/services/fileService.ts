@@ -1063,6 +1063,96 @@ export async function renameAllReceiptFiles(): Promise<{
 }
 
 /**
+ * Dry-run rename all files — compute new filenames without actually renaming
+ */
+export async function dryRunRenameAll(): Promise<{
+	totalFiles: number
+	changes: Array<{ receiptId: number; files: Array<{ current: string; proposed: string }> }>
+}> {
+	const { getAllReceipts } = await import('./dbService')
+	const receipts = getAllReceipts()
+	const changes: Array<{ receiptId: number; files: Array<{ current: string; proposed: string }> }> = []
+	let totalFiles = 0
+
+	for (const receipt of receipts) {
+		const files = receipt.files.map(f => ({
+			id: f.id,
+			filename: f.filename,
+			original_filename: f.original_filename,
+			file_order: f.file_order,
+		}))
+		if (files.length === 0) continue
+		totalFiles += files.length
+
+		const receiptChanges: Array<{ current: string; proposed: string }> = []
+		for (const file of files) {
+			const originalExt = path.extname(file.original_filename)
+			const newFilename = generateReceiptFilename(
+				receipt.date, receipt.user, receipt.vendor, receipt.amount, receipt.type,
+				file.file_order, originalExt, receipt.id, receipt.flags
+			)
+			if (file.filename !== newFilename) {
+				receiptChanges.push({ current: file.filename, proposed: newFilename })
+			}
+		}
+		if (receiptChanges.length > 0) {
+			changes.push({ receiptId: receipt.id, files: receiptChanges })
+		}
+	}
+
+	return { totalFiles, changes: changes.slice(0, 100) }
+}
+
+/**
+ * Dry-run migrate files — compute file moves without actually moving
+ */
+export async function dryRunMigrateFiles(): Promise<{
+	totalFiles: number
+	moves: Array<{ current: string; proposed: string }>
+}> {
+	const { getReceiptById } = await import('./dbService')
+	const receiptsDir = getReceiptsDir()
+	const moves: Array<{ current: string; proposed: string }> = []
+	let totalFiles = 0
+
+	let receiptDirs: string[]
+	try {
+		const entries = await fs.readdir(receiptsDir, { withFileTypes: true })
+		receiptDirs = entries.filter(e => e.isDirectory()).map(e => e.name)
+	} catch {
+		return { totalFiles: 0, moves: [] }
+	}
+
+	for (const dirName of receiptDirs) {
+		const receiptId = parseInt(dirName)
+		if (isNaN(receiptId)) continue
+
+		const receipt = getReceiptById(receiptId)
+		if (!receipt) continue
+
+		const oldDir = path.join(receiptsDir, dirName)
+		const newDir = getReceiptDirByDate(receipt.user || 'unknown', receipt.date)
+		if (oldDir === newDir) continue
+
+		try {
+			const files = await fs.readdir(oldDir)
+			for (const filename of files) {
+				if (filename.startsWith('.')) continue
+				const stat = await fs.stat(path.join(oldDir, filename))
+				if (!stat.isFile()) continue
+				totalFiles++
+				moves.push({
+					current: path.join(oldDir, filename),
+					proposed: path.join(newDir, filename),
+				})
+			}
+		} catch { continue }
+	}
+
+	return { totalFiles, moves: moves.slice(0, 100) }
+}
+
+/**
  * Restore file associations by scanning filesystem and matching to receipts
  * This is useful when files exist on disk but database records are missing
  * Scans the new directory structure: {user}/{year}/{month}/{day}/
