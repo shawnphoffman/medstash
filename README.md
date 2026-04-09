@@ -48,6 +48,13 @@ A dead simple, local-only receipt storage system for long-term HSA recordkeeping
 </tr>
 </table>
 
+## AI Contribution Disclosure
+![Level 5](https://badgen.net/badge/AI%20Assistance/Level%205?color=orange)
+> [!IMPORTANT]
+> This project uses [Level 5 AI assistance](https://www.visidata.org/blog/2026/ai/) — AI generated the majority of the code, but the human was involved at every step, reviewing each line with full attention. The human understands every algorithm and has logically validated how it all works.
+>
+> **AI Model:** Claude Opus 4
+
 ## Deployment
 
 1. Copy contents of `docker-compose.yml`
