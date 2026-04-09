@@ -28,7 +28,6 @@
 		"version:patch": "node scripts/version.js patch",
 		"version:minor": "node scripts/version.js minor",
 		"version:major": "node scripts/version.js major",
-		"version": "npm run version:patch",
 		"release": "release-it"
 	},
 	"keywords": [
@@ -52,7 +51,6 @@
 	"homepage": "https://github.com/shawnphoffman/medstash#readme",
 	"devDependencies": {
 		"@release-it/conventional-changelog": "^10.0.6",
-		"auto-changelog": "^2.5.0",
 		"release-it": "^19.2.4"
 	}
 }

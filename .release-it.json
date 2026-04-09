@@ -18,8 +18,7 @@
 		"publish": false
 	},
 	"hooks": {
-		"before:bump": "sed -i'' -e \"s/export const VERSION = '.*'/export const VERSION = '${version}'/\" frontend/src/lib/version.ts",
-		"after:bump": "npx auto-changelog -p"
+		"after:bump": "sed -i'' -e \"s/export const VERSION = '.*'/export const VERSION = '${version}'/\" frontend/src/lib/version.ts"
 	},
 	"plugins": {
 		"@release-it/conventional-changelog": {
