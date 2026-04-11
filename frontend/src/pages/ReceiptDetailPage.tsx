@@ -599,7 +599,7 @@ export default function ReceiptDetailPage() {
 							<form id="receipt-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 								{/* Basic Info */}
 								<div className="grid grid-cols-2 gap-4">
-									<div>
+									<div className="space-y-2">
 										<Label htmlFor="user_id">User</Label>
 										{users.length > 1 ? (
 											<Select
@@ -623,7 +623,7 @@ export default function ReceiptDetailPage() {
 											<Input id="user_id" placeholder="No users available" disabled />
 										)}
 									</div>
-									<div>
+									<div className="space-y-2">
 										<Label htmlFor="receipt_type_id">Receipt Type</Label>
 										{receiptTypes.length > 1 ? (
 											<Select
@@ -717,11 +717,11 @@ export default function ReceiptDetailPage() {
 								</div>
 
 								<div className="grid grid-cols-2 gap-4">
-									<div>
+									<div className="space-y-2">
 										<Label htmlFor="date">Date of Service</Label>
 										<DatePicker id="date" value={watch('date')} onChange={value => setValue('date', value, { shouldValidate: true })} />
 									</div>
-									<div>
+									<div className="space-y-2">
 										<Label htmlFor="amount">Amount Paid</Label>
 										<div className="relative">
 											<span className="absolute -translate-y-1/2 left-3 top-1/2 text-muted-foreground">$</span>
@@ -747,53 +747,51 @@ export default function ReceiptDetailPage() {
 												className="pl-7"
 											/>
 										</div>
-										{errors.amount && <p className="mt-1 text-sm text-destructive">{errors.amount.message as string}</p>}
+										{errors.amount && <p className="text-sm text-destructive">{errors.amount.message as string}</p>}
 									</div>
 								</div>
 
-								<div>
+								<div className="space-y-2">
 									<Label htmlFor="description">Description</Label>
 									<Textarea id="description" {...register('description')} placeholder="Description of service or item purchased" rows={3} />
 								</div>
 
-								<div>
+								<div className="space-y-2">
 									<Label htmlFor="vendor">Provider Name</Label>
 									<Input id="vendor" {...register('vendor')} placeholder="CVS Pharmacy" />
 									{quickVendors.length > 0 && (
-										<div className="mt-2">
-											<div className="flex flex-wrap gap-2">
-												{quickVendors.map((item, index) => (
-													<Button
-														key={index}
-														type="button"
-														variant="outline"
-														size="sm"
-														onClick={() => setValue('vendor', item.vendor, { shouldValidate: true })}
-														className="text-xs"
-													>
-														{item.vendor}
-													</Button>
-												))}
-											</div>
+										<div className="flex flex-wrap gap-2 pt-1">
+											{quickVendors.map((item, index) => (
+												<Button
+													key={index}
+													type="button"
+													variant="outline"
+													size="sm"
+													onClick={() => setValue('vendor', item.vendor, { shouldValidate: true })}
+													className="text-xs"
+												>
+													{item.vendor}
+												</Button>
+											))}
 										</div>
 									)}
 								</div>
 
-								<div>
+								<div className="space-y-2">
 									<Label htmlFor="provider_address">Provider Address</Label>
 									<Textarea id="provider_address" {...register('provider_address')} placeholder="123 Main St, City, State ZIP" rows={2} />
 								</div>
 
-								<div>
+								<div className="space-y-2">
 									<Label htmlFor="notes">Notes (Optional)</Label>
 									<Textarea id="notes" {...register('notes')} placeholder="Additional notes" rows={2} />
 								</div>
 
 								{/* Flags */}
 								{flags.length > 0 && (
-									<div>
+									<div className="space-y-2">
 										<Label>Flags</Label>
-										<div className="flex flex-wrap gap-2 mt-2">
+										<div className="flex flex-wrap gap-2">
 											{flags.map(flag => (
 												<Button
 													key={flag.id}
@@ -815,9 +813,9 @@ export default function ReceiptDetailPage() {
 								)}
 
 								{/* Existing Files */}
-								<div>
+								<div className="space-y-2">
 									<Label>Existing Files</Label>
-									<div className="mt-2 space-y-2">
+									<div className="space-y-2">
 										{receipt.files.length === 0 ? (
 											<p className="text-sm text-muted-foreground">No files attached</p>
 										) : (
@@ -914,25 +912,23 @@ export default function ReceiptDetailPage() {
 								</div>
 
 								{/* Add New Files */}
-								<div>
+								<div className="space-y-2">
 									<Label>Add Files</Label>
-									<div className="mt-2">
-										<input
-											ref={fileInputRef}
-											type="file"
-											multiple
-											onChange={onFileInput}
-											className="hidden"
-											id="add-files-input"
-											accept="image/*,.pdf"
-										/>
-										<Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
-											<Upload className="w-4 h-4 mr-1" />
-											Select Files
-										</Button>
-									</div>
+									<input
+										ref={fileInputRef}
+										type="file"
+										multiple
+										onChange={onFileInput}
+										className="hidden"
+										id="add-files-input"
+										accept="image/*,.pdf"
+									/>
+									<Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+										<Upload className="w-4 h-4 mr-1" />
+										Select Files
+									</Button>
 									{newFiles.length > 0 && (
-										<div className="mt-4 space-y-2">
+										<div className="pt-2 space-y-2">
 											{newFiles.map((file, index) => (
 												<div
 													key={index}

@@ -275,41 +275,39 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="py-4 space-y-4">
+				<div className="space-y-4">
 					{error && <div className="p-3 text-sm rounded-md bg-destructive/10 text-destructive">{error}</div>}
 
 					{/* Vendor */}
-					<div>
+					<div className="space-y-2">
 						<Label htmlFor="bulk-vendor">Vendor</Label>
 						<Input id="bulk-vendor" value={vendor} onChange={e => setVendor(e.target.value)} placeholder="Leave empty to keep existing" />
 						{quickVendors.length > 0 && (
-							<div className="mt-2">
-								<div className="flex flex-wrap gap-2">
-									{quickVendors.map((item, index) => (
-										<Button
-											key={index}
-											type="button"
-											variant="outline"
-											size="sm"
-											onClick={() => setVendor(item.vendor)}
-											className="text-xs"
-										>
-											{item.vendor}
-										</Button>
-									))}
-								</div>
+							<div className="flex flex-wrap gap-2 pt-1">
+								{quickVendors.map((item, index) => (
+									<Button
+										key={index}
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() => setVendor(item.vendor)}
+										className="text-xs"
+									>
+										{item.vendor}
+									</Button>
+								))}
 							</div>
 						)}
 					</div>
 
 					{/* Date */}
-					<div>
+					<div className="space-y-2">
 						<Label htmlFor="bulk-date">Date</Label>
 						<DatePicker id="bulk-date" value={date} onChange={setDate} placeholder="Leave empty to keep existing" />
 					</div>
 
 					{/* User */}
-					<div>
+					<div className="space-y-2">
 						<Label htmlFor="bulk-user">User</Label>
 						<Select
 							value={userId?.toString() || '__none__'}
@@ -330,7 +328,7 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 					</div>
 
 					{/* Receipt Type */}
-					<div>
+					<div className="space-y-2">
 						<Label htmlFor="bulk-type">Receipt Type</Label>
 						<Select
 							value={receiptTypeId?.toString() || '__none__'}
@@ -381,78 +379,76 @@ export default function BulkEditDialog({ open, onOpenChange, selectedReceiptIds,
 
 					{/* Flags */}
 					{flags.length > 0 && (
-						<div>
+						<div className="space-y-3">
 							<Label>Flags</Label>
-							<div className="space-y-3">
-								<div className="flex items-center gap-4">
-									<Label className="text-sm font-normal">Operation:</Label>
-									<div className="flex gap-4">
-										<label className="flex items-center gap-2 cursor-pointer">
-											<input
-												type="radio"
-												checked={flagOperation === 'replace'}
-												onChange={() => handleFlagOperationChange('replace')}
-												className="w-4 h-4"
-											/>
-											<span className="text-sm">Replace</span>
-										</label>
-										<label className="flex items-center gap-2 cursor-pointer">
-											<input
-												type="radio"
-												checked={flagOperation === 'append'}
-												onChange={() => handleFlagOperationChange('append')}
-												className="w-4 h-4"
-											/>
-											<span className="text-sm">Append</span>
-										</label>
-										<label className="flex items-center gap-2 cursor-pointer">
-											<input
-												type="radio"
-												checked={flagOperation === 'remove_all'}
-												onChange={() => handleFlagOperationChange('remove_all')}
-												className="w-4 h-4"
-											/>
-											<span className="text-sm">Remove All</span>
-										</label>
-									</div>
+							<div className="flex items-center gap-4">
+								<span className="text-sm font-normal text-muted-foreground">Operation:</span>
+								<div className="flex flex-wrap gap-4">
+									<label className="flex items-center gap-2 cursor-pointer">
+										<input
+											type="radio"
+											checked={flagOperation === 'replace'}
+											onChange={() => handleFlagOperationChange('replace')}
+											className="w-4 h-4"
+										/>
+										<span className="text-sm">Replace</span>
+									</label>
+									<label className="flex items-center gap-2 cursor-pointer">
+										<input
+											type="radio"
+											checked={flagOperation === 'append'}
+											onChange={() => handleFlagOperationChange('append')}
+											className="w-4 h-4"
+										/>
+										<span className="text-sm">Append</span>
+									</label>
+									<label className="flex items-center gap-2 cursor-pointer">
+										<input
+											type="radio"
+											checked={flagOperation === 'remove_all'}
+											onChange={() => handleFlagOperationChange('remove_all')}
+											className="w-4 h-4"
+										/>
+										<span className="text-sm">Remove All</span>
+									</label>
 								</div>
-								<div className="flex flex-wrap gap-2 mt-2">
-									{flags.map(flag => (
-										<Button
-											key={flag.id}
-											type="button"
-											variant="outline"
-											size="sm"
-											onClick={() => toggleFlag(flag.id)}
-											disabled={flagOperation === 'remove_all'}
-											className={
-												flag.color
-													? cn(selectedFlagIds.includes(flag.id) && getBadgeClassName(flag.color), getBorderClassName(flag.color))
-													: undefined
-											}
-										>
-											{flag.name}
-										</Button>
-									))}
-								</div>
-								<p className="text-xs text-muted-foreground">
-									{flagOperation === 'replace'
-										? 'Selected flags will replace all existing flags'
-										: flagOperation === 'append'
-											? 'Selected flags will be added to existing flags'
-											: 'All flags will be removed from selected receipts'}
-								</p>
 							</div>
+							<div className="flex flex-wrap gap-2">
+								{flags.map(flag => (
+									<Button
+										key={flag.id}
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() => toggleFlag(flag.id)}
+										disabled={flagOperation === 'remove_all'}
+										className={
+											flag.color
+												? cn(selectedFlagIds.includes(flag.id) && getBadgeClassName(flag.color), getBorderClassName(flag.color))
+												: undefined
+										}
+									>
+										{flag.name}
+									</Button>
+								))}
+							</div>
+							<p className="text-xs text-muted-foreground">
+								{flagOperation === 'replace'
+									? 'Selected flags will replace all existing flags'
+									: flagOperation === 'append'
+										? 'Selected flags will be added to existing flags'
+										: 'All flags will be removed from selected receipts'}
+							</p>
 						</div>
 					)}
 				</div>
 
-				<DialogFooter className="flex items-center justify-between">
+				<DialogFooter className="sm:justify-between">
 					<Button variant="destructive" onClick={handleDelete} disabled={loading || deleting}>
 						<Trash2 className="mr-1 size-4" />
 						{deleting ? 'Deleting...' : 'Delete'}
 					</Button>
-					<div className="flex gap-2">
+					<div className="flex flex-col-reverse gap-2 sm:flex-row">
 						<Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading || deleting}>
 							Cancel
 						</Button>

@@ -29,14 +29,12 @@ const ConfirmDialogComponent: React.FC<{
 					<DialogDescription className="whitespace-pre-line">{options.message}</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>
-					<div className="flex flex-col gap-2 sm:flex-row">
-						<Button variant="outline" onClick={onCancel}>
-							{options.cancelText}
-						</Button>
-						<Button variant={options.variant === 'destructive' ? 'destructive' : 'default'} onClick={onConfirm}>
-							{options.confirmText}
-						</Button>
-					</div>
+					<Button variant="outline" onClick={onCancel}>
+						{options.cancelText}
+					</Button>
+					<Button variant={options.variant === 'destructive' ? 'destructive' : 'default'} onClick={onConfirm}>
+						{options.confirmText}
+					</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

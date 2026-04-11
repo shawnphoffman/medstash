@@ -190,7 +190,7 @@ export default function BulkUploadPage() {
 					<CardContent>
 						<div className="space-y-6">
 							{/* File Upload */}
-							<div>
+							<div className="space-y-3">
 								<input
 									type="file"
 									ref={fileInputRef}
@@ -205,26 +205,24 @@ export default function BulkUploadPage() {
 									onDrop={onDrop}
 									onDragOver={e => e.preventDefault()}
 									className={cn(
-										'block mt-2 border-2 border-dashed rounded-lg p-8 text-center',
+										'block border-2 border-dashed rounded-lg p-8 text-center space-y-2',
 										'hover:border-primary transition-colors cursor-pointer'
 									)}
 								>
-									<Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+									<Upload className="w-12 h-12 mx-auto text-muted-foreground" />
 									<p className="text-sm text-muted-foreground">Drag and drop files here, or click to select</p>
-									<p className="mt-2 text-xs text-muted-foreground">Supports images and PDFs</p>
+									<p className="text-xs text-muted-foreground">Supports images and PDFs</p>
 								</label>
-								<div className="flex gap-2 mt-4">
-									<Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="flex-1">
-										<Upload className="w-4 h-4 mr-1" />
-										Select Files
-									</Button>
-								</div>
+								<Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full">
+									<Upload className="w-4 h-4 mr-1" />
+									Select Files
+								</Button>
 							</div>
 
 							{/* File List */}
 							{files.length > 0 && (
-								<div>
-									<h3 className="mb-4 text-lg font-semibold">Selected Files ({files.length})</h3>
+								<div className="space-y-3">
+									<h3 className="text-lg font-semibold">Selected Files ({files.length})</h3>
 									<div className="space-y-2">
 										{files.map((file, index) => {
 											const preview = filePreviews.get(index)

@@ -102,7 +102,7 @@ function SortableGroup({
 
 	return (
 		<div ref={setNodeRef} style={style} className={`rounded-lg ${hasChanged ? 'border-2 border-dashed border-amber-500/50' : 'border'}`}>
-			<div className="flex items-center justify-between p-1.5 bg-muted/50 border-b">
+			<div className="flex items-center justify-between p-3 bg-muted/50 border-b">
 				{editingGroup === group.id ? (
 					<div className="flex items-center flex-1 gap-2">
 						<Input value={editGroupName} onChange={e => setEditGroupName(e.target.value)} className="flex-1" />
@@ -267,7 +267,7 @@ function UngroupedSection({
 			<div className="p-3 border-b bg-muted/50">
 				<h3 className="font-semibold">Ungrouped</h3>
 			</div>
-			<div className="p-3 space-y-1">
+			<div className="p-3 space-y-2">
 				<SortableContext items={types.map(t => `type-${t.id}`)} strategy={verticalListSortingStrategy}>
 					{types.map(type => (
 						<SortableType
@@ -1565,14 +1565,12 @@ export default function SettingsPage() {
 						)}
 					</div>
 					<DialogFooter>
-						<div className="flex flex-col gap-2 sm:flex-row">
-							<Button variant="outline" onClick={() => setRenamePreview(null)}>
-								Cancel
-							</Button>
-							<Button variant="destructive" onClick={handleConfirmRename}>
-								Rename {renamePreview?.wouldRename} Files
-							</Button>
-						</div>
+						<Button variant="outline" onClick={() => setRenamePreview(null)}>
+							Cancel
+						</Button>
+						<Button variant="destructive" onClick={handleConfirmRename}>
+							Rename {renamePreview?.wouldRename} Files
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
@@ -1600,19 +1598,17 @@ export default function SettingsPage() {
 						)}
 					</div>
 					<DialogFooter>
-						<div className="flex flex-col gap-2 sm:flex-row">
-							<Button variant="outline" onClick={() => setOrganizePreview(null)}>
-								Cancel
-							</Button>
-							<Button variant="destructive" onClick={handleConfirmOrganize}>
-								Move {organizePreview?.wouldMove} Files
-							</Button>
-						</div>
+						<Button variant="outline" onClick={() => setOrganizePreview(null)}>
+							Cancel
+						</Button>
+						<Button variant="destructive" onClick={handleConfirmOrganize}>
+							Move {organizePreview?.wouldMove} Files
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 
-			<div>
+			<div className="space-y-1">
 				<h2 className="text-3xl font-bold">Settings</h2>
 				<p className="text-muted-foreground">Manage flags and application settings</p>
 			</div>
@@ -1621,7 +1617,7 @@ export default function SettingsPage() {
 				<div className="p-4 rounded-md bg-destructive/10 text-destructive">
 					<p>{error}</p>
 					{bulkErrors.length > 0 && (
-						<div className="mt-2">
+						<div className="space-y-2">
 							<button
 								type="button"
 								className="flex items-center gap-1 text-sm font-medium underline-offset-2 hover:underline"
@@ -1631,7 +1627,7 @@ export default function SettingsPage() {
 								{bulkErrorsExpanded ? 'Hide' : 'Show'} {bulkErrors.length} error detail{bulkErrors.length !== 1 ? 's' : ''}
 							</button>
 							{bulkErrorsExpanded && (
-								<ul className="mt-2 space-y-1 text-sm">
+								<ul className="space-y-1 text-sm">
 									{bulkErrors.map((err, idx) => (
 										<li key={idx} className="pl-4 border-l-2 border-destructive/30">
 											<span className="font-medium">{err.filename}</span>
@@ -1761,8 +1757,8 @@ export default function SettingsPage() {
 					) : (
 						<>
 							{/* Current Quick Vendors */}
-							<div>
-								<div className="flex items-center justify-between mb-2">
+							<div className="space-y-2">
+								<div className="flex items-center justify-between">
 									<Label>Quick Vendors ({quickVendors.length})</Label>
 									<Button variant="outline" size="sm" onClick={loadQuickVendors} disabled={isLoadingQuickVendors}>
 										<RefreshCw className={`w-4 h-4 mr-1 ${isLoadingQuickVendors ? 'animate-spin' : ''}`} />
@@ -1834,9 +1830,9 @@ export default function SettingsPage() {
 
 							{/* Excluded Vendors */}
 							{excludedQuickVendors.length > 0 && (
-								<div>
+								<div className="space-y-2">
 									<Label>Excluded Vendors ({excludedQuickVendors.length})</Label>
-									<div className="mt-2 space-y-1">
+									<div className="space-y-1">
 										{excludedQuickVendors.map((vendor, index) => (
 											<div key={index} className="flex items-center justify-between px-3 py-1 border rounded-lg bg-muted/50">
 												<span className="font-medium truncate">{vendor}</span>
@@ -2017,9 +2013,9 @@ export default function SettingsPage() {
 					{hasUnsavedChanges && (
 						<div className="p-4 border rounded-lg bg-muted/50">
 							<div className="flex items-center justify-between">
-								<div>
+								<div className="space-y-1">
 									<Label>Unsaved Changes</Label>
-									<p className="mt-1 text-sm text-muted-foreground">
+									<p className="text-sm text-muted-foreground">
 										You have unsaved changes to receipt type organization. Click Save to apply all changes or Cancel to revert.
 									</p>
 								</div>
@@ -2068,7 +2064,7 @@ export default function SettingsPage() {
 													dragOverId={dragOverId}
 													hasChanged={changedGroupIds.has(group.id)}
 												>
-													<div className="space-y-1 ">
+													<div className="space-y-2">
 														{typesInGroup.length > 0 ? (
 															<SortableContext items={typesInGroup.map(t => `type-${t.id}`)} strategy={verticalListSortingStrategy}>
 																{typesInGroup.map(type => (
@@ -2130,9 +2126,9 @@ export default function SettingsPage() {
 					{/* Reset to Defaults */}
 					<div className="p-4 border rounded-lg border-destructive">
 						<div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-							<div>
+							<div className="space-y-1">
 								<Label>Reset to Default Types (DANGER)</Label>
-								<p className="mt-1 text-sm text-muted-foreground">Restore all receipt types and groups to their default values</p>
+								<p className="text-sm text-muted-foreground">Restore all receipt types and groups to their default values</p>
 							</div>
 							<Button type="button" variant="destructive" onClick={handleResetToDefaults}>
 								<RotateCcw className="w-4 h-4 mr-1" />
@@ -2207,7 +2203,7 @@ export default function SettingsPage() {
 										reimbursed-tax-deductible)
 									</li>
 								</ul>
-								<p className="mt-2 text-muted-foreground">
+								<p className="text-muted-foreground">
 									<strong>Note:</strong> All filenames automatically end with{' '}
 									<code className="bg-background px-1 py-0.5 rounded">[pk-index]</code> before the extension to prevent filename collisions,
 									where <code className="bg-background px-1 py-0.5 rounded">pk</code> is the receipt ID and{' '}
@@ -2216,15 +2212,15 @@ export default function SettingsPage() {
 									<code className="bg-background px-1 py-0.5 rounded">123</code> is the receipt ID and{' '}
 									<code className="bg-background px-1 py-0.5 rounded">0</code> is the file order.
 								</p>
-								<p className="mt-1 text-muted-foreground">File extension is automatically appended and cannot be customized.</p>
+								<p className="text-muted-foreground">File extension is automatically appended and cannot be customized.</p>
 							</div>
 						</div>
 					</div>
 
 					{/* Live preview */}
 					{previewFilename && (
-						<div className="p-3 rounded-lg bg-muted">
-							<p className="mb-1 text-sm font-medium">Preview:</p>
+						<div className="p-3 space-y-1 rounded-lg bg-muted">
+							<p className="text-sm font-medium">Preview:</p>
 							<code className="text-sm">{previewFilename}</code>
 						</div>
 					)}
@@ -2301,7 +2297,7 @@ export default function SettingsPage() {
 									<li>PNG to JPEG conversion (better compression for receipts)</li>
 									<li>Only processes unoptimized images</li>
 								</ul>
-								<p className="mt-2 text-muted-foreground">
+								<p className="text-muted-foreground">
 									<strong>Note:</strong> When enabled, new uploads and watch folder files are automatically optimized. Use the buttons below
 									to manually optimize existing images.
 								</p>
@@ -2330,7 +2326,7 @@ export default function SettingsPage() {
 								</div>
 							</div>
 							{optimizationResult.errors.length > 0 && (
-								<div className="mt-2">
+								<div className="space-y-2">
 									<button
 										type="button"
 										className="flex items-center gap-1 text-sm font-medium text-destructive underline-offset-2 hover:underline"
@@ -2340,7 +2336,7 @@ export default function SettingsPage() {
 										{bulkErrorsExpanded ? 'Hide' : 'Show'} {optimizationResult.errors.length} error{optimizationResult.errors.length !== 1 ? 's' : ''}
 									</button>
 									{bulkErrorsExpanded && (
-										<ul className="mt-2 space-y-1 text-sm">
+										<ul className="space-y-1 text-sm">
 											{optimizationResult.errors.map((err, idx) => (
 												<li key={idx} className="pl-4 border-l-2 border-destructive/30">
 													<span className="font-medium">{err.filename}</span>

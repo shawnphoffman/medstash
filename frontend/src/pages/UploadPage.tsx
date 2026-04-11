@@ -306,36 +306,34 @@ export default function UploadPage() {
 						<CardContent>
 							<form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 								{/* File Upload */}
-								<div>
+								<div className="space-y-3">
 									<Label>Files</Label>
 									<div
 										onDrop={onDrop}
 										onDragOver={e => e.preventDefault()}
 										className={cn(
-											'mt-2 border-2 border-dashed rounded-lg p-8 text-center',
+											'border-2 border-dashed rounded-lg p-8 text-center space-y-2',
 											'hover:border-primary transition-colors cursor-pointer'
 										)}
 									>
 										<input type="file" multiple onChange={onFileInput} className="hidden" id="file-input" accept="image/*,.pdf" />
-										<label htmlFor="file-input" className="cursor-pointer">
-											<Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+										<label htmlFor="file-input" className="block cursor-pointer space-y-2">
+											<Upload className="w-12 h-12 mx-auto text-muted-foreground" />
 											<p className="text-sm text-muted-foreground">Drag and drop files here, or click to select</p>
-											<p className="mt-2 text-xs text-muted-foreground">Supports images and PDFs</p>
+											<p className="text-xs text-muted-foreground">Supports images and PDFs</p>
 										</label>
 									</div>
-									<div className="flex gap-2 mt-4">
-										<Button
-											type="button"
-											variant="outline"
-											onClick={() => document.getElementById('file-input')?.click()}
-											className="flex-1"
-										>
-											<Upload className="w-4 h-4 mr-1" />
-											Select Files
-										</Button>
-									</div>
+									<Button
+										type="button"
+										variant="outline"
+										onClick={() => document.getElementById('file-input')?.click()}
+										className="w-full"
+									>
+										<Upload className="w-4 h-4 mr-1" />
+										Select Files
+									</Button>
 									{files.length > 0 && (
-										<div className="mt-4 space-y-2">
+										<div className="space-y-2">
 											{files.map((file, index) => {
 												const preview = filePreviews.get(index)
 												const isImage = file.type.startsWith('image/')
@@ -379,7 +377,7 @@ export default function UploadPage() {
 
 								{/* HSA-Compliant Fields */}
 								<div className="grid grid-cols-2 gap-4">
-									<div>
+									<div className="space-y-2">
 										<Label htmlFor="user_id">User</Label>
 										{users.length > 1 ? (
 											<Select
@@ -403,7 +401,7 @@ export default function UploadPage() {
 											<Input id="user_id" value="" placeholder="No users available" disabled />
 										)}
 									</div>
-									<div>
+									<div className="space-y-2">
 										<Label htmlFor="receipt_type_id">Receipt Type</Label>
 										{receiptTypes.length > 1 ? (
 											<Select
@@ -497,11 +495,11 @@ export default function UploadPage() {
 								</div>
 
 								<div className="grid grid-cols-2 gap-4">
-									<div>
+									<div className="space-y-2">
 										<Label htmlFor="date">Date of Service</Label>
 										<DatePicker id="date" value={watch('date')} onChange={value => setValue('date', value, { shouldValidate: true })} />
 									</div>
-									<div>
+									<div className="space-y-2">
 										<Label htmlFor="amount">Amount Paid</Label>
 										<div className="relative">
 											<span className="absolute -translate-y-1/2 left-3 top-1/2 text-muted-foreground">$</span>
@@ -529,53 +527,51 @@ export default function UploadPage() {
 												className="pl-7"
 											/>
 										</div>
-										{errors.amount && <p className="mt-1 text-sm text-destructive">{errors.amount.message as string}</p>}
+										{errors.amount && <p className="text-sm text-destructive">{errors.amount.message as string}</p>}
 									</div>
 								</div>
 
-								<div>
+								<div className="space-y-2">
 									<Label htmlFor="description">Description</Label>
 									<Textarea id="description" {...register('description')} placeholder="Description of service or item purchased" rows={3} />
 								</div>
 
-								<div>
+								<div className="space-y-2">
 									<Label htmlFor="vendor">Provider Name</Label>
 									<Input id="vendor" {...register('vendor')} placeholder="CVS Pharmacy" />
 									{quickVendors.length > 0 && (
-										<div className="mt-2">
-											<div className="flex flex-wrap gap-2">
-												{quickVendors.map((item, index) => (
-													<Button
-														key={index}
-														type="button"
-														variant="outline"
-														size="sm"
-														onClick={() => setValue('vendor', item.vendor, { shouldValidate: true })}
-														className="text-xs"
-													>
-														{item.vendor}
-													</Button>
-												))}
-											</div>
+										<div className="flex flex-wrap gap-2 pt-1">
+											{quickVendors.map((item, index) => (
+												<Button
+													key={index}
+													type="button"
+													variant="outline"
+													size="sm"
+													onClick={() => setValue('vendor', item.vendor, { shouldValidate: true })}
+													className="text-xs"
+												>
+													{item.vendor}
+												</Button>
+											))}
 										</div>
 									)}
 								</div>
 
-								<div>
+								<div className="space-y-2">
 									<Label htmlFor="provider_address">Provider Address</Label>
 									<Textarea id="provider_address" {...register('provider_address')} placeholder="123 Main St, City, State ZIP" rows={2} />
 								</div>
 
-								<div>
+								<div className="space-y-2">
 									<Label htmlFor="notes">Notes (Optional)</Label>
 									<Textarea id="notes" {...register('notes')} placeholder="Additional notes" rows={2} />
 								</div>
 
 								{/* Flags */}
 								{flags.length > 0 && (
-									<div>
+									<div className="space-y-2">
 										<Label>Flags</Label>
-										<div className="flex flex-wrap gap-2 mt-2">
+										<div className="flex flex-wrap gap-2">
 											{flags.map(flag => (
 												<Button
 													key={flag.id}

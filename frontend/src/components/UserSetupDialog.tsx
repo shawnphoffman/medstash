@@ -45,25 +45,23 @@ export default function UserSetupDialog({ open, onComplete }: UserSetupDialogPro
 						To get started, please enter your name. This will be used to categorize your medical receipts.
 					</DialogDescription>
 				</DialogHeader>
-				<form onSubmit={handleSubmit}>
-					<div className="space-y-4">
-						<div>
-							<Label htmlFor="user-name">Your Name</Label>
-							<Input
-								id="user-name"
-								value={userName}
-								onChange={e => setUserName(e.target.value)}
-								placeholder="John Doe"
-								autoFocus
-								disabled={loading}
-								onKeyDown={e => {
-									if (e.key === 'Enter') {
-										handleSubmit(e)
-									}
-								}}
-							/>
-							{error && <p className="mt-1 text-sm text-destructive">{error}</p>}
-						</div>
+				<form onSubmit={handleSubmit} className="space-y-6">
+					<div className="space-y-2">
+						<Label htmlFor="user-name">Your Name</Label>
+						<Input
+							id="user-name"
+							value={userName}
+							onChange={e => setUserName(e.target.value)}
+							placeholder="John Doe"
+							autoFocus
+							disabled={loading}
+							onKeyDown={e => {
+								if (e.key === 'Enter') {
+									handleSubmit(e)
+								}
+							}}
+						/>
+						{error && <p className="text-sm text-destructive">{error}</p>}
 					</div>
 					<DialogFooter>
 						<Button type="submit" disabled={loading}>

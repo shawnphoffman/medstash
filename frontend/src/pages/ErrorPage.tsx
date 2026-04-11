@@ -93,25 +93,23 @@ export function ErrorPage({ type, message, onRetry }: ErrorPageProps) {
 	return (
 		<div className="flex items-center justify-center min-h-[calc(100vh-200px)] p-4">
 			<Card className="w-full max-w-2xl">
-				<CardHeader className="text-center">
-					<div className="flex justify-center mb-4">
-						<div className="p-4 rounded-full bg-destructive/10">
-							<Icon className="w-12 h-12 text-destructive" />
-						</div>
+				<CardHeader className="items-center text-center">
+					<div className="flex items-center justify-center p-4 mb-2 rounded-full bg-destructive/10">
+						<Icon className="w-12 h-12 text-destructive" />
 					</div>
 					<CardTitle className="text-2xl">{details.title}</CardTitle>
-					<CardDescription className="mt-2 text-base">{details.description}</CardDescription>
+					<CardDescription className="text-base">{details.description}</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-6">
 					{errorMessage && (
-						<div className="p-4 rounded-lg bg-muted">
-							<p className="mb-1 text-sm font-medium text-muted-foreground">Error Details:</p>
+						<div className="p-4 space-y-1 rounded-lg bg-muted">
+							<p className="text-sm font-medium text-muted-foreground">Error Details:</p>
 							<p className="text-sm">{errorMessage}</p>
 						</div>
 					)}
 
-					<div>
-						<p className="mb-3 text-sm font-medium">Possible Solutions:</p>
+					<div className="space-y-2">
+						<p className="text-sm font-medium">Possible Solutions:</p>
 						<ul className="space-y-2">
 							{details.solutions.map((solution, index) => (
 								<li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -122,7 +120,7 @@ export function ErrorPage({ type, message, onRetry }: ErrorPageProps) {
 						</ul>
 					</div>
 
-					<div className="flex flex-col gap-3 pt-4 sm:flex-row">
+					<div className="flex flex-col gap-3 sm:flex-row">
 						<Button onClick={handleRetry} className="flex-1" variant="default">
 							<RefreshCw className="w-4 h-4 mr-1" />
 							Retry

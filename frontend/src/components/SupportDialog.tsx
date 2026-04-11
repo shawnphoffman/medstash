@@ -17,12 +17,10 @@ export default function SupportDialog({ open, onOpenChange }: SupportDialogProps
 						Support MedStash
 					</DialogTitle>
 				</DialogHeader>
-				<div className="space-y-4">
-					<p className="text-sm text-muted-foreground">
-						MedStash is free and open source. If it saves you time, consider supporting these causes.
-					</p>
-					<SupportContent />
-				</div>
+				<p className="text-sm text-muted-foreground">
+					MedStash is free and open source. If it saves you time, consider supporting these causes.
+				</p>
+				<SupportContent />
 			</DialogContent>
 		</Dialog>
 	)

@@ -45,36 +45,36 @@ export default function ReceiptCard({ receipt, onDelete, onDownloadFile }: Recei
 				</div>
 			</CardHeader>
 			<CardContent className="space-y-4">
-				<div>
+				<div className="space-y-1">
 					<p className="text-sm text-muted-foreground">Amount</p>
 					<p className="text-2xl font-bold">{formatCurrency(receipt.amount)}</p>
 				</div>
 
-				<div>
+				<div className="space-y-1">
 					<p className="text-sm text-muted-foreground">Type</p>
 					<p className="font-medium">{receipt.type}</p>
 				</div>
 
-				<div>
+				<div className="space-y-1">
 					<p className="text-sm text-muted-foreground">User</p>
 					<p className="font-medium">{receipt.user}</p>
 				</div>
 
-				<div>
+				<div className="space-y-1">
 					<p className="text-sm text-muted-foreground">Description</p>
 					<p className="text-sm">{receipt.description}</p>
 				</div>
 
 				{receipt.provider_address && (
-					<div>
+					<div className="space-y-1">
 						<p className="text-sm text-muted-foreground">Provider Address</p>
 						<p className="text-sm">{receipt.provider_address}</p>
 					</div>
 				)}
 
 				{receipt.flags.length > 0 && (
-					<div>
-						<p className="mb-2 text-sm text-muted-foreground">Flags</p>
+					<div className="space-y-2">
+						<p className="text-sm text-muted-foreground">Flags</p>
 						<div className="flex flex-wrap gap-2">
 							{receipt.flags.map(flag => (
 								<FlagBadge key={flag.id} flag={flag} />
@@ -84,8 +84,8 @@ export default function ReceiptCard({ receipt, onDelete, onDownloadFile }: Recei
 				)}
 
 				{receipt.files.length > 0 && (
-					<div>
-						<p className="mb-2 text-sm text-muted-foreground">Files</p>
+					<div className="space-y-2">
+						<p className="text-sm text-muted-foreground">Files</p>
 						<div className="space-y-2">
 							{receipt.files.map(file => {
 								const filenameChanged = file.filename !== file.original_filename
@@ -117,7 +117,7 @@ export default function ReceiptCard({ receipt, onDelete, onDownloadFile }: Recei
 				)}
 
 				{receipt.notes && (
-					<div>
+					<div className="space-y-1">
 						<p className="text-sm text-muted-foreground">Notes</p>
 						<p className="text-sm italic">{receipt.notes}</p>
 					</div>
