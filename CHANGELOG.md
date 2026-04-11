@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.6.0](https://github.com/shawnphoffman/medstash/compare/v0.5.3...v0.6.0) (2026-04-11)
+
+### Features
+
+* **ui:** collapsible sidebar + Tailwind v4 / shadcn upgrade ([d01b696](https://github.com/shawnphoffman/medstash/commit/d01b69677fec2ae1ddf852fe6cc1828bc2289a8f))
+
 ## [0.5.3](https://github.com/shawnphoffman/medstash/compare/v0.5.2...v0.5.3) (2026-04-09)
 
 ## [0.5.2](https://github.com/shawnphoffman/medstash/compare/v0.5.1...v0.5.2) (2026-04-09)
