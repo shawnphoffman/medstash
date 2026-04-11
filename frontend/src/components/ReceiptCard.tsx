@@ -93,7 +93,7 @@ export default function ReceiptCard({ receipt, onDelete, onDownloadFile }: Recei
 									<div key={file.id} className="flex items-center justify-between p-2 rounded bg-muted">
 										<div className="flex flex-col flex-1 min-w-0 gap-1">
 											<div className="flex items-center gap-2">
-												<File className="flex-shrink-0 w-4 h-4" />
+												<File className="shrink-0 w-4 h-4" />
 												<span className="text-sm font-medium truncate">{file.filename}</span>
 											</div>
 											{filenameChanged && (
@@ -104,7 +104,7 @@ export default function ReceiptCard({ receipt, onDelete, onDownloadFile }: Recei
 											variant="ghost"
 											size="icon"
 											onClick={() => onDownloadFile(receipt.id, file.id, file.original_filename)}
-											className="flex-shrink-0"
+											className="shrink-0"
 											aria-label={`Download ${file.filename}`}
 										>
 											<Download className="w-4 h-4" />

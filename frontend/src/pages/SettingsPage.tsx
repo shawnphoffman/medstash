@@ -1788,7 +1788,7 @@ export default function SettingsPage() {
 															</span>
 														)}
 													</div>
-													<Button size="sm" variant="outline" onClick={() => handleExcludeVendor(item.vendor)} className="flex-shrink-0">
+													<Button size="sm" variant="outline" onClick={() => handleExcludeVendor(item.vendor)} className="shrink-0">
 														<X className="w-4 h-4 mr-1" />
 														Exclude
 													</Button>
@@ -1822,7 +1822,7 @@ export default function SettingsPage() {
 										{customQuickVendors.map((vendor, index) => (
 											<div key={index} className="flex items-center justify-between px-3 py-2 border rounded-lg bg-primary/5">
 												<span className="font-medium truncate">{vendor}</span>
-												<Button size="sm" variant="outline" onClick={() => handleRemoveCustomVendor(vendor)} className="flex-shrink-0">
+												<Button size="sm" variant="outline" onClick={() => handleRemoveCustomVendor(vendor)} className="shrink-0">
 													<Trash2 className="w-4 h-4 mr-1" />
 													Remove
 												</Button>
@@ -1840,7 +1840,7 @@ export default function SettingsPage() {
 										{excludedQuickVendors.map((vendor, index) => (
 											<div key={index} className="flex items-center justify-between px-3 py-1 border rounded-lg bg-muted/50">
 												<span className="font-medium truncate">{vendor}</span>
-												<Button size="sm" variant="outline" onClick={() => handleRemoveExclusion(vendor)} className="flex-shrink-0">
+												<Button size="sm" variant="outline" onClick={() => handleRemoveExclusion(vendor)} className="shrink-0">
 													<RotateCcw className="w-4 h-4 mr-1" />
 													Include
 												</Button>
@@ -2112,7 +2112,7 @@ export default function SettingsPage() {
 								</>
 							)}
 						</div>
-						<DragOverlay className="z-[60]">
+						<DragOverlay className="z-60">
 							{activeId ? (
 								activeId.startsWith('group-') ? (
 									<div className="p-3 border rounded-lg shadow-lg bg-background">

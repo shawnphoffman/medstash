@@ -75,7 +75,7 @@ export const TAILWIND_COLORS = [
 	{
 		name: 'Rose',
 		value: '#f43f5e',
-		class: 'bg-rose-600 text-white shadow hover:bg-rose-600',
+		class: 'bg-rose-600 text-white shadow-sm hover:bg-rose-600',
 	},
 	{
 		name: 'Slate',
@@ -159,7 +159,7 @@ export function ColorPicker({ value, onChange, className }: ColorPickerProps) {
 			<button
 				type="button"
 				onClick={() => setIsOpen(!isOpen)}
-				className="flex items-center gap-2 p-2 border rounded-md hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+				className="flex items-center gap-2 p-2 border rounded-md hover:bg-accent focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
 			>
 				<div className="w-6 h-6 border-2 rounded border-border" style={{ backgroundColor: value }} />
 				{/* <span className="text-sm text-muted-foreground">{selectedColor.name}</span> */}
@@ -177,7 +177,7 @@ export function ColorPicker({ value, onChange, className }: ColorPickerProps) {
 									setIsOpen(false)
 								}}
 								className={cn(
-									'w-8 h-8 rounded border-2 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring',
+									'w-8 h-8 rounded border-2 transition-all hover:scale-110 focus:outline-hidden focus:ring-2 focus:ring-ring',
 									color.class,
 									value === color.value ? 'ring-2 ring-primary ring-offset-2' : 'border-border'
 								)}

@@ -27,8 +27,16 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // React core libraries
-          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+          // Group React + Radix UI together to avoid a circular chunk dependency:
+          // Radix primitives import React, and certain Radix internals re-export
+          // through paths that the splitter would otherwise put back into the
+          // React chunk.
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/scheduler/') ||
+            /node_modules\/(@radix-ui|radix-ui)\//.test(id)
+          ) {
             return 'react-vendor'
           }
           // React Router
@@ -46,10 +54,6 @@ export default defineConfig({
           // Date libraries
           if (id.includes('node_modules/date-fns')) {
             return 'date-libs'
-          }
-          // Radix UI components
-          if (id.includes('node_modules/@radix-ui')) {
-            return 'radix-ui'
           }
           // Icons
           if (id.includes('node_modules/lucide-react')) {

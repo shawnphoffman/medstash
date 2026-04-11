@@ -234,7 +234,7 @@ export default function BulkUploadPage() {
 											return (
 												<div key={index} className="flex items-center gap-3 p-3 border rounded-lg bg-card">
 													{/* Preview */}
-													<div className="flex items-center justify-center flex-shrink-0 w-16 h-16 overflow-hidden border rounded bg-background">
+													<div className="flex items-center justify-center shrink-0 w-16 h-16 overflow-hidden border rounded bg-background">
 														{preview && isImage ? (
 															<img src={preview} alt={file.name} className="object-cover w-full h-full" />
 														) : isPdf ? (
@@ -250,14 +250,14 @@ export default function BulkUploadPage() {
 													{/* File Info */}
 													<div className="flex-1 min-w-0">
 														<div className="flex items-center gap-2">
-															<File className="flex-shrink-0 w-4 h-4" />
+															<File className="shrink-0 w-4 h-4" />
 															<span className="text-sm font-medium truncate">{file.name}</span>
 														</div>
 														<span className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</span>
 													</div>
 
 													{/* Remove Button */}
-													<Button type="button" variant="ghost" size="icon" onClick={() => removeFile(index)} className="flex-shrink-0">
+													<Button type="button" variant="ghost" size="icon" onClick={() => removeFile(index)} className="shrink-0">
 														<X className="w-4 h-4" />
 													</Button>
 												</div>

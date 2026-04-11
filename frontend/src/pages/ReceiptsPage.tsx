@@ -214,12 +214,12 @@ export default function ReceiptsPage() {
 			</div>
 
 			{/* Filters */}
-			<Card className="border-0">
+			<Card className="border-0 bg-transparent shadow-none py-0">
 				<CardContent className="p-0">
 					<div className="flex flex-col gap-4 sm:flex-row">
 						<div className="flex-1">
 							<div className="relative">
-								<Search className="absolute transform -translate-y-1/2 size-4 left-3 top-1/2 text-muted-foreground" />
+								<Search className="absolute -translate-y-1/2 size-4 left-3 top-1/2 text-muted-foreground" />
 								<Input
 									placeholder="Search receipts..."
 									value={searchTerm}
@@ -266,7 +266,7 @@ export default function ReceiptsPage() {
 					</CardContent>
 				</Card>
 			) : (
-				<Card>
+				<Card className="overflow-hidden py-0">
 					<CardContent className="p-0">
 						<div className={cn('overflow-x-auto transition-opacity duration-200', isRefreshing && 'opacity-75')}>
 							<table className="w-full">

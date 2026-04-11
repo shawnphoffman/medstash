@@ -834,7 +834,7 @@ export default function ReceiptDetailPage() {
 													>
 														<div className="flex flex-col flex-1 min-w-0 gap-1">
 															<div className="flex items-center gap-2">
-																<File className={cn('w-4 h-4 flex-shrink-0', isMarkedForDeletion && 'text-destructive')} />
+																<File className={cn('w-4 h-4 shrink-0', isMarkedForDeletion && 'text-destructive')} />
 																<span
 																	className={cn('text-sm font-medium truncate', isMarkedForDeletion && 'text-destructive line-through')}
 																>
@@ -939,7 +939,7 @@ export default function ReceiptDetailPage() {
 													className="flex items-center justify-between p-2 border-2 border-dashed rounded border-primary/50 bg-primary/5"
 												>
 													<div className="flex items-center flex-1 min-w-0 gap-2">
-														<File className="flex-shrink-0 w-4 h-4" />
+														<File className="shrink-0 w-4 h-4" />
 														<span className="text-sm truncate">{file.name}</span>
 														<Badge variant="secondary" className="ml-2 text-xs">
 															New
@@ -952,7 +952,7 @@ export default function ReceiptDetailPage() {
 															variant="ghost"
 															size="icon"
 															onClick={() => removeNewFile(index)}
-															className="flex-shrink-0"
+															className="shrink-0"
 														>
 															<X className="w-4 h-4" />
 														</Button>
@@ -1013,7 +1013,7 @@ export default function ReceiptDetailPage() {
 												<div className={cn('p-2 border-b', isMarkedForDeletion ? 'bg-destructive/10' : 'bg-muted')}>
 													<div className="flex flex-col gap-1">
 														<div className="flex items-center gap-2">
-															<File className={cn('w-4 h-4 flex-shrink-0', isMarkedForDeletion && 'text-destructive')} />
+															<File className={cn('w-4 h-4 shrink-0', isMarkedForDeletion && 'text-destructive')} />
 															<span className={cn('text-sm font-medium truncate', isMarkedForDeletion && 'text-destructive line-through')}>
 																{file.filename}
 															</span>
@@ -1123,7 +1123,7 @@ export default function ReceiptDetailPage() {
 											>
 												<div className="p-2 border-b bg-primary/10">
 													<div className="flex items-center gap-2">
-														<File className="flex-shrink-0 w-4 h-4" />
+														<File className="shrink-0 w-4 h-4" />
 														<span className="text-sm font-medium truncate">{file.name}</span>
 														<Badge variant="secondary" className="ml-2 text-xs">
 															New

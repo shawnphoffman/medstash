@@ -41,7 +41,7 @@ export function SupportContent() {
 					<p className="font-medium">Pacific Crest Trail Association</p>
 					<p className="text-sm text-muted-foreground">Protecting the PCT from Mexico to Canada</p>
 				</div>
-				<ExternalLink className="flex-shrink-0 w-4 h-4 text-muted-foreground" />
+				<ExternalLink className="shrink-0 w-4 h-4 text-muted-foreground" />
 			</a>
 
 			<div className="relative">

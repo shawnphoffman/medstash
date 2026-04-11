@@ -1,54 +1,36 @@
-import { Moon, Sun } from 'lucide-react';
-import { Button } from './ui/button';
-import { useEffect, useState } from 'react';
+import { Moon, Sun } from 'lucide-react'
+import { useTheme } from 'next-themes'
+import { useEffect, useState } from 'react'
+
+import { Button } from './ui/button'
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+	const { resolvedTheme, setTheme } = useTheme()
+	const [mounted, setMounted] = useState(false)
 
-  useEffect(() => {
-    // Check localStorage - default to light mode
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    const initialTheme = savedTheme || 'light';
+	// Avoid hydration mismatch / icon flash by only rendering after mount.
+	useEffect(() => {
+		setMounted(true)
+	}, [])
 
-    setTheme(initialTheme);
-    // Theme is already applied in main.tsx, but ensure it's correct
-    const root = document.documentElement;
-    if (initialTheme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-  }, []);
+	const isDark = resolvedTheme === 'dark'
 
-  const applyTheme = (newTheme: 'light' | 'dark') => {
-    const root = document.documentElement;
-    if (newTheme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-  };
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    applyTheme(newTheme);
-  };
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={toggleTheme}
-      aria-label="Toggle theme"
-    >
-      {theme === 'light' ? (
-        <Moon className="h-5 w-5" />
-      ) : (
-        <Sun className="h-5 w-5" />
-      )}
-    </Button>
-  );
+	return (
+		<Button
+			variant="ghost"
+			size="icon"
+			onClick={() => setTheme(isDark ? 'light' : 'dark')}
+			aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+		>
+			{mounted ? (
+				isDark ? (
+					<Sun className="size-[1.1rem]" />
+				) : (
+					<Moon className="size-[1.1rem]" />
+				)
+			) : (
+				<Moon className="size-[1.1rem] opacity-0" />
+			)}
+		</Button>
+	)
 }
-

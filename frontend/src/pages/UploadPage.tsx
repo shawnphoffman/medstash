@@ -344,7 +344,7 @@ export default function UploadPage() {
 												return (
 													<div key={index} className="flex items-center gap-3 p-2 rounded bg-muted">
 														{/* Preview */}
-														<div className="flex items-center justify-center flex-shrink-0 w-16 h-16 overflow-hidden border rounded bg-background">
+														<div className="flex items-center justify-center shrink-0 w-16 h-16 overflow-hidden border rounded bg-background">
 															{preview && isImage ? (
 																<img src={preview} alt={file.name} className="object-cover w-full h-full" />
 															) : isPdf ? (
@@ -360,14 +360,14 @@ export default function UploadPage() {
 														{/* File Info */}
 														<div className="flex-1 min-w-0">
 															<div className="flex items-center gap-2">
-																<File className="flex-shrink-0 w-4 h-4" />
+																<File className="shrink-0 w-4 h-4" />
 																<span className="text-sm truncate">{file.name}</span>
 															</div>
 															<span className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</span>
 														</div>
 
 														{/* Remove Button */}
-														<Button type="button" variant="ghost" size="icon" onClick={() => removeFile(index)} className="flex-shrink-0">
+														<Button type="button" variant="ghost" size="icon" onClick={() => removeFile(index)} className="shrink-0">
 															<X className="w-4 h-4" />
 														</Button>
 													</div>
@@ -608,7 +608,7 @@ export default function UploadPage() {
 
 				{/* Preview Sidebar - Only on widescreens */}
 				{files.length > 0 && (
-					<div className="flex-shrink-0">
+					<div className="shrink-0">
 						<Card>
 							<CardHeader>
 								<CardTitle>File Previews</CardTitle>
