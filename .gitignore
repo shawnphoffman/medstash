@@ -43,6 +43,9 @@ testing/
 
 IGNORE.md
 
+# Local mock backend (not for source control)
+mock-backend.mjs
+
 # Claude Code local settings
 .claude/settings.local.json
 .claude/worktrees/
